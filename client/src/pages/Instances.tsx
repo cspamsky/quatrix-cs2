@@ -266,13 +266,23 @@ const Instances = () => {
                     <span className="text-gray-400 flex items-center">
                       <Hash className="w-3.5 h-3.5 mr-2 opacity-70" /> Port
                     </span>
-                    <div 
-                      className="flex items-center gap-1.5 text-primary cursor-pointer hover:text-blue-400 transition-colors group/ip"
+                    <button
+                      type="button"
+                      aria-label="Copy server address"
+                      title="Copy server address"
+                      className="flex items-center gap-1.5 text-primary hover:text-blue-400 transition-colors group/ip bg-transparent border-0 p-0"
                       onClick={() => copyToClipboard(`localhost:${instance.port}`, instance.id.toString())}
                     >
                       <span className="font-mono">localhost:{instance.port}</span>
-                      {copiedId === instance.id.toString() ? <Check size={12} /> : <Copy size={12} className="opacity-0 group-hover/ip:opacity-100 transition-opacity" />}
-                    </div>
+                      {copiedId === instance.id.toString() ? (
+                        <Check size={12} />
+                      ) : (
+                        <Copy
+                          size={12}
+                          className="opacity-0 group-hover/ip:opacity-100 group-focus-visible/ip:opacity-100 transition-opacity"
+                        />
+                      )}
+                    </button>
                   </div>
                 </div>
 
