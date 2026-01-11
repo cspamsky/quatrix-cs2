@@ -121,32 +121,43 @@ try {
   });
 
   // --- API Endpoints ---
-  app.get("/api/servers", authenticateToken, (req, res) => {
+  app.get("/api/servers", authenticateToken, (req: any, res) => {
     try {
-      const servers = db.prepare("SELECT * FROM servers").all();
+      const servers = db.prepare("SELECT *, is_installed as isInstalled FROM servers WHERE user_id = ?").all(req.user.id);
       res.json(servers);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch servers" });
     }
   });
 
-  app.post("/api/servers", authenticateToken, (req, res) => {
+  app.get("/api/servers/:id", authenticateToken, (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server = db.prepare("SELECT *, is_installed as isInstalled FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+      res.json(server);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch server" });
+    }
+  });
+
+  app.post("/api/servers", authenticateToken, (req: any, res) => {
     const { name, port, rcon_password } = req.body;
     try {
-      const result = db.prepare("INSERT INTO servers (name, port, rcon_password, status) VALUES (?, ?, ?, 'OFFLINE')")
-        .run(name, port, rcon_password);
+      const result = db.prepare("INSERT INTO servers (user_id, name, port, rcon_password, status) VALUES (?, ?, ?, ?, 'OFFLINE')")
+        .run(req.user.id, name, port, rcon_password);
       res.json({ id: result.lastInsertRowid, name, port, status: 'OFFLINE' });
     } catch (error) {
       res.status(500).json({ message: "Failed to create server" });
     }
   });
 
-  app.post("/api/servers/:id/start", authenticateToken, async (req, res) => {
+  app.post("/api/servers/:id/start", authenticateToken, async (req: any, res) => {
     const id = req.params.id;
     if (!id) return res.status(400).json({ message: "Server ID is required" });
     
     try {
-      const server: any = db.prepare("SELECT * FROM servers WHERE id = ?").get(id);
+      const server: any = db.prepare("SELECT * FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
       if (!server) return res.status(404).json({ message: "Server not found" });
 
       serverManager.startServer(id as string, server, (data: string) => {
@@ -160,11 +171,14 @@ try {
     }
   });
 
-  app.post("/api/servers/:id/stop", authenticateToken, (req, res) => {
+  app.post("/api/servers/:id/stop", authenticateToken, (req: any, res) => {
     const id = req.params.id;
     if (!id) return res.status(400).json({ message: "Server ID is required" });
 
     try {
+      const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
       serverManager.stopServer(id as string);
       db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
       res.json({ message: "Server stopped" });
@@ -173,36 +187,143 @@ try {
     }
   });
 
-  // RCON Endpoint (Initial version using srcds-rcon)
-  app.post("/api/servers/:id/rcon", authenticateToken, async (req: Request, res: Response) => {
+  app.post("/api/servers/:id/restart", authenticateToken, async (req: any, res) => {
+    const id = req.params.id;
+    try {
+      const server: any = db.prepare("SELECT * FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      serverManager.stopServer(id as string);
+      await serverManager.startServer(id as string, server, (data: string) => {
+        io.emit(`console:${id}`, data);
+      });
+
+      db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(id);
+      res.json({ message: "Server restarting..." });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // RCON Endpoint
+  app.post("/api/servers/:id/rcon", authenticateToken, async (req: any, res: Response) => {
     const id = req.params.id;
     const { command } = req.body;
     
     if (!id) return res.status(400).json({ message: "Server ID is required" });
 
     try {
-      const server: any = db.prepare("SELECT * FROM servers WHERE id = ?").get(id);
-      if (!server || !server.rcon_password) return res.status(400).json({ message: "Invalid server or RCON config" });
-
-      if (!serverManager.isServerRunning(id as string)) return res.status(400).json({ message: "Server is not running" });
-
-      const { createRequire } = await import('module');
-      const require = createRequire(import.meta.url);
-      const RCON = require('srcds-rcon');
-
-      const rcon = RCON({
-        address: `127.0.0.1:${server.port}`,
-        password: server.rcon_password,
-        timeout: 5000
-      });
-
-      await rcon.connect();
-      const response = await rcon.command(command);
-      rcon.disconnect();
-
+      const response = await serverManager.sendCommand(id as string, command);
       res.json({ success: true, response });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // --- File Manager Endpoints ---
+  app.get("/api/servers/:id/files", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    const { path: subDir } = req.query;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      const files = await serverManager.listFiles(id, (subDir as string) || '');
+      res.json(files);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/servers/:id/files/read", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    const { path: filePath } = req.query;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      const content = await serverManager.readFile(id, filePath as string);
+      res.json({ content });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/servers/:id/files/write", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    const { path: filePath, content } = req.body;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      await serverManager.writeFile(id, filePath, content);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/servers/:id/install", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT * FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      db.prepare("UPDATE servers SET status = 'INSTALLING' WHERE id = ?").run(id);
+      
+      serverManager.installOrUpdateServer(id, (data) => {
+        io.emit(`console:${id}`, data);
+      }).then(() => {
+        db.prepare("UPDATE servers SET status = 'OFFLINE', is_installed = 1 WHERE id = ?").run(id);
+      }).catch((err) => {
+        console.error(`Install failed for ${id}:`, err);
+        db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
+      });
+
+      res.json({ message: "Installation started" });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/servers/:id/logs", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      const logs = serverManager.getLastLogs(id);
+      res.json(logs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/system-info", async (req, res) => {
+    try {
+      const os = await si.osInfo();
+      res.json({
+        os: `${os.distro} ${os.release}`,
+        arch: os.arch,
+        hostname: os.hostname
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch system info" });
+    }
+  });
+
+  // Dashboard Stats
+  app.get("/api/stats", authenticateToken, (req: any, res) => {
+    try {
+      const servers: any[] = db.prepare("SELECT status, current_players FROM servers WHERE user_id = ?").all(req.user.id);
+      const stats = {
+        totalServers: servers.length,
+        activeServers: servers.filter(s => s.status === 'ONLINE').length,
+        totalPlayers: servers.reduce((acc, s) => acc + (s.current_players || 0), 0)
+      };
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch stats" });
     }
   });
 
@@ -218,6 +339,11 @@ try {
 
   httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+  });
+
+  // Catch-all 404 handler
+  app.use((req, res) => {
+    res.status(404).json({ message: `Route ${req.method} ${req.url} not found` });
   });
 } catch (error) {
   console.error("Startup error:", error);

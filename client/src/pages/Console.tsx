@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/api'
 import { useState, useEffect, useRef } from 'react'
 import { 
   Terminal as TerminalIcon, 
@@ -18,8 +19,15 @@ interface LogEntry {
   message: string
 }
 
+interface Server {
+  id: number;
+  status: string;
+  name: string;
+}
+
 const Console = () => {
   const { id } = useParams()
+  const [server, setServer] = useState<Server | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>([
     { 
       timestamp: new Date().toLocaleTimeString(), 
@@ -28,19 +36,29 @@ const Console = () => {
     },
   ])
   const [command, setCommand] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
   const logEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!id) return;
 
-    // Fetch previous logs
+    const fetchServerData = async () => {
+      try {
+        const response = await apiFetch(`http://localhost:3001/api/servers`)
+        const data = await response.json()
+        const currentServer = data.find((s: any) => s.id.toString() === id)
+        if (currentServer) setServer(currentServer)
+      } catch (error) {
+        console.error('Failed to fetch server info:', error)
+      }
+    }
+
     const fetchLogs = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/servers/${id}/logs`);
+        const response = await apiFetch(`http://localhost:3001/api/servers/${id}/logs`);
         if (response.ok) {
           const rawLogs = await response.json();
           const processedLogs = rawLogs.map((log: string) => {
-            // Log format: [timestamp] message
             const match = log.match(/^\[(.*?)\] (.*)/);
             if (match) {
               return { timestamp: new Date(match[1]).toLocaleTimeString(), type: 'RAW', message: match[2] };
@@ -54,9 +72,10 @@ const Console = () => {
       }
     };
 
+    fetchServerData();
     fetchLogs();
 
-    const eventName = `console_${id}`
+    const eventName = `console:${id}`
     socket.on(eventName, (log) => {
       const now = new Date()
       const timestamp = now.toLocaleTimeString()
@@ -68,15 +87,37 @@ const Console = () => {
     }
   }, [id])
 
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [logs])
+  const handleAction = async (action: 'start' | 'stop' | 'restart') => {
+    if (!id) return
+    setActionLoading(true)
+    try {
+      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/${action}`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setLogs(prev => [...prev, {
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'INFO',
+          message: data.message || `Action ${action} initiated`
+        }])
+        // Refresh server status
+        const serverResp = await apiFetch(`http://localhost:3001/api/servers`)
+        const servers = await serverResp.json()
+        const s = servers.find((ser: any) => ser.id.toString() === id)
+        if (s) setServer(s)
+      }
+    } catch (error) {
+        console.error(`Action ${action} failed:`, error)
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   const sendCommand = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!command.trim() || !id) return
     
-    // Add command to logs immediately
     setLogs(prev => [...prev, {
       timestamp: new Date().toLocaleTimeString(),
       type: 'INFO',
@@ -84,7 +125,7 @@ const Console = () => {
     }])
     
     try {
-      const response = await fetch(`http://localhost:3001/api/servers/${id}/rcon`, {
+      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/rcon`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command })
@@ -93,7 +134,6 @@ const Console = () => {
       const data = await response.json()
       
       if (data.success) {
-        // Add response to logs
         setLogs(prev => [...prev, {
           timestamp: new Date().toLocaleTimeString(),
           type: 'SUCCESS',
@@ -189,16 +229,30 @@ const Console = () => {
 
         {/* Action Buttons */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
-          <button className="flex items-center justify-center gap-2 py-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-all font-semibold text-sm">
+          <button 
+            disabled={actionLoading || server?.status === 'ONLINE' || server?.status === 'STARTING'}
+            onClick={() => handleAction('start')}
+            className="flex items-center justify-center gap-2 py-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+          >
             <Play size={18} /> Start Server
           </button>
-          <button className="flex items-center justify-center gap-2 py-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-all font-semibold text-sm">
-            <RotateCcw size={18} /> Restart
+          <button 
+            disabled={actionLoading || server?.status === 'OFFLINE'}
+            onClick={() => handleAction('restart')}
+            className="flex items-center justify-center gap-2 py-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <RotateCcw size={18} className={actionLoading ? 'animate-spin' : ''} /> Restart
           </button>
-          <button className="flex items-center justify-center gap-2 py-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-lg hover:bg-rose-500/20 transition-all font-semibold text-sm">
+          <button 
+            disabled={actionLoading || server?.status === 'OFFLINE'}
+            onClick={() => handleAction('stop')}
+            className="flex items-center justify-center gap-2 py-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-lg hover:bg-rose-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+          >
             <Square size={18} /> Stop Server
           </button>
-          <button className="flex items-center justify-center gap-2 py-3.5 bg-primary/10 border border-primary/20 text-primary rounded-lg hover:bg-primary/20 transition-all font-semibold text-sm">
+          <button 
+            className="flex items-center justify-center gap-2 py-3.5 bg-primary/10 border border-primary/20 text-primary rounded-lg hover:bg-primary/20 transition-all font-semibold text-sm"
+          >
             <RefreshCw size={18} /> Force Update
           </button>
         </div>

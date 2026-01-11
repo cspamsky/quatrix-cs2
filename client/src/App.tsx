@@ -11,6 +11,7 @@ import CreateInstance from './pages/CreateInstance'
 import Plugins from './pages/Plugins'
 import Maps from './pages/Maps'
 import ServerSettings from './pages/ServerSettings'
+import FileManager from './pages/FileManager'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
 
@@ -28,6 +29,7 @@ const App = () => {
         <Route path="/instances/create" element={<ProtectedRoute><Layout><CreateInstance /></Layout></ProtectedRoute>} />
         <Route path="/instances/:id/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
         <Route path="/instances/:id/settings" element={<ProtectedRoute><Layout><ServerSettings /></Layout></ProtectedRoute>} />
+        <Route path="/instances/:id/files" element={<ProtectedRoute><Layout><FileManager /></Layout></ProtectedRoute>} />
         <Route path="/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
         <Route path="/players" element={<ProtectedRoute><Layout><Players /></Layout></ProtectedRoute>} />

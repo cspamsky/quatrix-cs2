@@ -13,8 +13,11 @@ import {
   Check,
   Trash2,
   Download,
-  RefreshCw
+  RefreshCw,
+  RotateCcw,
+  FileText
 } from 'lucide-react'
+import { apiFetch } from '../utils/api'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -37,6 +40,7 @@ const Instances = () => {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [installingId, setInstallingId] = useState<number | null>(null)
+  const [restartingId, setRestartingId] = useState<number | null>(null)
 
   useEffect(() => {
     fetchServers()
@@ -44,9 +48,9 @@ const Instances = () => {
 
   const fetchServers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/servers')
+      const response = await apiFetch('http://localhost:3001/api/servers')
       const data = await response.json()
-      setInstances(data)
+      setInstances(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to fetch servers:', error)
     } finally {
@@ -59,7 +63,7 @@ const Instances = () => {
     
     setDeletingId(id)
     try {
-      const response = await fetch(`http://localhost:3001/api/servers/${id}`, {
+      const response = await apiFetch(`http://localhost:3001/api/servers/${id}`, {
         method: 'DELETE'
       })
       if (response.ok) {
@@ -78,11 +82,10 @@ const Instances = () => {
   const handleInstall = async (id: number) => {
     setInstallingId(id)
     try {
-      const response = await fetch(`http://localhost:3001/api/servers/${id}/install`, {
+      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/install`, {
         method: 'POST'
       })
       if (response.ok) {
-        // Redirection to console as requested
         navigate(`/instances/${id}/console`)
       } else {
         const data = await response.json()
@@ -98,11 +101,10 @@ const Instances = () => {
 
   const handleStartServer = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/servers/${id}/start`, {
+      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/start`, {
         method: 'POST'
       })
       if (response.ok) {
-        // Refresh server list to get updated status
         fetchServers()
       } else {
         const data = await response.json()
@@ -116,11 +118,10 @@ const Instances = () => {
 
   const handleStopServer = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/servers/${id}/stop`, {
+      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/stop`, {
         method: 'POST'
       })
       if (response.ok) {
-        // Refresh server list to get updated status
         fetchServers()
       } else {
         const data = await response.json()
@@ -129,6 +130,26 @@ const Instances = () => {
     } catch (error) {
       console.error('Stop server error:', error)
       alert('Connection error')
+    }
+  }
+
+  const handleRestartServer = async (id: number) => {
+    setRestartingId(id)
+    try {
+      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/restart`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        fetchServers()
+      } else {
+        const data = await response.json()
+        alert(data.message || 'Failed to restart server')
+      }
+    } catch (error) {
+      console.error('Restart error:', error)
+      alert('Connection error')
+    } finally {
+      setRestartingId(null)
     }
   }
 
@@ -269,36 +290,55 @@ const Instances = () => {
                       )}
                       {instance.status === 'INSTALLING' ? 'Installing...' : 'Install Server'}
                     </button>
-                  ) : instance.status === 'OFFLINE' ? (
-                    <button 
-                      onClick={() => handleStartServer(instance.id)}
-                      className="flex-1 bg-primary hover:bg-blue-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-primary/10"
-                    >
-                      <Play className="w-3 h-3 mr-1.5" /> Start
-                    </button>
                   ) : (
-                    <button 
-                      onClick={() => handleStopServer(instance.id)}
-                      className="flex-1 bg-gray-800/40 hover:bg-red-500/10 hover:text-red-500 py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40"
-                    >
-                      <Square className="w-3 h-3 mr-1.5 fill-current" /> Stop
-                    </button>
+                    <>
+                      {instance.status === 'OFFLINE' ? (
+                        <button 
+                          onClick={() => handleStartServer(instance.id)}
+                          className="flex-1 bg-primary hover:bg-blue-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-primary/10"
+                        >
+                          <Play className="w-3 h-3 mr-1.5" /> Start
+                        </button>
+                      ) : (
+                        <>
+                          <button 
+                            onClick={() => handleStopServer(instance.id)}
+                            className="flex-1 bg-gray-800/40 hover:bg-red-500/10 hover:text-red-500 py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40"
+                          >
+                            <Square className="w-3 h-3 mr-1.5 fill-current" /> Stop
+                          </button>
+                          <button 
+                            onClick={() => handleRestartServer(instance.id)}
+                            disabled={restartingId === instance.id}
+                            className="p-2 bg-gray-800/40 hover:bg-amber-500/10 hover:text-amber-500 rounded transition-all border border-gray-800/40 disabled:opacity-50"
+                            title="Restart Server"
+                          >
+                            <RotateCcw className={`w-3.5 h-3.5 ${restartingId === instance.id ? 'animate-spin' : ''}`} />
+                          </button>
+                        </>
+                      )}
+                      <button 
+                        onClick={() => navigate(`/instances/${instance.id}/console`)}
+                        className="flex-1 bg-gray-800/40 hover:bg-primary/10 hover:text-primary py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40"
+                      >
+                        <Terminal className="w-3 h-3 mr-1.5" /> Console
+                      </button>
+                    </>
                   )}
-                  <button 
-                    onClick={() => navigate(`/instances/${instance.id}/console`)}
-                    className={`flex-1 bg-gray-800/40 py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40 ${
-                      !instance.isInstalled ? 'text-gray-600 cursor-not-allowed' : 'hover:bg-primary/10 hover:text-primary'
-                    }`}
-                    disabled={!instance.isInstalled}
-                  >
-                    <Terminal className="w-3 h-3 mr-1.5" /> Console
-                  </button>
                   <button 
                     aria-label="Server settings"
                     onClick={() => navigate(`/instances/${instance.id}/settings`)}
                     className="p-2 bg-gray-800/40 hover:bg-gray-700/40 rounded transition-all border border-gray-800/40 text-gray-400 hover:text-white"
                   >
                     <Settings className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    aria-label="File Manager"
+                    onClick={() => navigate(`/instances/${instance.id}/files`)}
+                    disabled={!instance.isInstalled}
+                    className="p-2 bg-gray-800/40 hover:bg-gray-700/40 rounded transition-all border border-gray-800/40 text-gray-400 hover:text-white disabled:opacity-30"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
                   </button>
                   <button 
                     aria-label="Delete server"

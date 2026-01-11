@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/api'
 import { useState, useEffect } from 'react'
 import { 
   Cpu,
@@ -27,13 +28,24 @@ const Dashboard = () => {
     arch: 'Loading...',
     hostname: 'Loading...',
   })
+  const [serverStats, setServerStats] = useState<any>({
+    totalServers: 0,
+    activeServers: 0,
+    totalPlayers: 0
+  })
 
   useEffect(() => {
-    // Fetch system info once on mount
-    fetch('http://localhost:3001/api/system-info')
+    // Fetch system info
+    apiFetch('http://localhost:3001/api/system-info')
       .then(res => res.json())
       .then(data => setSystemInfo(data))
       .catch(err => console.error('Failed to fetch system info:', err))
+
+    // Fetch user server stats
+    apiFetch('http://localhost:3001/api/stats')
+      .then(res => res.json())
+      .then(data => setServerStats(data))
+      .catch(err => console.error('Failed to fetch server stats:', err))
 
     socket.on('stats', (data) => setStats(data))
 
@@ -103,18 +115,18 @@ const Dashboard = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-[#0F172A]/50 p-4 rounded-lg border border-gray-800/30">
               <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Active Servers</p>
-              <p className="text-3xl font-bold text-green-400">3</p>
-              <p className="text-xs text-gray-400 mt-1">2 online, 1 offline</p>
+              <p className="text-3xl font-bold text-green-400">{serverStats.activeServers}</p>
+              <p className="text-xs text-gray-400 mt-1">{serverStats.activeServers} online, {serverStats.totalServers - serverStats.activeServers} offline</p>
             </div>
             <div className="bg-[#0F172A]/50 p-4 rounded-lg border border-gray-800/30">
               <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Total Players</p>
-              <p className="text-3xl font-bold text-blue-400">24</p>
+              <p className="text-3xl font-bold text-blue-400">{serverStats.totalPlayers}</p>
               <p className="text-xs text-gray-400 mt-1">across all servers</p>
             </div>
             <div className="bg-[#0F172A]/50 p-4 rounded-lg border border-gray-800/30">
-              <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Server Uptime</p>
-              <p className="text-3xl font-bold text-purple-400">99.8%</p>
-              <p className="text-xs text-gray-400 mt-1">last 30 days</p>
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Total Instances</p>
+              <p className="text-3xl font-bold text-purple-400">{serverStats.totalServers}</p>
+              <p className="text-xs text-gray-400 mt-1">created instances</p>
             </div>
             <div className="bg-[#0F172A]/50 p-4 rounded-lg border border-gray-800/30">
               <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Total Maps</p>

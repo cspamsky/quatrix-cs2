@@ -69,6 +69,12 @@ try {
   // Column already exists
 }
 
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN is_installed INTEGER DEFAULT 0`);
+} catch (error) {
+  // Column already exists
+}
+
 // Create settings table
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (

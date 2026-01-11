@@ -1,3 +1,4 @@
+import { apiFetch } from '../utils/api'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Server, MapPin, Users, Lock, Key, Shield } from 'lucide-react'
@@ -28,7 +29,7 @@ const ServerSettings = () => {
 
   const fetchServerData = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/servers/${id}`)
+      const response = await apiFetch(`http://localhost:3001/api/servers/${id}`)
       if (response.ok) {
         const data = await response.json()
         setServer(data)
@@ -46,7 +47,7 @@ const ServerSettings = () => {
 
     setSaving(true)
     try {
-      const response = await fetch(`http://localhost:3001/api/servers/${id}`, {
+      const response = await apiFetch(`http://localhost:3001/api/servers/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(server)

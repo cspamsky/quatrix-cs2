@@ -98,7 +98,34 @@ class ServerManager {
         });
     }
 
-    startServer(instanceId: string | number, options: any, onLog?: (data: string) => void) {
+    async sendCommand(instanceId: string | number, command: string): Promise<string> {
+        const id = instanceId.toString();
+        const server: any = db.prepare("SELECT * FROM servers WHERE id = ?").get(id);
+        if (!server || !server.rcon_password) throw new Error("Server not found or RCON password not set");
+
+        if (!this.isServerRunning(id)) throw new Error("Server is not running");
+
+        const { createRequire } = await import('module');
+        const require = createRequire(import.meta.url);
+        const RCON = require('srcds-rcon');
+
+        const rcon = RCON({
+            address: `127.0.0.1:${server.port}`,
+            password: server.rcon_password,
+            timeout: 5000
+        });
+
+        try {
+            await rcon.connect();
+            const response = await rcon.command(command);
+            rcon.disconnect();
+            return response;
+        } catch (error: any) {
+            throw new Error(`RCON Error: ${error.message}`);
+        }
+    }
+
+    async startServer(instanceId: string | number, options: any, onLog?: (data: string) => void) {
         const id = instanceId.toString();
         
         if (this.runningServers.has(id)) {
@@ -107,15 +134,33 @@ class ServerManager {
 
         const serverPath = path.join(this.installDir, id);
         const cs2Exe = path.join(serverPath, 'game', 'bin', 'win64', 'cs2.exe');
+        const binDir = path.dirname(cs2Exe);
 
         if (!fs.existsSync(cs2Exe)) {
             throw new Error('CS2 executable not found.');
         }
 
+        // --- Steamworks SDK Fixes ---
+        // 1. Ensure steamclient64.dll is in binDir
+        const steamCmdDir = path.dirname(this.steamCmdExe);
+        const sourceDll = path.join(steamCmdDir, 'steamclient64.dll');
+        const targetDll = path.join(binDir, 'steamclient64.dll');
+
+        if (fs.existsSync(sourceDll) && !fs.existsSync(targetDll)) {
+            console.log(`Copying steamclient64.dll to ${binDir}...`);
+            fs.copyFileSync(sourceDll, targetDll);
+        }
+
+        // 2. Create steam_appid.txt
+        fs.writeFileSync(path.join(binDir, 'steam_appid.txt'), '730');
+        fs.writeFileSync(path.join(serverPath, 'steam_appid.txt'), '730');
+
         const args = [
             '-dedicated',
             '+map', options.map || 'de_dust2',
-            '-port', (options.port || 27015).toString()
+            '-port', (options.port || 27015).toString(),
+            '-nosteamclient',
+            '-noconsole'
         ];
 
         if (options.vac) {
@@ -137,7 +182,15 @@ class ServerManager {
 
         console.log(`Starting CS2 Server ${id}...`);
 
-        const serverProcess = spawn(cs2Exe, args, { cwd: serverPath });
+        const env = {
+            ...process.env,
+            SteamAppId: '730',
+            Breakpad_IgnoreSharedMemory: '1',
+            SteamClientLaunch: '1',
+            PATH: `${steamCmdDir};${process.env.PATH}`
+        };
+
+        const serverProcess = spawn(cs2Exe, args, { cwd: serverPath, env });
 
         let serverBuffer = '';
         serverProcess.stdout.on('data', (data) => {
@@ -185,6 +238,47 @@ class ServerManager {
 
     isServerRunning(instanceId: string | number): boolean {
         return this.runningServers.has(instanceId.toString());
+    }
+
+    async listFiles(instanceId: string | number, subDir: string = ''): Promise<any[]> {
+        const id = instanceId.toString();
+        const serverPath = path.join(this.installDir, id, 'game', 'csgo', subDir);
+        
+        if (!fs.existsSync(serverPath)) return [];
+        
+        const entries = fs.readdirSync(serverPath, { withFileTypes: true });
+        return entries.map(entry => ({
+            name: entry.name,
+            isDirectory: entry.isDirectory(),
+            size: entry.isFile() ? fs.statSync(path.join(serverPath, entry.name)).size : 0,
+            mtime: fs.statSync(path.join(serverPath, entry.name)).mtime
+        }));
+    }
+
+    async readFile(instanceId: string | number, filePath: string): Promise<string> {
+        const id = instanceId.toString();
+        // Security check: Normalize path and ensure it doesn't escape the server directory
+        const baseDir = path.join(this.installDir, id, 'game', 'csgo');
+        const absolutePath = path.resolve(baseDir, filePath);
+        
+        if (!absolutePath.startsWith(baseDir)) {
+            throw new Error("Access denied: Path outside of server directory");
+        }
+
+        if (!fs.existsSync(absolutePath)) throw new Error("File not found");
+        return fs.readFileSync(absolutePath, 'utf8');
+    }
+
+    async writeFile(instanceId: string | number, filePath: string, content: string): Promise<void> {
+        const id = instanceId.toString();
+        const baseDir = path.join(this.installDir, id, 'game', 'csgo');
+        const absolutePath = path.resolve(baseDir, filePath);
+        
+        if (!absolutePath.startsWith(baseDir)) {
+            throw new Error("Access denied: Path outside of server directory");
+        }
+
+        fs.writeFileSync(absolutePath, content);
     }
 }
 
