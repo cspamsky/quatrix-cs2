@@ -1,0 +1,41 @@
+# Node.js
+node_modules/
+dist/
+build/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# TypeScript
+*.tsbuildinfo
+
+# Project Specific
+server/dist/
+server/src/**/*.js
+server/src/**/*.js.map
+server/src/**/*.d.ts
+server/src/**/*.d.ts.map
+server/database.sqlite
+server/out.txt
+
+# Game Server Data (SteamCMD & Server Files)
+server/data/
+server/src/serverManager.ts_new
+
+# Frontend
+client/node_modules/
+client/dist/
+client/coverage/

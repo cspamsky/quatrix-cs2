@@ -1,0 +1,13 @@
+{
+  "name": "quatrix-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install-all": "npm install --prefix client && npm install --prefix server",
+    "dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "fix-client": "taskkill /F /IM node.exe /T && cd client && rm -r -Force node_modules && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

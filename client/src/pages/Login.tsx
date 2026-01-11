@@ -1,0 +1,177 @@
+import { useState, useEffect } from 'react'
+import { LayoutDashboard, User, Lock, Eye, EyeOff, LogIn } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+
+const Login = () => {
+  const [showPassword, setShowPassword] = useState(false)
+  const [identity, setIdentity] = useState('')
+  const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
+
+  // Load remembered identity on mount
+  useEffect(() => {
+    const savedIdentity = localStorage.getItem('remembered_identity')
+    if (savedIdentity) {
+      setIdentity(savedIdentity)
+      setRememberMe(true)
+    }
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      const response = await fetch('http://localhost:3001/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed')
+      }
+
+      // Remember Me logic
+      if (rememberMe) {
+        localStorage.setItem('remembered_identity', identity)
+      } else {
+        localStorage.removeItem('remembered_identity')
+      }
+
+      // Success
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('user', JSON.stringify(data.user))
+      navigate('/dashboard')
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#0F172A] relative overflow-hidden font-display">
+      {/* Background decor */}
+      <div className="fixed top-0 left-0 w-full h-full -z-10 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-primary/10 rounded-full blur-[100px]"></div>
+      </div>
+
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center p-3 rounded-xl bg-primary text-white mb-4 shadow-lg shadow-primary/20">
+            <LayoutDashboard className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">CS2 Manager</h1>
+          <p className="text-gray-400 mt-2">Manage your competitive battlefield with ease</p>
+        </div>
+
+        <div className="bg-[#111827] border border-gray-800/50 rounded-2xl shadow-xl p-8">
+          <h2 className="text-xl font-semibold text-white mb-6">Welcome back</h2>
+          
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-sm font-medium">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="identity">Username or Email</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <User size={18} className="text-gray-500" />
+                </div>
+                <input 
+                  className="block w-full pl-11 pr-4 py-2.5 bg-[#0F172A]/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none text-sm" 
+                  id="identity" 
+                  placeholder="name@example.com" 
+                  required 
+                  type="text"
+                  value={identity}
+                  onChange={(e) => setIdentity(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="password">Password</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Lock size={18} className="text-gray-500" />
+                </div>
+                <input 
+                  className="block w-full pl-11 pr-12 py-2.5 bg-[#0F172A]/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none text-sm" 
+                  id="password" 
+                  placeholder="••••••••" 
+                  required 
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button 
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-gray-300" 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <input 
+                  className="h-4 w-4 text-primary focus:ring-primary border-gray-700 rounded bg-[#0F172A]" 
+                  id="remember-me" 
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <label className="ml-2 block text-sm text-gray-300 cursor-pointer" htmlFor="remember-me">
+                  Remember Me
+                </label>
+              </div>
+              <div className="text-sm">
+                <a className="font-medium text-primary hover:text-primary/80 transition-colors" href="#">
+                  Forgot Password?
+                </a>
+              </div>
+            </div>
+
+            <button 
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed" 
+              type="submit"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <LogIn size={18} />
+                  Sign In
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+
+        <p className="mt-8 text-center text-sm text-gray-400">
+          Don't have an account? {" "}
+          <button onClick={() => navigate('/register')} className="font-semibold text-primary hover:text-primary/80 transition-colors">
+            Create an account
+          </button>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export default Login
