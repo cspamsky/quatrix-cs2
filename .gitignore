@@ -39,3 +39,4 @@ server/src/serverManager.ts_new
 client/node_modules/
 client/dist/
 client/coverage/
+*.log

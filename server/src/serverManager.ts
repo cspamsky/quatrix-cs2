@@ -29,13 +29,57 @@ class ServerManager {
         const logFile = path.join(this.installDir, instanceId.toString(), 'logs', 'console.log');
         if (!fs.existsSync(logFile)) return [];
 
+        const bufferSize = 4096; // Read in 4KB chunks
+        const buffer = Buffer.alloc(bufferSize);
+        let fd: number | null = null;
+
         try {
-            const content = fs.readFileSync(logFile, 'utf8');
-            const lines = content.split('\n').filter(line => line.trim() !== '');
+            fd = fs.openSync(logFile, 'r');
+            const stats = fs.statSync(logFile);
+            const fileSize = stats.size;
+            let position = fileSize;
+            let lines: string[] = [];
+            let leftOver = '';
+
+            // ⚡ Bolt: Read file backwards in chunks to avoid loading entire file into memory
+            while (position > 0 && lines.length <= limit) {
+                const readSize = Math.min(position, bufferSize);
+                position -= readSize;
+
+                fs.readSync(fd, buffer, 0, readSize, position);
+                const chunk = buffer.toString('utf8', 0, readSize);
+                const content = chunk + leftOver;
+                const chunkLines = content.split('\n');
+
+                if (position > 0) {
+                    leftOver = chunkLines.shift() || '';
+                } else {
+                    leftOver = '';
+                }
+
+                for (let i = chunkLines.length - 1; i >= 0; i--) {
+                    const lineChunk = chunkLines[i];
+                    if (lineChunk === undefined) continue;
+                    // Only skip empty lines (like the original implementation), but preserve indentation
+                    if (lineChunk.trim()) {
+                        lines.unshift(lineChunk);
+                        if (lines.length >= limit) break;
+                    }
+                }
+            }
+
+            if (leftOver.trim() && lines.length < limit) {
+                lines.unshift(leftOver.trim());
+            }
+
             return lines.slice(-limit);
         } catch (error) {
             console.error(`Error reading logs for instance ${instanceId}:`, error);
             return [];
+        } finally {
+            if (fd !== null) {
+                fs.closeSync(fd);
+            }
         }
     }
 
