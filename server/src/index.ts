@@ -34,18 +34,94 @@ try {
 
   // --- Auth & Middlewares ---
   const authenticateToken = (req: any, res: any, next: any) => {
+    if (!process.env.JWT_SECRET) {
+      console.error("CRITICAL: JWT_SECRET is not defined.");
+      return res.status(500).json({ message: "Server configuration error" });
+    }
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     if (!token) return res.sendStatus(401);
-    jwt.verify(token, process.env.JWT_SECRET || 'secret', (err: any, user: any) => {
+    jwt.verify(token, process.env.JWT_SECRET, (err: any, user: any) => {
       if (err) return res.sendStatus(403);
       req.user = user;
       next();
     });
   };
 
+  // --- Auth Routes ---
+  app.post("/api/register", async (req, res) => {
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: "Server configuration error" });
+    }
+    const { username, fullname, email, password } = req.body;
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    try {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const result = db.prepare(
+        "INSERT INTO users (username, fullname, email, password) VALUES (?, ?, ?, ?)"
+      ).run(username, fullname || '', email, hashedPassword);
+
+      const token = jwt.sign(
+        { id: result.lastInsertRowid, username, email },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      res.status(201).json({
+        token,
+        user: { id: result.lastInsertRowid, username, email, fullname }
+      });
+    } catch (error: any) {
+      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        return res.status(409).json({ message: "Username or email already exists" });
+      }
+      res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
+  app.post("/api/login", async (req, res) => {
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({ message: "Server configuration error" });
+    }
+    const { identity, password } = req.body;
+    if (!identity || !password) {
+      return res.status(400).json({ message: "Missing credentials" });
+    }
+
+    try {
+      const user: any = db.prepare(
+        "SELECT * FROM users WHERE username = ? OR email = ?"
+      ).get(identity, identity);
+
+      if (!user) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      const validPassword = await bcrypt.compare(password, user.password);
+      if (!validPassword) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      const token = jwt.sign(
+        { id: user.id, username: user.username, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      res.json({
+        token,
+        user: { id: user.id, username: user.username, email: user.email, fullname: user.fullname }
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
   // --- API Endpoints ---
-  app.get("/api/servers", (req, res) => {
+  app.get("/api/servers", authenticateToken, (req, res) => {
     try {
       const servers = db.prepare("SELECT * FROM servers").all();
       res.json(servers);
@@ -54,7 +130,7 @@ try {
     }
   });
 
-  app.post("/api/servers", (req, res) => {
+  app.post("/api/servers", authenticateToken, (req, res) => {
     const { name, port, rcon_password } = req.body;
     try {
       const result = db.prepare("INSERT INTO servers (name, port, rcon_password, status) VALUES (?, ?, ?, 'OFFLINE')")
@@ -65,7 +141,7 @@ try {
     }
   });
 
-  app.post("/api/servers/:id/start", async (req, res) => {
+  app.post("/api/servers/:id/start", authenticateToken, async (req, res) => {
     const id = req.params.id;
     if (!id) return res.status(400).json({ message: "Server ID is required" });
     
@@ -84,7 +160,7 @@ try {
     }
   });
 
-  app.post("/api/servers/:id/stop", (req, res) => {
+  app.post("/api/servers/:id/stop", authenticateToken, (req, res) => {
     const id = req.params.id;
     if (!id) return res.status(400).json({ message: "Server ID is required" });
 
@@ -98,7 +174,7 @@ try {
   });
 
   // RCON Endpoint (Initial version using srcds-rcon)
-  app.post("/api/servers/:id/rcon", async (req: Request, res: Response) => {
+  app.post("/api/servers/:id/rcon", authenticateToken, async (req: Request, res: Response) => {
     const id = req.params.id;
     const { command } = req.body;
     
