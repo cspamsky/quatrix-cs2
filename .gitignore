@@ -39,4 +39,8 @@ server/src/serverManager.ts_new
 client/node_modules/
 client/dist/
 client/coverage/
+# AI Metadata & Archive
+archive/
+.jules/
+*.json.log
 *.log
