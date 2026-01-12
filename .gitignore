@@ -1,52 +1,45 @@
-# Node.js
+# Dependencies
 node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build Outputs
 dist/
 build/
-.npm
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+out/
+coverage/
 
 # Environment Variables
 .env
 .env.*
 !.env.example
 
-# IDEs
+# IDE & OS Files
 .vscode/
 .idea/
 *.swp
 *.swo
 .DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Server Specific
+server/database.sqlite
+server/database.sqlite-journal
+server/data/
+server/logs/
+
+# Client Specific (Vite/React)
+client/dist/
+client/dist-ssr/
+client/.eslintcache
+*.local
 
 # TypeScript
 *.tsbuildinfo
-
-# Project Specific
-server/dist/
-server/src/**/*.js
-server/src/**/*.js.map
-server/src/**/*.d.ts
-server/src/**/*.d.ts.map
-server/database.sqlite
-server/out.txt
-server/test-*.js
-server/test-*.log
-
-# Game Server Data (SteamCMD & Server Files)
-server/data/
-server/src/serverManager.ts_new
-
-# Frontend
-client/node_modules/
-client/dist/
-client/coverage/
-<<<<<<< HEAD
-*.log
-=======
-# AI Metadata & Archive
-archive/
-.jules/
-*.json.log
-*.log
->>>>>>> ad4a4e4f87bf62762fe655c60a8f8999a9fc04f2

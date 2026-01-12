@@ -45,7 +45,7 @@ const Login = () => {
         localStorage.removeItem('remembered_identity')
       }
 
-      // Success
+      //ZS Success
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
       navigate('/dashboard')
@@ -84,7 +84,7 @@ const Login = () => {
 
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="identity">Username or Email</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="identity">Username</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                   <User size={18} className="text-gray-500" />
@@ -92,7 +92,7 @@ const Login = () => {
                 <input 
                   className="block w-full pl-11 pr-4 py-2.5 bg-[#0F172A]/50 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none text-sm" 
                   id="identity" 
-                  placeholder="name@example.com" 
+                  placeholder="Username" 
                   required 
                   type="text"
                   value={identity}
@@ -162,14 +162,18 @@ const Login = () => {
               )}
             </button>
           </form>
+            <div className="mt-8 pt-6 border-t border-gray-800 text-center">
+              <p className="text-sm text-gray-400">
+                Don't have an account? {" "}
+                <button 
+                  onClick={() => navigate('/register')} 
+                  className="font-semibold text-primary hover:text-primary/80 transition-colors"
+                >
+                  Create an account
+                </button>
+              </p>
+            </div>
         </div>
-
-        <p className="mt-8 text-center text-sm text-gray-400">
-          Don't have an account? {" "}
-          <button onClick={() => navigate('/register')} className="font-semibold text-primary hover:text-primary/80 transition-colors">
-            Create an account
-          </button>
-        </p>
       </div>
     </div>
   )

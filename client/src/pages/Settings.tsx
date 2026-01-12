@@ -39,7 +39,12 @@ const Settings = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/settings')
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3001/api/settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       const data = await response.json()
       setSteamCmdPath(data.steamcmd_path || '')
       setInstallDir(data.install_dir || '')
@@ -53,9 +58,13 @@ const Settings = () => {
     setEngineLoading(true)
     // Don't clear message immediately to prevent sudden layout jump
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:3001/api/settings', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           steamcmd_path: steamCmdPath,
           install_dir: installDir
@@ -78,8 +87,14 @@ const Settings = () => {
     setEngineLoading(true)
     setEngineMessage({ type: 'info', text: 'Downloading SteamCMD... Please wait.' })
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch('http://localhost:3001/api/settings/steamcmd/download', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ path: steamCmdPath })
       })
       const data = await response.json()
       if (response.ok) {

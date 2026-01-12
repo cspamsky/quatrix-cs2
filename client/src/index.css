@@ -10,6 +10,12 @@
   body {
     @apply bg-[#0F172A] text-gray-100 font-display;
   }
+
+  /* Hide default password toggle in Edge/IE */
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
 }
 
 @layer components {

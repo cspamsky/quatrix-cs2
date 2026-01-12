@@ -109,6 +109,53 @@ class ServerManager {
         return false;
     }
 
+    async downloadSteamCmd(customPath?: string): Promise<void> {
+        let steamCmdDir: string;
+        
+        if (customPath) {
+            // Smart detection: did user provide a folder or a full .exe path?
+            if (customPath.toLowerCase().endsWith('.exe')) {
+                steamCmdDir = path.dirname(customPath);
+            } else {
+                // Assume it's a folder, append steamcmd.exe for the setting
+                steamCmdDir = customPath;
+                customPath = path.join(customPath, 'steamcmd.exe');
+            }
+            
+            // Update the setting in DB
+            db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run('steamcmd_path', customPath);
+        } else {
+            steamCmdDir = path.dirname(this.steamCmdExe);
+        }
+
+        if (!fs.existsSync(steamCmdDir)) {
+            fs.mkdirSync(steamCmdDir, { recursive: true });
+        }
+
+        const zipPath = path.join(steamCmdDir, 'steamcmd.zip');
+        const url = 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip';
+
+        console.log(`Downloading SteamCMD to ${steamCmdDir} from ${url}`);
+        
+        // 1. Download the zip file
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to download SteamCMD: ${response.statusText}`);
+        
+        const arrayBuffer = await response.arrayBuffer();
+        fs.writeFileSync(zipPath, Buffer.from(arrayBuffer));
+
+        console.log('Download complete. Extracting...');
+
+        // 2. Extract using AdmZip
+        const AdmZip = (await import('adm-zip')).default;
+        const zip = new AdmZip(zipPath);
+        zip.extractAllTo(steamCmdDir, true);
+
+        // 3. Cleanup
+        fs.unlinkSync(zipPath);
+        console.log('SteamCMD installed successfully.');
+    }
+
     async installOrUpdateServer(instanceId: string | number, onLog?: (data: string) => void): Promise<void> {
         const id = instanceId.toString();
         const serverPath = path.join(this.installDir, id);

@@ -438,6 +438,19 @@ try {
     }
   });
 
+  app.post("/api/settings/steamcmd/download", authenticateToken, async (req: any, res) => {
+    try {
+        console.log("Received download request body:", req.body);
+        const { path: customPath } = req.body;
+        console.log("Extracted path:", customPath);
+        await serverManager.downloadSteamCmd(customPath);
+        res.json({ message: "SteamCMD downloaded and installed successfully." });
+    } catch (error: any) {
+        console.error("SteamCMD download error:", error);
+        res.status(500).json({ message: error.message || "Failed to download SteamCMD" });
+    }
+  });
+
   // --- Stats & Socket ---
   let lastNetworkStats: any = null;
   setInterval(async () => {
