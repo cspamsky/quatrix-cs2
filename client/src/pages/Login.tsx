@@ -64,7 +64,7 @@ const Login = () => {
   const handleDemoLogin = () => {
     localStorage.setItem('demo_mode', 'true');
     localStorage.setItem('token', 'demo-token');
-    localStorage.setItem('user', JSON.stringify({ username: 'DemoUser', fullname: 'Demo Administrator' }));
+    localStorage.setItem('user', JSON.stringify({ username: 'DemoUser' }));
     navigate('/dashboard');
   };
 
@@ -180,13 +180,15 @@ const Login = () => {
                 )}
                 </button>
                 
-                <button 
-                type="button"
-                onClick={handleDemoLogin}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-700 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 transition-all" 
-                >
-                Explore Demo Panel
-                </button>
+                {window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && (
+                  <button 
+                  type="button"
+                  onClick={handleDemoLogin}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-700 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 transition-all" 
+                  >
+                  Explore Demo Panel
+                  </button>
+                )}
             </div>
           </form>
             <div className="mt-8 pt-6 border-t border-gray-800 text-center">

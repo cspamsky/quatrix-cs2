@@ -1,10 +1,16 @@
 import { MOCK_INSTANCES, MOCK_SYSTEM_INFO, MOCK_LOGS } from './demoData';
 
 export const isDemoMode = () => {
-  return localStorage.getItem('demo_mode') === 'true' || 
-         window.location.hostname === 'localhost' && !localStorage.getItem('token') ||
-         window.location.hostname.includes('vercel.app') ||
-         window.location.hostname.includes('netlify.app');
+  // Never demo on localhost unless explicitly forced
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return localStorage.getItem('demo_mode') === 'true';
+  }
+
+  // Auto-demo on Vercel/Netlify hostnames
+  const isVercel = window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app');
+  const forceDemo = localStorage.getItem('demo_mode') === 'true';
+  
+  return forceDemo || isVercel;
 };
 
 export const apiFetch = async (url: string, options: RequestInit = {}) => {
@@ -19,7 +25,7 @@ export const apiFetch = async (url: string, options: RequestInit = {}) => {
     if (url.includes('/api/servers')) mockData = MOCK_INSTANCES;
     if (url.includes('/api/system-info')) mockData = MOCK_SYSTEM_INFO;
     if (url.includes('/api/logs')) mockData = MOCK_LOGS;
-    if (url.includes('/api/login')) mockData = { token: 'demo-token', user: { username: 'DemoUser', fullname: 'Demo Administrator' } };
+    if (url.includes('/api/login')) mockData = { token: 'demo-token', user: { username: 'DemoUser' } };
     
     return {
       ok: true,

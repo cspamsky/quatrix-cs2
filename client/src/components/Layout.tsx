@@ -29,7 +29,7 @@ const Layout = ({ children }: LayoutProps) => {
   ]
 
   const user = JSON.parse(localStorage.getItem('user') || '{"username": "User"}')
-  const displayName = user.fullname || user.username || 'User'
+  const displayName = user.username || 'User'
   
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -50,7 +50,7 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="bg-[#1890ff] p-2 rounded-lg">
             <LayoutDashboard className="text-white w-6 h-6" />
           </div>
-          <span className="text-xl font-bold text-white tracking-tight">CS2 Manager</span>
+          <span className="text-xl font-bold text-white tracking-tight">Quatrix Manager</span>
         </div>
         
         <nav className="flex-1 px-4 space-y-1">

@@ -77,7 +77,7 @@ try {
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ message: "Server configuration error" });
     }
-    const { username, fullname, email, password } = req.body;
+    const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ message: "Missing required fields" });
     }
@@ -85,18 +85,18 @@ try {
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
       const result = db.prepare(
-        "INSERT INTO users (username, fullname, email, password) VALUES (?, ?, ?, ?)"
-      ).run(username, fullname || username, email, hashedPassword);
+        "INSERT INTO users (username, password) VALUES (?, ?)"
+      ).run(username, hashedPassword);
 
       const token = jwt.sign(
-        { id: result.lastInsertRowid, username, email },
+        { id: result.lastInsertRowid, username },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
 
       res.status(201).json({
         token,
-        user: { id: result.lastInsertRowid, username, email, fullname: fullname || username }
+        user: { id: result.lastInsertRowid, username }
       });
     } catch (error: any) {
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -117,8 +117,8 @@ try {
 
     try {
       const user: any = db.prepare(
-        "SELECT * FROM users WHERE username = ? OR email = ?"
-      ).get(identity, identity);
+        "SELECT * FROM users WHERE username = ?"
+      ).get(identity);
 
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
@@ -130,14 +130,14 @@ try {
       }
 
       const token = jwt.sign(
-        { id: user.id, username: user.username, email: user.email },
+        { id: user.id, username: user.username },
         process.env.JWT_SECRET,
         { expiresIn: '24h' }
       );
 
       res.json({
         token,
-        user: { id: user.id, username: user.username, email: user.email, fullname: user.fullname }
+        user: { id: user.id, username: user.username }
       });
     } catch (error) {
       res.status(500).json({ message: "Login failed" });
