@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Server, UserPlus, User, Lock } from 'lucide-react'
+import { Server, UserPlus, User, Lock, Eye, EyeOff } from 'lucide-react'
 
 const Register = () => {
   const navigate = useNavigate()
+  const [showPassword, setShowPassword] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -93,14 +94,22 @@ const Register = () => {
                   <Lock size={18} className="text-gray-500" />
                 </div>
                 <input 
-                  className="w-full bg-[#0F172A]/50 border border-gray-700 text-white rounded-xl pl-11 pr-4 py-2.5 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-500 text-sm" 
+                  className="w-full bg-[#0F172A]/50 border border-gray-700 text-white rounded-xl pl-11 pr-12 py-2.5 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-500 text-sm"
                   id="password" 
                   placeholder="••••••••" 
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-gray-300"
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
             </div>
 
