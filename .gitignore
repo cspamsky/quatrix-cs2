@@ -52,3 +52,6 @@ client/.eslintcache
 # Misc
 *.tmp
 *.bak
+# AI Context & Memory
+memory-bank/
+agents.md
