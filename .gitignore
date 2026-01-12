@@ -30,6 +30,8 @@ server/src/**/*.d.ts
 server/src/**/*.d.ts.map
 server/database.sqlite
 server/out.txt
+server/test-*.js
+server/test-*.log
 
 # Game Server Data (SteamCMD & Server Files)
 server/data/
