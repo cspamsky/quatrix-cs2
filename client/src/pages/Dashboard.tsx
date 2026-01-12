@@ -49,7 +49,7 @@ const Dashboard = () => {
 
     socket.on('connect', () => setIsConnected(true))
     socket.on('disconnect', () => setIsConnected(false))
-    socket.on('stats', (data) => setStats(data))
+    socket.on('stats', (data: any) => setStats(data))
 
     return () => {
       socket.off('connect')
