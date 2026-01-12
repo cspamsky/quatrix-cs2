@@ -130,14 +130,44 @@ class ServerManager {
                 '+quit'
             ];
 
-            const process = spawn(this.steamCmdExe, steamCmdParams);
+            const steamCmdProcess = spawn(this.steamCmdExe, steamCmdParams);
 
-            process.stdout.on('data', (data) => log(data.toString()));
-            process.stderr.on('data', (data) => log(`[ERROR] ${data.toString()}`));
+            let stdoutBuffer = '';
+            steamCmdProcess.stdout.on('data', (data) => {
+                stdoutBuffer += data.toString();
+                const lines = stdoutBuffer.split(/\r?\n|\r/);
+                stdoutBuffer = lines.pop() || '';
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    if (trimmed) log(trimmed);
+                });
+            });
 
-            process.on('close', (code) => {
-                if (code === 0) resolve();
-                else reject(new Error(`SteamCMD failed with code ${code}`));
+            let stderrBuffer = '';
+            steamCmdProcess.stderr.on('data', (data) => {
+                stderrBuffer += data.toString();
+                const lines = stderrBuffer.split(/\r?\n|\r/);
+                stderrBuffer = lines.pop() || '';
+                lines.forEach(line => {
+                    const trimmed = line.trim();
+                    if (trimmed) log(`[ERROR] ${trimmed}`);
+                });
+            });
+
+            steamCmdProcess.on('close', (code) => {
+                // Handle remaining buffer
+                if (stdoutBuffer.trim()) log(stdoutBuffer.trim());
+                if (stderrBuffer.trim()) log(`[ERROR] ${stderrBuffer.trim()}`);
+
+                if (code === 0) {
+                    resolve();
+                } else {
+                    let errorMsg = `SteamCMD failed with code ${code}`;
+                    if (code === 8) {
+                        errorMsg = "SteamCMD error: App update failed. This is often due to insufficient disk space (Error 0x202), network issues, or Steam service downtime. Please ensure you have at least 40GB free on your drive.";
+                    }
+                    reject(new Error(errorMsg));
+                }
             });
         });
     }
@@ -149,22 +179,21 @@ class ServerManager {
 
         if (!this.isServerRunning(id)) throw new Error("Server is not running");
 
-        const { createRequire } = await import('module');
-        const require = createRequire(import.meta.url);
-        const RCON = require('srcds-rcon');
-
-        const rcon = RCON({
-            address: `127.0.0.1:${server.port}`,
-            password: server.rcon_password,
-            timeout: 5000
-        });
-
+        const { Rcon } = await import('rcon-client');
+        
         try {
-            await rcon.connect();
-            const response = await rcon.command(command);
-            rcon.disconnect();
+            const rcon = await Rcon.connect({
+                host: '127.0.0.1',
+                port: server.port,
+                password: server.rcon_password,
+                timeout: 5000
+            });
+
+            const response = await rcon.send(command);
+            await rcon.end();
             return response;
         } catch (error: any) {
+            console.error(`[RCON ERROR Instance ${id}]`, error);
             throw new Error(`RCON Error: ${error.message}`);
         }
     }
@@ -207,7 +236,7 @@ class ServerManager {
             '-noconsole'
         ];
 
-        if (options.vac) {
+        if (options.vac_enabled) {
             args.push('+sv_lan', '0');
         } else {
             args.push('-insecure', '+sv_lan', '1');
@@ -221,7 +250,7 @@ class ServerManager {
 
         if (options.password) args.push('+sv_password', options.password);
         if (options.rcon_password) args.push('+rcon_password', options.rcon_password);
-        if (options.hostname) args.push('+hostname', options.hostname);
+        if (options.name) args.push('+hostname', options.name);
         args.push('+ip', '0.0.0.0');
 
         console.log(`Starting CS2 Server ${id}...`);

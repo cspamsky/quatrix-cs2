@@ -37,7 +37,9 @@ const Console = () => {
   ])
   const [command, setCommand] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
+  const [isAutoScroll, setIsAutoScroll] = useState(true)
   const logEndRef = useRef<HTMLDivElement>(null)
+  const consoleRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!id) return;
@@ -76,16 +78,87 @@ const Console = () => {
     fetchLogs();
 
     const eventName = `console:${id}`
-    socket.on(eventName, (log) => {
+    socket.on(eventName, (log: string) => {
       const now = new Date()
       const timestamp = now.toLocaleTimeString()
-      setLogs(prev => [...prev, { timestamp, type: 'RAW', message: log }])
-    })
+      
+      // Determine message type based on prefixes
+      let type: LogEntry['type'] = 'RAW';
+      let message = log;
+
+      if (log.startsWith('[ERROR]')) {
+        type = 'ERROR';
+        message = log.replace('[ERROR]', '').trim();
+      } else if (log.startsWith('[SUCCESS]')) {
+        type = 'SUCCESS';
+        message = log.replace('[SUCCESS]', '').trim();
+      } else if (log.startsWith('[WARN]')) {
+        type = 'WARN';
+        message = log.replace('[WARN]', '').trim();
+      } else if (log.startsWith('> ')) {
+        type = 'INFO'; // User commands
+      }
+
+      setLogs(prev => {
+        const isProgress = message.includes('Update state') && message.includes('progress:');
+        const lastLog = prev[prev.length - 1];
+        const wasProgress = lastLog?.message.includes('Update state') && lastLog?.message.includes('progress:');
+
+        let newLogs;
+        if (isProgress && wasProgress) {
+          // Replace last log if both are progress updates
+          newLogs = [...prev.slice(0, -1), { timestamp, type, message }];
+        } else {
+          newLogs = [...prev, { timestamp, type, message }];
+        }
+
+        // Limit to last 1000 logs for performance
+        if (newLogs.length > 1000) {
+          return newLogs.slice(-1000);
+        }
+        return newLogs;
+      });
+    });
+
+    socket.on('status_update', ({ serverId, status }: { serverId: number, status: string }) => {
+      if (id && serverId.toString() === id) {
+        setServer(prev => prev ? { ...prev, status } : null);
+      }
+    });
 
     return () => {
       socket.off(eventName)
+      socket.off('status_update')
     }
   }, [id])
+
+  // --- Auto-scroll Effect ---
+  useEffect(() => {
+    if (isAutoScroll && logEndRef.current) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [logs, isAutoScroll])
+
+  const handleScroll = () => {
+    if (consoleRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = consoleRef.current
+      // If user is within 50px of the bottom, enable auto-scroll
+      const atBottom = scrollHeight - scrollTop - clientHeight < 50
+      setIsAutoScroll(atBottom)
+    }
+  }
+
+  const fetchServerInfo = async () => {
+    if (!id) return;
+    try {
+      const response = await apiFetch(`http://localhost:3001/api/servers`)
+      const data = await response.json()
+      const currentServer = data.find((s: any) => s.id.toString() === id)
+      if (currentServer) setServer(currentServer)
+    } catch (error) {
+      console.error('Failed to fetch server info:', error)
+    }
+  }
 
   const handleAction = async (action: 'start' | 'stop' | 'restart') => {
     if (!id) return
@@ -102,10 +175,7 @@ const Console = () => {
           message: data.message || `Action ${action} initiated`
         }])
         // Refresh server status
-        const serverResp = await apiFetch(`http://localhost:3001/api/servers`)
-        const servers = await serverResp.json()
-        const s = servers.find((ser: any) => ser.id.toString() === id)
-        if (s) setServer(s)
+        await fetchServerInfo()
       }
     } catch (error) {
         console.error(`Action ${action} failed:`, error)
@@ -118,43 +188,24 @@ const Console = () => {
     e.preventDefault()
     if (!command.trim() || !id) return
     
-    setLogs(prev => [...prev, {
-      timestamp: new Date().toLocaleTimeString(),
-      type: 'INFO',
-      message: `> ${command}`
-    }])
-    
+    const cmdToSubmit = command;
+    setCommand('') // Clear input immediately for UX
+
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/rcon`, {
+      await apiFetch(`http://localhost:3001/api/servers/${id}/rcon`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command })
+        body: JSON.stringify({ command: cmdToSubmit })
       })
-      
-      const data = await response.json()
-      
-      if (data.success) {
-        setLogs(prev => [...prev, {
-          timestamp: new Date().toLocaleTimeString(),
-          type: 'SUCCESS',
-          message: data.response
-        }])
-      } else {
-        setLogs(prev => [...prev, {
-          timestamp: new Date().toLocaleTimeString(),
-          type: 'ERROR',
-          message: data.error || data.message || 'Command failed'
-        }])
-      }
+      // We don't need to handle the response here because the backend 
+      // now emits both the command and the response to the socket.
     } catch (error) {
       setLogs(prev => [...prev, {
         timestamp: new Date().toLocaleTimeString(),
         type: 'ERROR',
-        message: `Failed to send command: ${error}`
+        message: `Connection error: ${error}`
       }])
     }
-    
-    setCommand('')
   }
 
   const getTypeStyle = (type: LogEntry['type']) => {
@@ -165,6 +216,29 @@ const Console = () => {
       case 'ERROR': return 'text-red-400'
       case 'CHAT': return 'text-primary font-bold'
       default: return 'text-slate-300'
+    }
+  }
+
+  const handleForceUpdate = async () => {
+    if (!id) return
+    setActionLoading(true)
+    try {
+      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/install`, {
+        method: 'POST'
+      })
+      if (response.ok) {
+        setLogs(prev => [...prev, {
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'INFO',
+          message: 'Force update/validation started...'
+        }])
+        // Immediately refresh status to show spinning icon
+        await fetchServerInfo()
+      }
+    } catch (error) {
+      console.error('Force update failed:', error)
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -180,13 +254,30 @@ const Console = () => {
 
       <div className="flex-1 flex flex-col px-6 pb-6 gap-6 overflow-hidden">
         {/* Console Window */}
-        <div className="flex-1 flex flex-col bg-[#0d1421] border border-gray-800 rounded-xl overflow-hidden shadow-2xl">
-          <div className="px-4 py-3 border-b border-gray-800 flex items-center gap-2 bg-[#111827]">
-            <TerminalIcon className="text-primary w-4 h-4" />
-            <span className="text-sm font-semibold text-slate-200">Server Live Console</span>
+        <div className="flex-1 flex flex-col bg-[#0d1421] border border-gray-800 rounded-xl overflow-hidden shadow-2xl relative">
+          <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between bg-[#111827]">
+            <div className="flex items-center gap-2">
+              <TerminalIcon className="text-primary w-4 h-4" />
+              <span className="text-sm font-semibold text-slate-200">Server Live Console</span>
+            </div>
+            {!isAutoScroll && (
+              <button 
+                onClick={() => {
+                  setIsAutoScroll(true)
+                  logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+                }}
+                className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/30 transition-all animate-pulse"
+              >
+                Auto-scroll Paused - Click to catch up
+              </button>
+            )}
           </div>
           
-          <div className="flex-1 overflow-y-auto p-5 font-mono text-sm custom-scrollbar bg-black/20">
+          <div 
+            ref={consoleRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto p-5 font-mono text-sm custom-scrollbar bg-black/20"
+          >
             <div className="space-y-1">
               {logs.map((log, i) => (
                 <div key={i} className="flex gap-3">
@@ -198,7 +289,7 @@ const Console = () => {
                     {log.type === 'CHAT' && (
                       <span className="text-primary font-bold mr-2">CHAT:</span>
                     )}
-                    <span className={log.type === 'RAW' ? 'text-slate-300' : ''}>{log.message}</span>
+                    <span className={`whitespace-pre-wrap ${log.type === 'RAW' ? 'text-slate-300' : ''}`}>{log.message}</span>
                   </p>
                 </div>
               ))}
@@ -230,30 +321,32 @@ const Console = () => {
         {/* Action Buttons */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
           <button 
-            disabled={actionLoading || server?.status === 'ONLINE' || server?.status === 'STARTING'}
+            disabled={actionLoading || server?.status === 'ONLINE' || server?.status === 'STARTING' || server?.status === 'INSTALLING'}
             onClick={() => handleAction('start')}
             className="flex items-center justify-center gap-2 py-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Play size={18} /> Start Server
           </button>
           <button 
-            disabled={actionLoading || server?.status === 'OFFLINE'}
+            disabled={actionLoading || server?.status === 'OFFLINE' || server?.status === 'INSTALLING'}
             onClick={() => handleAction('restart')}
             className="flex items-center justify-center gap-2 py-3.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <RotateCcw size={18} className={actionLoading ? 'animate-spin' : ''} /> Restart
           </button>
           <button 
-            disabled={actionLoading || server?.status === 'OFFLINE'}
+            disabled={actionLoading || server?.status === 'OFFLINE' || server?.status === 'INSTALLING'}
             onClick={() => handleAction('stop')}
             className="flex items-center justify-center gap-2 py-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-lg hover:bg-rose-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Square size={18} /> Stop Server
           </button>
           <button 
-            className="flex items-center justify-center gap-2 py-3.5 bg-primary/10 border border-primary/20 text-primary rounded-lg hover:bg-primary/20 transition-all font-semibold text-sm"
+            disabled={actionLoading || server?.status === 'ONLINE' || server?.status === 'INSTALLING'}
+            onClick={handleForceUpdate}
+            className="flex items-center justify-center gap-2 py-3.5 bg-primary/10 border border-primary/20 text-primary rounded-lg hover:bg-primary/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <RefreshCw size={18} /> Force Update
+            <RefreshCw size={18} className={server?.status === 'INSTALLING' ? 'animate-spin' : ''} /> Force Update
           </button>
         </div>
       </div>

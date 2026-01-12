@@ -41,9 +41,12 @@ server/src/serverManager.ts_new
 client/node_modules/
 client/dist/
 client/coverage/
+<<<<<<< HEAD
 *.log
-
+=======
 # AI Metadata & Archive
 archive/
 .jules/
 *.json.log
+*.log
+>>>>>>> ad4a4e4f87bf62762fe655c60a8f8999a9fc04f2

@@ -37,6 +37,7 @@ const Instances = () => {
   const navigate = useNavigate()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [instances, setInstances] = useState<Instance[]>([])
+  const [serverIp, setServerIp] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [installingId, setInstallingId] = useState<number | null>(null)
@@ -44,7 +45,21 @@ const Instances = () => {
 
   useEffect(() => {
     fetchServers()
+    fetchSystemInfo()
   }, [])
+
+  const fetchSystemInfo = async () => {
+    try {
+      const response = await apiFetch('http://localhost:3001/api/system-info')
+      if (response.ok) {
+        const data = await response.json()
+        setServerIp(data.publicIp || window.location.hostname)
+      }
+    } catch (error) {
+      console.error('Failed to fetch system info:', error)
+      setServerIp(window.location.hostname)
+    }
+  }
 
   const fetchServers = async () => {
     try {
@@ -264,16 +279,16 @@ const Instances = () => {
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-400 flex items-center">
-                      <Hash className="w-3.5 h-3.5 mr-2 opacity-70" /> Port
+                      <Hash className="w-3.5 h-3.5 mr-2 opacity-70" /> IP Address
                     </span>
                     <button
                       type="button"
                       aria-label="Copy server address"
                       title="Copy server address"
                       className="flex items-center gap-1.5 text-primary hover:text-blue-400 transition-colors group/ip bg-transparent border-0 p-0"
-                      onClick={() => copyToClipboard(`localhost:${instance.port}`, instance.id.toString())}
+                      onClick={() => copyToClipboard(`${serverIp}:${instance.port}`, instance.id.toString())}
                     >
-                      <span className="font-mono">localhost:{instance.port}</span>
+                      <span className="font-mono">{serverIp || 'Detecting...'}{serverIp ? `:${instance.port}` : ''}</span>
                       {copiedId === instance.id.toString() ? (
                         <Check size={12} />
                       ) : (

@@ -34,6 +34,8 @@ const Dashboard = () => {
     totalPlayers: 0
   })
 
+  const [isConnected, setIsConnected] = useState(socket.connected)
+
   useEffect(() => {
     // Fetch system info
     apiFetch('http://localhost:3001/api/system-info')
@@ -47,15 +49,20 @@ const Dashboard = () => {
       .then(data => setServerStats(data))
       .catch(err => console.error('Failed to fetch server stats:', err))
 
+    socket.on('connect', () => setIsConnected(true))
+    socket.on('disconnect', () => setIsConnected(false))
     socket.on('stats', (data) => setStats(data))
 
     return () => {
+      socket.off('connect')
+      socket.off('disconnect')
       socket.off('stats')
     }
   }, [])
 
-  const user = JSON.parse(localStorage.getItem('user') || '{"fullname": "User"}')
-  const firstName = user.fullname.split(' ')[0]
+  const user = JSON.parse(localStorage.getItem('user') || '{"username": "User"}')
+  const displayName = user.fullname || user.username || 'User'
+  const firstName = displayName.split(' ')[0]
 
   return (
     <div className="p-6">
@@ -65,11 +72,17 @@ const Dashboard = () => {
           <p className="text-sm text-gray-400 mt-1">CS2 Server Panel - Manage your competitive battlefield with ease</p>
         </div>
         <div className="flex gap-4">
-          <div className="flex gap-2 items-center bg-green-500/10 text-green-500 px-4 py-2 rounded-xl text-sm font-medium border border-green-500/20">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-            WebSocket Connected
-          </div>
-
+          {isConnected ? (
+            <div className="flex gap-2 items-center bg-green-500/10 text-green-500 px-4 py-2 rounded-xl text-sm font-medium border border-green-500/20">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              WebSocket Connected
+            </div>
+          ) : (
+            <div className="flex gap-2 items-center bg-red-500/10 text-red-500 px-4 py-2 rounded-xl text-sm font-medium border border-red-500/20">
+              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+              WebSocket Disconnected
+            </div>
+          )}
         </div>
       </div>
 

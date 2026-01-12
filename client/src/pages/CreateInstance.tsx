@@ -43,9 +43,13 @@ const CreateInstance = () => {
     setLoading(true)
 
     try {
+      const token = localStorage.getItem('token')
       const response = await fetch('http://localhost:3001/api/servers', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           name: formData.serverName,
           map: formData.initialMap,

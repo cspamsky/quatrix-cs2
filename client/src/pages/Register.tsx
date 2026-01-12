@@ -1,14 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Server, UserPlus, Mail, User, Lock } from 'lucide-react'
+import { Server, UserPlus, User, Lock } from 'lucide-react'
 
 const Register = () => {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
-  const [fullname, setFullname] = useState('')
-  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -16,17 +13,12 @@ const Register = () => {
     e.preventDefault()
     setError('')
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
     setLoading(true)
     try {
       const response = await fetch('http://localhost:3001/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, fullname, email, password }),
+        body: JSON.stringify({ username, email: `${username}@local.com`, password }),
       })
 
       const data = await response.json()
@@ -95,42 +87,6 @@ const Register = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="fullname">Full Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <User size={18} className="text-gray-500" />
-                </div>
-                <input 
-                  className="w-full bg-[#0F172A]/50 border border-gray-700 text-white rounded-xl pl-11 pr-4 py-2.5 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-500 text-sm" 
-                  id="fullname" 
-                  placeholder="John Doe" 
-                  type="text"
-                  required
-                  value={fullname}
-                  onChange={(e) => setFullname(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="email">Email Address</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Mail size={18} className="text-gray-500" />
-                </div>
-                <input 
-                  className="w-full bg-[#0F172A]/50 border border-gray-700 text-white rounded-xl pl-11 pr-4 py-2.5 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-500 text-sm" 
-                  id="email" 
-                  placeholder="name@example.com" 
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="password">Password</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -144,24 +100,6 @@ const Register = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="confirm-password">Confirm Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                  <Lock size={18} className="text-gray-500" />
-                </div>
-                <input 
-                  className="w-full bg-[#0F172A]/50 border border-gray-700 text-white rounded-xl pl-11 pr-4 py-2.5 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-500 text-sm" 
-                  id="confirm-password" 
-                  placeholder="••••••••" 
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </div>
             </div>

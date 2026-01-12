@@ -28,7 +28,8 @@ const Layout = ({ children }: LayoutProps) => {
     { path: '/settings', icon: Settings, label: 'Settings' },
   ]
 
-  const user = JSON.parse(localStorage.getItem('user') || '{"fullname": "Administrator"}')
+  const user = JSON.parse(localStorage.getItem('user') || '{"username": "User"}')
+  const displayName = user.fullname || user.username || 'User'
   
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -36,7 +37,8 @@ const Layout = ({ children }: LayoutProps) => {
     navigate('/login')
   }
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return 'U'
     return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
   }
 
@@ -74,10 +76,10 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="p-4 border-t border-gray-800">
           <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
             <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-bold text-primary">
-              {getInitials(user.fullname)}
+              {getInitials(displayName)}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{user.fullname}</p>
+              <p className="text-sm font-semibold text-white truncate">{displayName}</p>
               <p className="text-[10px] text-green-500 truncate font-bold flex items-center gap-1.5 uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                 Online
