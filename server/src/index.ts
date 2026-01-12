@@ -10,6 +10,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import db from "./db.js";
 import { serverManager } from "./serverManager.js";
+import { rateLimiter } from "./rateLimiter.js";
 
 // Global cache for public IP
 let cachedPublicIp = '127.0.0.1';
@@ -57,6 +58,12 @@ try {
   app.use(express.json());
 
   // --- Auth & Middlewares ---
+  const authLimiter = rateLimiter({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10, // Limit each IP to 10 requests per window
+    message: "Too many login/register attempts, please try again later"
+  });
+
   const authenticateToken = (req: any, res: any, next: any) => {
     if (!process.env.JWT_SECRET) {
       console.error("CRITICAL: JWT_SECRET is not defined.");
@@ -73,7 +80,7 @@ try {
   };
 
   // --- Auth Routes ---
-  app.post("/api/register", async (req, res) => {
+  app.post("/api/register", authLimiter, async (req, res) => {
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ message: "Server configuration error" });
     }
@@ -106,7 +113,7 @@ try {
     }
   });
 
-  app.post("/api/login", async (req, res) => {
+  app.post("/api/login", authLimiter, async (req, res) => {
     if (!process.env.JWT_SECRET) {
       return res.status(500).json({ message: "Server configuration error" });
     }
