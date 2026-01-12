@@ -286,7 +286,12 @@ class ServerManager {
 
     async listFiles(instanceId: string | number, subDir: string = ''): Promise<any[]> {
         const id = instanceId.toString();
-        const serverPath = path.join(this.installDir, id, 'game', 'csgo', subDir);
+        const baseDir = path.join(this.installDir, id, 'game', 'csgo');
+        const serverPath = path.resolve(baseDir, subDir);
+
+        if (!serverPath.startsWith(baseDir)) {
+            throw new Error("Access denied: Path outside of server directory");
+        }
         
         if (!fs.existsSync(serverPath)) return [];
         

@@ -42,3 +42,8 @@ client/node_modules/
 client/dist/
 client/coverage/
 *.log
+
+# AI Metadata & Archive
+archive/
+.jules/
+*.json.log
