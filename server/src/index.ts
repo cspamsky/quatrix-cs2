@@ -246,6 +246,7 @@ try {
 
       serverManager.stopServer(id as string);
       db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
+      io.emit('status_update', { serverId: parseInt(id), status: 'OFFLINE' });
       res.json({ message: "Server stopped" });
     } catch (error) {
       res.status(500).json({ message: "Failed to stop server" });
@@ -258,12 +259,21 @@ try {
       const server: any = db.prepare("SELECT * FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
       if (!server) return res.status(404).json({ message: "Server not found" });
 
+      // Stop the server and update UI
       serverManager.stopServer(id as string);
+      db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
+      io.emit('status_update', { serverId: parseInt(id), status: 'OFFLINE' });
+
+      // Wait a moment for graceful shutdown
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Start the server and update UI
       await serverManager.startServer(id as string, server, (data: string) => {
         io.emit(`console:${id}`, data);
       });
 
       db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(id);
+      io.emit('status_update', { serverId: parseInt(id), status: 'ONLINE' });
       res.json({ message: "Server restarting..." });
     } catch (error: any) {
       res.status(500).json({ message: error.message });

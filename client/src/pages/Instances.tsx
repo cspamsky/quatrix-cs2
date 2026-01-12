@@ -20,6 +20,9 @@ import {
 import { apiFetch } from '../utils/api'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { io } from 'socket.io-client'
+
+const socket = io('http://localhost:3001')
 
 interface Instance {
   id: number
@@ -46,6 +49,21 @@ const Instances = () => {
   useEffect(() => {
     fetchServers()
     fetchSystemInfo()
+
+    // Listen for real-time status updates
+    socket.on('status_update', ({ serverId, status }: { serverId: number, status: string }) => {
+      setInstances(prev => 
+        prev.map(instance => 
+          instance.id === serverId 
+            ? { ...instance, status: status as Instance['status'] }
+            : instance
+        )
+      )
+    })
+
+    return () => {
+      socket.off('status_update')
+    }
   }, [])
 
   const fetchSystemInfo = async () => {
