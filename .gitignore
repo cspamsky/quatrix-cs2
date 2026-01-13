@@ -52,3 +52,6 @@ client/.eslintcache
 # Misc
 *.tmp
 *.bak
+
+# Jules
+.Jules/
