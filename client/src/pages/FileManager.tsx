@@ -60,7 +60,7 @@ const FileManager = () => {
         const data = await response.json()
         setEditingFile({ name: file.name, content: data.content })
       }
-    } catch (error) {
+    } catch {
       alert('Failed to read file')
     }
   }
@@ -80,7 +80,7 @@ const FileManager = () => {
       } else {
         alert('Failed to save file')
       }
-    } catch (error) {
+    } catch {
       alert('Connection error')
     } finally {
       setSaving(false)
@@ -114,16 +114,25 @@ const FileManager = () => {
           </button>
           <h2 className="text-2xl font-bold text-white tracking-tight">File Manager</h2>
           <div className="flex items-center text-sm text-gray-400 mt-2 gap-2">
-            <span className="cursor-pointer hover:text-primary transition-all" onClick={() => setCurrentPath('')}>root</span>
+            <button
+              type="button"
+              className="cursor-pointer hover:text-primary transition-all bg-transparent border-0 p-0"
+              onClick={() => setCurrentPath('')}
+              aria-label="Root directory"
+            >
+              root
+            </button>
             {currentPath.split('/').filter(p => p).map((p, i, arr) => (
               <span key={i} className="flex items-center gap-2">
                 <ChevronRight size={14} className="opacity-50" />
-                <span 
-                  className="cursor-pointer hover:text-primary transition-all"
+                <button
+                  type="button"
+                  className="cursor-pointer hover:text-primary transition-all bg-transparent border-0 p-0"
                   onClick={() => setCurrentPath(arr.slice(0, i + 1).join('/'))}
+                  aria-label={`Go to ${p}`}
                 >
                   {p}
-                </span>
+                </button>
               </span>
             ))}
           </div>
@@ -141,6 +150,7 @@ const FileManager = () => {
            <button 
              onClick={() => fetchFiles(currentPath)}
              className="bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-xl transition-all"
+             aria-label="Refresh files"
            >
              <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
            </button>
@@ -157,6 +167,7 @@ const FileManager = () => {
                 <button 
                   onClick={() => setEditingFile(null)}
                   className="text-gray-400 hover:text-white transition-all"
+                  aria-label="Close editor"
                 >
                   <X size={18} />
                 </button>
@@ -217,7 +228,10 @@ const FileManager = () => {
                       {new Date(file.mtime).toLocaleString()}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-gray-600 hover:text-white transition-all opacity-0 group-hover:opacity-100">
+                      <button
+                        className="text-gray-600 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                        aria-label="More options"
+                      >
                         <MoreVertical size={16} />
                       </button>
                     </td>
