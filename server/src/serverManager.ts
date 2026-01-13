@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import db from './db.js';
+import AdmZip from 'adm-zip';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,8 +11,8 @@ const __dirname = path.dirname(__filename);
 class ServerManager {
     private runningServers: Map<string, any> = new Map();
     private pluginMeta = [
-        { id: 'metamod', name: 'Metamod:Source', version: '2.0.0-git1316', url: 'https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1316-windows.zip' },
-        { id: 'cssharp', name: 'CounterStrikeSharp', version: 'v286', url: 'https://github.com/extremer-cs/CounterStrikeSharp/releases/download/v286/counterstrikesharp-with-runtime-v286-windows-874246a.zip' }
+        { id: 'metamod', name: 'Metamod:Source', version: '2.0 (Build 1380)', url: 'https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1380-windows.zip' },
+        { id: 'cssharp', name: 'CounterStrikeSharp', version: 'v1.0.355', url: 'https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.355/counterstrikesharp-with-runtime-windows-1.0.355.zip' }
     ];
 
     private getSetting(key: string): string {
@@ -229,7 +230,7 @@ class ServerManager {
         if (!server || !server.rcon_password) throw new Error("Server not found or RCON password not set");
 
         if (!this.isServerRunning(id)) throw new Error("Server is not running");
-
+    
         const { Rcon } = await import('rcon-client');
         
         try {
@@ -457,8 +458,12 @@ class ServerManager {
         const arrayBuffer = await response.arrayBuffer();
         fs.writeFileSync(zipPath, Buffer.from(arrayBuffer));
 
-        const AdmZip = (await import('adm-zip')).default;
         const zip = new AdmZip(zipPath);
+        const zipEntries = zip.getEntries();
+        console.log(`Extracting ${zipEntries.length} files from ${url}`);
+        // Log first few entries to see structure
+        zipEntries.slice(0, 5).forEach(entry => console.log(`Entry: ${entry.entryName}`));
+        
         zip.extractAllTo(targetDir, true);
         fs.unlinkSync(zipPath);
     }
@@ -476,14 +481,31 @@ class ServerManager {
         const gameinfoPath = path.join(csgoDir, 'gameinfo.gi');
         if (fs.existsSync(gameinfoPath)) {
             let content = fs.readFileSync(gameinfoPath, 'utf8');
-            if (!content.includes('Game csgo/addons/metamod')) {
-                // Find SearchPaths block and inject metamod
-                content = content.replace(
-                    /SearchPaths\s*{/g,
-                    'SearchPaths\n\t\t\tGame\tcsgo/addons/metamod'
-                );
-                fs.writeFileSync(gameinfoPath, content);
-                console.log(`Patched gameinfo.gi for instance ${id}`);
+            
+            // Check if already patched to avoid corruption or duplication
+            if (!content.includes('csgo/addons/metamod')) {
+                // Try to insert after Game_LowViolence first (User preference)
+                if (content.match(/Game_LowViolence\s+csgo_lv/)) {
+                     content = content.replace(
+                        /(Game_LowViolence\s+csgo_lv[^\r\n]*)/,
+                        '$1\n\t\t\tGame\tcsgo/addons/metamod'
+                    );
+                    fs.writeFileSync(gameinfoPath, content);
+                    console.log(`Patched gameinfo.gi (after Game_LowViolence) for instance ${id}`);
+                }
+                // Fallback: Find SearchPaths block and inject at top if LowViolence not found
+                else if (content.includes('SearchPaths')) {
+                    content = content.replace(
+                        /(SearchPaths\s*\{)/,
+                        '$1\n\t\t\tGame\tcsgo/addons/metamod'
+                    );
+                    fs.writeFileSync(gameinfoPath, content);
+                    console.log(`Patched gameinfo.gi (at SearchPaths start) for instance ${id}`);
+                } else {
+                     console.warn(`Warning: SearchPaths not found in gameinfo.gi for instance ${id}`);
+                }
+            } else {
+                console.log(`gameinfo.gi already patched for instance ${id}`);
             }
         }
     }
@@ -498,14 +520,143 @@ class ServerManager {
         await this.downloadAndExtract(cssUrl, csgoDir);
     }
 
-    async getPluginStatus(instanceId: string | number) {
+    async uninstallMetamod(instanceId: string | number): Promise<void> {
+        const id = instanceId.toString();
+        const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
+        const metamodDir = path.join(csgoDir, 'addons', 'metamod');
+        const vdfPath = path.join(csgoDir, 'addons', 'metamod.vdf');
+
+        console.log(`Uninstalling Metamod for instance ${id}...`);
+
+        // 1. Remove files
+        if (fs.existsSync(metamodDir)) {
+            fs.rmSync(metamodDir, { recursive: true, force: true });
+        }
+        if (fs.existsSync(vdfPath)) {
+            fs.unlinkSync(vdfPath);
+        }
+
+        // 2. Revert gameinfo.gi
+        const gameinfoPath = path.join(csgoDir, 'gameinfo.gi');
+        if (fs.existsSync(gameinfoPath)) {
+            let content = fs.readFileSync(gameinfoPath, 'utf8');
+            if (content.includes('csgo/addons/metamod')) {
+                // Remove the line containing the metamod path (handling tabs/spaces)
+                content = content.replace(/^\s*Game\s+csgo\/addons\/metamod\s*$/gm, '');
+                // Also clean up if it was inserted with specific formatting in previous versions
+                content = content.replace(/SearchPaths\s*{\s*Game\s+csgo\/addons\/metamod/g, 'SearchPaths\n\t\t{');
+                // General cleanup for the specific line we added
+                content = content.replace(/\s*Game\tcsgo\/addons\/metamod/g, '');
+                
+                fs.writeFileSync(gameinfoPath, content);
+                console.log(`Reverted gameinfo.gi for instance ${id}`);
+            }
+        }
+    }
+
+    async uninstallCounterStrikeSharp(instanceId: string | number): Promise<void> {
+        const id = instanceId.toString();
+        const cssDir = path.join(this.installDir, id, 'game', 'csgo', 'addons', 'counterstrikesharp');
+
+        console.log(`Uninstalling CounterStrikeSharp for instance ${id}...`);
+        if (fs.existsSync(cssDir)) {
+             fs.rmSync(cssDir, { recursive: true, force: true });
+             console.log(`CounterStrikeSharp directory removed for instance ${id}`);
+        }
+    }
+
+    async installMatchZy(instanceId: string | number): Promise<void> {
+        const id = instanceId.toString();
+        const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
+        // Using specific version 0.8.15 for stability
+        const matchZyUrl = 'https://github.com/shobhit-pathak/MatchZy/releases/download/0.8.15/MatchZy-0.8.15.zip';
+
+        console.log(`Installing MatchZy for instance ${id}...`);
+        await this.downloadAndExtract(matchZyUrl, csgoDir);
+        console.log(`MatchZy installed successfully for instance ${id}`);
+    }
+
+    async uninstallMatchZy(instanceId: string | number): Promise<void> {
+        const id = instanceId.toString();
+        // Path: game/csgo/addons/counterstrikesharp/plugins/MatchZy
+        const matchZyDir = path.join(this.installDir, id, 'game', 'csgo', 'addons', 'counterstrikesharp', 'plugins', 'MatchZy');
+
+        console.log(`Uninstalling MatchZy for instance ${id}...`);
+        if (fs.existsSync(matchZyDir)) {
+             fs.rmSync(matchZyDir, { recursive: true, force: true });
+             console.log(`MatchZy directory removed for instance ${id}`);
+        }
+    }
+
+    async installSimpleAdmin(instanceId: string | number): Promise<void> {
+        const id = instanceId.toString();
+        const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
+        const addonsDir = path.join(csgoDir, 'addons');
+        
+        // URLs
+        const anyBaseLibUrl = 'https://github.com/NickFox007/AnyBaseLibCS2/releases/latest/download/AnyBaseLib.zip';
+        const playerSettingsUrl = 'https://github.com/NickFox007/PlayerSettingsCS2/releases/latest/download/PlayerSettings.zip';
+        const menuManagerUrl = 'https://github.com/NickFox007/MenuManagerCS2/releases/latest/download/MenuManager.zip';
+        const simpleAdminUrl = 'https://github.com/daffyyyy/CS2-SimpleAdmin/releases/latest/download/CS2-SimpleAdmin-1.7.8-beta-8.zip';
+
+        console.log(`Installing CS2-SimpleAdmin and dependencies for instance ${id}...`);
+
+        // 1. Install AnyBaseLib
+        console.log('Installing AnyBaseLib (Dependency 1/3)...');
+        await this.downloadAndExtract(anyBaseLibUrl, csgoDir); // Usually formatted as addons/counterstrikesharp
+
+        // 2. Install PlayerSettings
+        console.log('Installing PlayerSettings (Dependency 2/3)...');
+        await this.downloadAndExtract(playerSettingsUrl, csgoDir); // Usually formatted as addons/counterstrikesharp
+
+        // 3. Install MenuManager
+        console.log('Installing MenuManager (Dependency 3/3)...');
+        await this.downloadAndExtract(menuManagerUrl, csgoDir); // Usually formatted as addons/counterstrikesharp
+
+        // Cleanup previous incorrect SimpleAdmin installation if exists
+        const incorrectPath = path.join(csgoDir, 'counterstrikesharp');
+        if (fs.existsSync(incorrectPath)) {
+            console.log('Removing incorrectly placed counterstrikesharp folder...');
+            fs.rmSync(incorrectPath, { recursive: true, force: true });
+        }
+
+        console.log(`Installing CS2-SimpleAdmin...`);
+        // SimpleAdmin zip has 'counterstrikesharp' at root, so extract to 'addons'
+        await this.downloadAndExtract(simpleAdminUrl, addonsDir);
+        
+        console.log(`CS2-SimpleAdmin and all dependencies installed successfully for instance ${id}`);
+    }
+
+    async uninstallSimpleAdmin(instanceId: string | number): Promise<void> {
+        const id = instanceId.toString();
+        // Path: game/csgo/addons/counterstrikesharp/plugins/CS2-SimpleAdmin
+        const simpleAdminDir = path.join(this.installDir, id, 'game', 'csgo', 'addons', 'counterstrikesharp', 'plugins', 'CS2-SimpleAdmin');
+
+        console.log(`Uninstalling CS2-SimpleAdmin for instance ${id}...`);
+        if (fs.existsSync(simpleAdminDir)) {
+             fs.rmSync(simpleAdminDir, { recursive: true, force: true });
+             console.log(`CS2-SimpleAdmin directory removed for instance ${id}`);
+        }
+    }
+
+    async getPluginStatus(instanceId: string | number): Promise<{ metamod: boolean, cssharp: boolean, matchzy: boolean, simpleadmin: boolean }> {
         const id = instanceId.toString();
         const csgoDir = path.join(this.installDir, id, 'game', 'csgo');
         
-        return {
-            metamod: fs.existsSync(path.join(csgoDir, 'addons', 'metamod')),
-            cssharp: fs.existsSync(path.join(csgoDir, 'addons', 'counterstrikesharp'))
-        };
+        const metamodValues = path.join(csgoDir, 'addons', 'metamod.vdf');
+        const metamodBin = path.join(csgoDir, 'addons', 'metamod', 'bin');
+        const hasMetamod = fs.existsSync(metamodValues) && fs.existsSync(metamodBin);
+
+        const cssharpDir = path.join(csgoDir, 'addons', 'counterstrikesharp');
+        const hasCssharp = fs.existsSync(cssharpDir);
+
+        const matchZyDir = path.join(csgoDir, 'addons', 'counterstrikesharp', 'plugins', 'MatchZy');
+        const hasMatchZy = fs.existsSync(matchZyDir);
+
+        const simpleAdminDir = path.join(csgoDir, 'addons', 'counterstrikesharp', 'plugins', 'CS2-SimpleAdmin');
+        const hasSimpleAdmin = fs.existsSync(simpleAdminDir);
+
+        return { metamod: hasMetamod, cssharp: hasCssharp, matchzy: hasMatchZy, simpleadmin: hasSimpleAdmin };
     }
 }
 

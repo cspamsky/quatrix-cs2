@@ -14,6 +14,16 @@ import { serverManager } from "./serverManager.js";
 // Global cache for public IP
 let cachedPublicIp = '127.0.0.1';
 
+// 🛡️ Error shield: Prevent process from dying silently
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+  // We don't exit here unless it's critical, but we log it
+});
+
 // Initial IP fetch
 const fetchPublicIp = async () => {
   try {
@@ -444,15 +454,73 @@ try {
     }
   });
 
+  app.post("/api/servers/:id/plugins/install-matchzy", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      await serverManager.installMatchZy(id);
+      res.json({ message: "MatchZy installed successfully" });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/servers/:id/plugins/uninstall-matchzy", authenticateToken, async (req: any, res) => {
+      const { id } = req.params;
+      try {
+        const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+        if (!server) return res.status(404).json({ message: "Server not found" });
+  
+        await serverManager.uninstallMatchZy(id);
+        res.json({ message: "MatchZy uninstalled successfully" });
+      } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
+      }
+    });
+
+  app.post("/api/servers/:id/plugins/install-simpleadmin", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      await serverManager.installSimpleAdmin(id);
+      res.json({ message: "CS2-SimpleAdmin installed successfully" });
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/servers/:id/plugins/uninstall-simpleadmin", authenticateToken, async (req: any, res) => {
+      const { id } = req.params;
+      try {
+        const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+        if (!server) return res.status(404).json({ message: "Server not found" });
+  
+        await serverManager.uninstallSimpleAdmin(id);
+        res.json({ message: "CS2-SimpleAdmin uninstalled successfully" });
+      } catch (error: any) {
+        console.error(error);
+        res.status(500).json({ message: error.message });
+      }
+    });
+
   app.post("/api/servers/:id/plugins/install-metamod", authenticateToken, async (req: any, res) => {
     const { id } = req.params;
     try {
       const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
       if (!server) return res.status(404).json({ message: "Server not found" });
 
+      console.log(`[PLUGIN] Starting Metamod installation for server ${id}`);
       await serverManager.installMetamod(id);
       res.json({ success: true, message: "Metamod installed successfully" });
     } catch (error: any) {
+      console.error(`[PLUGIN ERROR] Metamod installation failed for server ${id}:`, error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -463,9 +531,41 @@ try {
       const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
       if (!server) return res.status(404).json({ message: "Server not found" });
 
+      console.log(`[PLUGIN] Starting CounterStrikeSharp installation for server ${id}`);
       await serverManager.installCounterStrikeSharp(id);
       res.json({ success: true, message: "CounterStrikeSharp installed successfully" });
     } catch (error: any) {
+      console.error(`[PLUGIN ERROR] CSSharp installation failed for server ${id}:`, error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/servers/:id/plugins/uninstall-metamod", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      console.log(`[PLUGIN] Starting Metamod uninstallation for server ${id}`);
+      await serverManager.uninstallMetamod(id);
+      res.json({ success: true, message: "Metamod uninstalled successfully" });
+    } catch (error: any) {
+      console.error(`[PLUGIN ERROR] Metamod uninstallation failed for server ${id}:`, error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/servers/:id/plugins/uninstall-cssharp", authenticateToken, async (req: any, res) => {
+    const { id } = req.params;
+    try {
+      const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+      if (!server) return res.status(404).json({ message: "Server not found" });
+
+      console.log(`[PLUGIN] Starting CounterStrikeSharp uninstallation for server ${id}`);
+      await serverManager.uninstallCounterStrikeSharp(id);
+      res.json({ success: true, message: "CounterStrikeSharp uninstalled successfully" });
+    } catch (error: any) {
+      console.error(`[PLUGIN ERROR] CSSharp uninstallation failed for server ${id}:`, error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -542,9 +642,11 @@ try {
   let lastNetworkStats: any = null;
   setInterval(async () => {
     try {
-      const cpu = await si.currentLoad();
-      const mem = await si.mem();
-      const net = await si.networkStats();
+      const [cpu, mem, net] = await Promise.all([
+        si.currentLoad().catch(() => ({ currentLoad: 0 })),
+        si.mem().catch(() => ({ active: 0, total: 1 })),
+        si.networkStats().catch(() => [])
+      ]);
       
       let netIn = 0;
       let netOut = 0;
@@ -555,7 +657,7 @@ try {
         const currentNet = net[0];
         const lastNet = lastNetworkStats[0];
         
-        if (currentNet && lastNet) {
+        if (currentNet && lastNet && currentNet.rx_bytes !== undefined) {
           netIn = Math.max(0, (currentNet.rx_bytes - lastNet.rx_bytes) / 1024 / 1024 / seconds);
           netOut = Math.max(0, (currentNet.tx_bytes - lastNet.tx_bytes) / 1024 / 1024 / seconds);
         }
@@ -563,15 +665,15 @@ try {
       lastNetworkStats = net;
 
       io.emit("stats", {
-        cpu: cpu.currentLoad.toFixed(1),
-        ram: ((mem.active / mem.total) * 100).toFixed(1),
+        cpu: typeof cpu.currentLoad === 'number' ? cpu.currentLoad.toFixed(1) : "0",
+        ram: (mem.total > 0) ? ((mem.active / mem.total) * 100).toFixed(1) : "0",
         memUsed: (mem.active / 1024 / 1024 / 1024).toFixed(1),
         memTotal: (mem.total / 1024 / 1024 / 1024).toFixed(1),
         netIn: netIn.toFixed(2),
         netOut: netOut.toFixed(2)
       });
     } catch (err) {
-      console.error("Stats collection error:", err);
+      console.warn("Stats collection error (handled):", err);
     }
   }, 2000);
 
@@ -604,8 +706,17 @@ try {
   }, 30000); // Check every 30 seconds (production setting)
 
 
+  httpServer.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌ CRITICAL: Port ${PORT} is already in use. Please kill existing node processes.`);
+    } else {
+      console.error("❌ HTTP Server Error:", err);
+    }
+    process.exit(1);
+  });
+
   httpServer.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`🚀 Quatrix Backend ready on port ${PORT}`);
   });
 
   // Catch-all 404 handler

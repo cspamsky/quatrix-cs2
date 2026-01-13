@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { LayoutDashboard, User, Lock, Eye, EyeOff, LogIn } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { apiFetch, isDemoMode } from '../utils/api'
+import { apiFetch } from '../utils/api'
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
@@ -52,7 +52,6 @@ const Login = () => {
 
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
-      localStorage.removeItem('demo_mode'); // Clear demo mode if login is real
       navigate('/dashboard')
     } catch (err: any) {
       setError(err.message)
@@ -61,12 +60,6 @@ const Login = () => {
     }
   }
 
-  const handleDemoLogin = () => {
-    localStorage.setItem('demo_mode', 'true');
-    localStorage.setItem('token', 'demo-token');
-    localStorage.setItem('user', JSON.stringify({ username: 'DemoUser' }));
-    navigate('/dashboard');
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#0F172A] relative overflow-hidden font-display">
@@ -88,9 +81,6 @@ const Login = () => {
         <div className="bg-[#111827] border border-gray-800/50 rounded-2xl shadow-xl p-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-white">Welcome back</h2>
-            {isDemoMode() && (
-                 <span className="text-[10px] bg-blue-500/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold">DEMO MODE ACTIVE</span>
-            )}
           </div>
           
           {error && (
@@ -180,15 +170,6 @@ const Login = () => {
                 )}
                 </button>
                 
-                {window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && (
-                  <button 
-                  type="button"
-                  onClick={handleDemoLogin}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-700 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-white/5 transition-all" 
-                  >
-                  Explore Demo Panel
-                  </button>
-                )}
             </div>
           </form>
             <div className="mt-8 pt-6 border-t border-gray-800 text-center">

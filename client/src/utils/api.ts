@@ -1,52 +1,11 @@
-import { MOCK_INSTANCES, MOCK_SYSTEM_INFO, MOCK_LOGS } from './demoData';
-
-export const isDemoMode = () => {
-  // Never demo on localhost unless explicitly forced
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return localStorage.getItem('demo_mode') === 'true';
-  }
-
-  // Auto-demo on Vercel/Netlify hostnames
-  const isVercel = window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app');
-  const forceDemo = localStorage.getItem('demo_mode') === 'true';
-  
-  return forceDemo || isVercel;
-};
-
 export const apiFetch = async (url: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('token');
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
-  // Demo Mode logic: intercept calls to backend
-  if (isDemoMode()) {
-    console.log('🌟 Quatrix Demo Mode: Intercepting', url);
-    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate latency
-    
-    let mockData: any = {};
-    if (url.includes('/api/servers')) mockData = MOCK_INSTANCES;
-    if (url.includes('/api/system-info')) mockData = MOCK_SYSTEM_INFO;
-    if (url.includes('/api/logs')) mockData = MOCK_LOGS;
-    if (url.includes('/api/login')) mockData = { token: 'demo-token', user: { username: 'DemoUser' } };
-    
-    // Plugin Support in Demo
-    if (url.includes('/plugins/status')) {
-        const stored = localStorage.getItem(`demo_plugins_${url.split('/')[3]}`);
-        mockData = stored ? JSON.parse(stored) : { metamod: true, cssharp: false };
-    }
-    if (url.includes('/plugins/install')) {
-        const serverId = url.split('/')[3];
-        const plugin = url.includes('metamod') ? 'metamod' : 'cssharp';
-        const current = JSON.parse(localStorage.getItem(`demo_plugins_${serverId}`) || '{"metamod":true,"cssharp":false}');
-        current[plugin] = true;
-        localStorage.setItem(`demo_plugins_${serverId}`, JSON.stringify(current));
-        mockData = { success: true, message: "Demo: Installation simulated" };
-    }
-    
-    return {
-      ok: true,
-      status: 200,
-      json: async () => mockData
-    } as Response;
-  }
+  // Resolve absolute URL for localhost if relative path is provided
+  const targetUrl = isLocalhost && !url.startsWith('http')
+    ? `http://127.0.0.1:3001${url}`
+    : url;
 
   const headers = {
     ...options.headers,
@@ -55,18 +14,24 @@ export const apiFetch = async (url: string, options: RequestInit = {}) => {
   };
 
   try {
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(targetUrl, { ...options, headers });
     
-    if (response.status === 401) {
+    if (response.status === 401 || response.status === 403) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
     
     return response;
   } catch (error) {
-    console.warn('Backend reach failed, switching to Demo Mode...');
-    localStorage.setItem('demo_mode', 'true');
-    window.location.reload();
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    if (isLocalhost) {
+      console.error('❌ Backend connection failed at', targetUrl, '. Please ensure the server is running on port 3001.');
+      throw error;
+    }
+
+    // Since demo mode is removed, we just rethrow the error
+    console.error('❌ Connection failed for', targetUrl);
     throw error;
   }
 };

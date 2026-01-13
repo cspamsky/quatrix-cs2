@@ -4,7 +4,7 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "npx tsc && node --watch dist/index.js",
+    "dev": "tsc && node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

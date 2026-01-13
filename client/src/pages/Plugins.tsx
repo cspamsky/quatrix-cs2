@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { 
   Cpu, 
   Zap, 
@@ -6,7 +7,8 @@ import {
   Download,
   ShieldCheck,
   AlertCircle,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import { useNotification } from '../contexts/NotificationContext'
@@ -19,23 +21,33 @@ interface Instance {
 }
 
 const Plugins = () => {
+  const navigate = useNavigate()
   const { showNotification } = useNotification()
   const { showConfirm } = useConfirmDialog()
   const [instances, setInstances] = useState<Instance[]>([])
   const [selectedServer, setSelectedServer] = useState<string | null>(null)
-  const [pluginStatus, setPluginStatus] = useState<{ metamod: boolean, cssharp: boolean }>({ metamod: false, cssharp: false })
+  const [pluginStatus, setPluginStatus] = useState<{ metamod: boolean, cssharp: boolean, matchzy: boolean, simpleadmin: boolean }>({ metamod: false, cssharp: false, matchzy: false, simpleadmin: false })
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const fetchInstances = useCallback(async () => {
     try {
+        setLoading(true);
         const response = await apiFetch('/api/servers');
         const data = await response.json();
-        setInstances(data);
-        if (data.length > 0 && !selectedServer) {
-            setSelectedServer(data[0].id.toString());
+        if (Array.isArray(data)) {
+            setInstances(data);
+            if (data.length > 0 && !selectedServer) {
+                setSelectedServer(data[0].id.toString());
+            }
+        } else {
+            console.error('Expected array from /api/servers, got:', typeof data, data);
+            setInstances([]);
         }
     } catch (error) {
         console.error('Failed to fetch instances:', error);
+    } finally {
+        setLoading(false);
     }
   }, [selectedServer]);
 
@@ -61,46 +73,86 @@ const Plugins = () => {
     }
   }, [selectedServer, fetchPluginStatus]);
 
-  const handleInstall = async (pluginId: 'metamod' | 'cssharp') => {
+  const handleAction = async (plugin: 'metamod' | 'cssharp' | 'matchzy' | 'simpleadmin', action: 'install' | 'uninstall') => {
     if (!selectedServer) return;
 
-    const pluginName = pluginId === 'metamod' ? 'Metamod:Source' : 'CounterStrikeSharp';
-    
-    // Check requirements
-    if (pluginId === 'cssharp' && !pluginStatus.metamod) {
-        showNotification('warning', 'Requirement Missing', 'Metamod required before installing CounterStrikeSharp');
-        return;
+    let pluginName = '';
+    switch(plugin) {
+        case 'metamod': pluginName = 'Metamod:Source'; break;
+        case 'cssharp': pluginName = 'CounterStrikeSharp'; break;
+        case 'matchzy': pluginName = 'MatchZy'; break;
+        case 'simpleadmin': pluginName = 'CS2-SimpleAdmin'; break;
+    }
+
+    // Check requirements for install
+    if (action === 'install') {
+        if (plugin === 'cssharp' && !pluginStatus.metamod) {
+            showNotification('warning', 'Requirement Missing', 'Metamod required before installing CounterStrikeSharp');
+            return;
+        }
+        if ((plugin === 'matchzy' || plugin === 'simpleadmin') && !pluginStatus.cssharp) {
+            showNotification('warning', 'Requirement Missing', 'CounterStrikeSharp required before installing this plugin');
+            return;
+        }
     }
 
     const isConfirmed = await showConfirm({
-        title: `Install ${pluginName}`,
-        message: `Are you sure you want to install ${pluginName} on the selected server? The server should be OFFLINE for a safe installation.`,
-        confirmText: 'Install Now',
-        type: 'warning'
+        title: `${action === 'install' ? 'Install' : 'Uninstall'} ${pluginName}`,
+        message: `Are you sure you want to ${action} ${pluginName}? ${action === 'uninstall' ? 'This might affect other dependent plugins.' : 'The server should be OFFLINE for a safe installation.'}`,
+        confirmText: `${action === 'install' ? 'Install' : 'Uninstall'} Now`,
+        type: action === 'uninstall' ? 'danger' : 'warning'
     });
 
     if (!isConfirmed) return;
 
-    setActionLoading(pluginId);
+    setActionLoading(plugin);
     try {
-        const endpoint = pluginId === 'metamod' ? 'install-metamod' : 'install-cssharp';
-        const response = await apiFetch(`/api/servers/${selectedServer}/plugins/${endpoint}`, {
+        const endpoint = `/api/servers/${selectedServer}/plugins/${action}-${plugin}`;
+        const response = await apiFetch(endpoint, {
             method: 'POST'
         });
-
+        
         if (response.ok) {
-            showNotification('success', 'Installation Success', `${pluginName} installed successfully!`);
+            showNotification('success', 'Operation Successful', `${pluginName} ${action}ed successfully!`);
             fetchPluginStatus(selectedServer);
         } else {
-            const error = await response.json();
-            showNotification('error', 'Installation Failed', error.message || `Failed to install ${pluginName}`);
+            const err = await response.json();
+            showNotification('error', 'Operation Failed', err.message);
         }
-    } catch (error: any) {
-        showNotification('error', 'Error', error.message || 'Installation failed');
+    } catch (error) {
+        console.error(`Failed to ${action} plugin:`, error);
+        showNotification('error', 'Error', `An error occurred during ${action}.`);
     } finally {
         setActionLoading(null);
     }
   };
+
+  if (loading && instances.length === 0) {
+    return (
+        <div className="p-6 flex flex-col items-center justify-center min-h-[60vh]">
+            <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+            <p className="text-gray-400 font-bold animate-pulse">Synchronizing with server...</p>
+        </div>
+    );
+  }
+
+  if (instances.length === 0 && !loading) {
+    return (
+        <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <div className="w-20 h-20 bg-gray-800/50 rounded-full flex items-center justify-center mb-6 border border-gray-700">
+                <ServerIcon size={40} className="text-gray-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">No Servers Found</h2>
+            <p className="text-gray-400 max-w-md mb-8">You need to create at least one server instance before you can manage addons and plugins.</p>
+            <button 
+                onClick={() => navigate('/instances')}
+                className="bg-primary hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20"
+            >
+                Create First Instance
+            </button>
+        </div>
+    );
+  }
 
   return (
     <div className="p-6 font-display overflow-y-auto max-h-[calc(100vh-64px)]">
@@ -120,7 +172,7 @@ const Plugins = () => {
                 value={selectedServer || ''}
                 onChange={(e) => setSelectedServer(e.target.value)}
             >
-                {instances.map((inst: Instance) => (
+                {Array.isArray(instances) && instances.map((inst: Instance) => (
                     <option key={inst.id} value={inst.id} className="bg-[#111827]">{inst.name}</option>
                 ))}
             </select>
@@ -164,22 +216,35 @@ const Plugins = () => {
                 
                 <div className="mt-8 flex items-center justify-between relative z-10">
                     <div className="text-[10px] font-black uppercase tracking-widest text-gray-600">Version 2.0 (Source 2)</div>
-                    <button 
-                        disabled={pluginStatus.metamod || actionLoading !== null}
-                        onClick={() => handleInstall('metamod')}
-                        className={`flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                            pluginStatus.metamod 
-                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
-                            : 'bg-primary text-white hover:bg-blue-600 shadow-lg shadow-primary/20 active:scale-95'
-                        }`}
-                    >
-                        {actionLoading === 'metamod' ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <div className="flex gap-2">
+                        {pluginStatus.metamod ? (
+                            <button 
+                                disabled={actionLoading !== null}
+                                onClick={() => handleAction('metamod', 'uninstall')}
+                                className="flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                            >
+                                {actionLoading === 'metamod' ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                )}
+                                Uninstall
+                            </button>
                         ) : (
-                            <Download className="w-4 h-4 mr-2" />
+                            <button 
+                                disabled={actionLoading !== null}
+                                onClick={() => handleAction('metamod', 'install')}
+                                className="flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all bg-primary text-white hover:bg-blue-600 shadow-lg shadow-primary/20 active:scale-95"
+                            >
+                                {actionLoading === 'metamod' ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Download className="w-4 h-4 mr-2" />
+                                )}
+                                Install Framework
+                            </button>
                         )}
-                        {pluginStatus.metamod ? 'Already Installed' : 'Install Framework'}
-                    </button>
+                    </div>
                 </div>
             </div>
 
@@ -212,22 +277,35 @@ const Plugins = () => {
                 
                 <div className="mt-8 flex items-center justify-between relative z-10">
                     <div className="text-[10px] font-black uppercase tracking-widest text-gray-600">Requires Metamod</div>
-                    <button 
-                         disabled={pluginStatus.cssharp || actionLoading !== null}
-                         onClick={() => handleInstall('cssharp')}
-                         className={`flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                             pluginStatus.cssharp 
-                             ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
-                             : 'bg-primary text-white hover:bg-blue-600 shadow-lg shadow-primary/20 active:scale-95'
-                         }`}
-                    >
-                        {actionLoading === 'cssharp' ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <div className="flex gap-2">
+                        {pluginStatus.cssharp ? (
+                            <button 
+                                disabled={actionLoading !== null}
+                                onClick={() => handleAction('cssharp', 'uninstall')}
+                                className="flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20"
+                            >
+                                {actionLoading === 'cssharp' ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                )}
+                                Uninstall
+                            </button>
                         ) : (
-                            <Download className="w-4 h-4 mr-2" />
+                            <button 
+                                disabled={actionLoading !== null}
+                                onClick={() => handleAction('cssharp', 'install')}
+                                className="flex items-center px-4 py-2 rounded-lg text-xs font-bold transition-all bg-primary text-white hover:bg-blue-600 shadow-lg shadow-primary/20 active:scale-95"
+                            >
+                                {actionLoading === 'cssharp' ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                    <Download className="w-4 h-4 mr-2" />
+                                )}
+                                Install Platform
+                            </button>
                         )}
-                        {pluginStatus.cssharp ? 'Already Installed' : 'Install Framework'}
-                    </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -261,12 +339,35 @@ const Plugins = () => {
                 <tr className="hover:bg-white/[0.02] transition-colors group">
                     <td className="py-4 px-6">
                         <div className="font-bold text-white text-sm">MatchZy</div>
-                        <div className="text-[11px] text-gray-500">v0.6.1</div>
+                        <div className="text-[11px] text-gray-500">v0.8.15</div>
                     </td>
                     <td className="py-4 px-6 text-xs text-gray-400">shobhit-pathak</td>
                     <td className="py-4 px-6 text-xs text-gray-400">Competitive match & practice system for CS2 servers.</td>
                     <td className="py-4 px-6 text-right">
-                        <button className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded hover:bg-primary hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest">Install</button>
+                        {pluginStatus.matchzy ? (
+                            <button 
+                                disabled={actionLoading !== null}
+                                onClick={() => handleAction('matchzy', 'uninstall')}
+                                className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 border border-red-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ml-auto"
+                            >
+                                {actionLoading === 'matchzy' ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                                Uninstall
+                            </button>
+                        ) : (
+                            <button 
+                                disabled={actionLoading !== null || !pluginStatus.cssharp}
+                                onClick={() => handleAction('matchzy', 'install')}
+                                className={`px-3 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ml-auto ${
+                                    !pluginStatus.cssharp 
+                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
+                                    : 'bg-gray-800 text-gray-300 hover:bg-primary hover:text-white'
+                                }`}
+                                title={!pluginStatus.cssharp ? "Requires CounterStrikeSharp" : ""}
+                            >
+                                {actionLoading === 'matchzy' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                                Install
+                            </button>
+                        )}
                     </td>
                 </tr>
                 <tr className="hover:bg-white/[0.02] transition-colors group">
@@ -282,13 +383,36 @@ const Plugins = () => {
                 </tr>
                 <tr className="hover:bg-white/[0.02] transition-colors group">
                     <td className="py-4 px-6">
-                        <div className="font-bold text-white text-sm">Advanced Admin</div>
-                        <div className="text-[11px] text-gray-500">v1.0.5</div>
+                        <div className="font-bold text-white text-sm">CS2 SimpleAdmin</div>
+                        <div className="text-[11px] text-gray-500">v1.7.8-beta-8</div>
                     </td>
-                    <td className="py-4 px-6 text-xs text-gray-400">daffy</td>
-                    <td className="py-4 px-6 text-xs text-gray-400">Essential admin commands and player management tools.</td>
+                    <td className="py-4 px-6 text-xs text-gray-400">daffyyyy</td>
+                    <td className="py-4 px-6 text-xs text-gray-400">Essential admin commands (kick, ban, map) and player management.</td>
                     <td className="py-4 px-6 text-right">
-                        <button className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded hover:bg-primary hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest">Install</button>
+                        {pluginStatus.simpleadmin ? (
+                            <button 
+                                disabled={actionLoading !== null}
+                                onClick={() => handleAction('simpleadmin', 'uninstall')}
+                                className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded hover:bg-red-500/20 border border-red-500/20 transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ml-auto"
+                            >
+                                {actionLoading === 'simpleadmin' ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                                Uninstall
+                            </button>
+                        ) : (
+                            <button 
+                                disabled={actionLoading !== null || !pluginStatus.cssharp}
+                                onClick={() => handleAction('simpleadmin', 'install')}
+                                className={`px-3 py-1.5 rounded transition-all text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 ml-auto ${
+                                    !pluginStatus.cssharp 
+                                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
+                                    : 'bg-gray-800 text-gray-300 hover:bg-primary hover:text-white'
+                                }`}
+                                title={!pluginStatus.cssharp ? "Requires CounterStrikeSharp" : ""}
+                            >
+                                {actionLoading === 'simpleadmin' ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                                Install
+                            </button>
+                        )}
                     </td>
                 </tr>
               </tbody>
