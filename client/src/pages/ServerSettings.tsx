@@ -31,7 +31,8 @@ const ServerSettings = () => {
 
   const fetchServerData = async () => {
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}`)
+      const response = await apiFetch(`/api/servers/${id}`)
+
       if (response.ok) {
         const data = await response.json()
         setServer(data)
@@ -49,7 +50,8 @@ const ServerSettings = () => {
 
     setSaving(true)
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}`, {
+      const response = await apiFetch(`/api/servers/${id}`, {
+
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(server)

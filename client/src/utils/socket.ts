@@ -1,8 +1,7 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = 'http://127.0.0.1:3001';
+// Use current origin, Vite proxy will handle redirection to http://localhost:3001
+const socket = io();
 
-// We always use the real socket now that Demo Mode is removed.
-const socket = io(SOCKET_URL);
 
 export default socket;

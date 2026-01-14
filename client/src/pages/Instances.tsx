@@ -40,7 +40,8 @@ const Instances = () => {
 
   const fetchSystemInfo = useCallback(async () => {
     try {
-      const response = await apiFetch('http://localhost:3001/api/system-info')
+      const response = await apiFetch('/api/system-info')
+
       if (response.ok) {
         const data = await response.json()
         setServerIp(data.publicIp || window.location.hostname)
@@ -53,7 +54,8 @@ const Instances = () => {
 
   const fetchServers = useCallback(async () => {
     try {
-      const response = await apiFetch('http://localhost:3001/api/servers')
+      const response = await apiFetch('/api/servers')
+
       const data = await response.json()
       setInstances(Array.isArray(data) ? data : [])
     } catch (error) {
@@ -103,7 +105,8 @@ const Instances = () => {
     
     setDeletingId(id)
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}`, {
+      const response = await apiFetch(`/api/servers/${id}`, {
+
         method: 'DELETE'
       })
       if (response.ok) {
@@ -123,7 +126,8 @@ const Instances = () => {
   const handleInstall = useCallback(async (id: number) => {
     setInstallingId(id)
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/install`, {
+      const response = await apiFetch(`/api/servers/${id}/install`, {
+
         method: 'POST'
       })
       if (response.ok) {
@@ -143,7 +147,8 @@ const Instances = () => {
   const handleStartServer = useCallback(async (id: number) => {
     setStartingId(id)
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/start`, {
+      const response = await apiFetch(`/api/servers/${id}/start`, {
+
         method: 'POST'
       })
       if (response.ok) {
@@ -164,7 +169,8 @@ const Instances = () => {
   const handleStopServer = useCallback(async (id: number) => {
     setStoppingId(id)
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/stop`, {
+      const response = await apiFetch(`/api/servers/${id}/stop`, {
+
         method: 'POST'
       })
       if (response.ok) {
@@ -185,7 +191,8 @@ const Instances = () => {
   const handleRestartServer = useCallback(async (id: number) => {
     setRestartingId(id)
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/restart`, {
+      const response = await apiFetch(`/api/servers/${id}/restart`, {
+
         method: 'POST'
       })
       if (response.ok) {

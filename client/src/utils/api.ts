@@ -1,11 +1,9 @@
 export const apiFetch = async (url: string, options: RequestInit = {}) => {
   const token = localStorage.getItem('token');
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   
-  // Resolve absolute URL for localhost if relative path is provided
-  const targetUrl = isLocalhost && !url.startsWith('http')
-    ? `http://127.0.0.1:3001${url}`
-    : url;
+  // Use a relative path, Vite proxy will handle redirection to http://localhost:3001
+  const targetUrl = url;
+
 
   const headers = {
     ...options.headers,

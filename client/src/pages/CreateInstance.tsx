@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { apiFetch } from '../utils/api'
 import { 
   Info, 
   Map as MapIcon, 
@@ -43,12 +44,11 @@ const CreateInstance = () => {
     setLoading(true)
 
     try {
-      const token = localStorage.getItem('token')
-      const response = await fetch('http://localhost:3001/api/servers', {
+      const response = await apiFetch('/api/servers', {
+
         method: 'POST',
         headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           name: formData.serverName,
@@ -58,6 +58,7 @@ const CreateInstance = () => {
           rcon_password: formData.rconPassword || null,
         }),
       })
+
 
       const data = await response.json()
 

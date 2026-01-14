@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Server, UserPlus, User, Lock, Eye, EyeOff } from 'lucide-react'
+import { apiFetch } from '../utils/api'
+
 
 const Register = () => {
   const navigate = useNavigate()
@@ -16,7 +18,7 @@ const Register = () => {
 
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:3001/api/register', {
+      const response = await apiFetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),

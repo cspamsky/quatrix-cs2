@@ -36,7 +36,8 @@ const FileManager = () => {
   const fetchFiles = async (path: string) => {
     setLoading(true)
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/files?path=${encodeURIComponent(path)}`)
+      const response = await apiFetch(`/api/servers/${id}/files?path=${encodeURIComponent(path)}`)
+
       if (response.ok) {
         const data = await response.json()
         setFiles(data)
@@ -55,7 +56,8 @@ const FileManager = () => {
     }
 
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/files/read?path=${encodeURIComponent(currentPath ? `${currentPath}/${file.name}` : file.name)}`)
+      const response = await apiFetch(`/api/servers/${id}/files/read?path=${encodeURIComponent(currentPath ? `${currentPath}/${file.name}` : file.name)}`)
+
       if (response.ok) {
         const data = await response.json()
         setEditingFile({ name: file.name, content: data.content })
@@ -70,7 +72,8 @@ const FileManager = () => {
     setSaving(true)
     try {
       const filePath = currentPath ? `${currentPath}/${editingFile.name}` : editingFile.name
-      const response = await apiFetch(`http://localhost:3001/api/servers/${id}/files/write`, {
+      const response = await apiFetch(`/api/servers/${id}/files/write`, {
+
         method: 'POST',
         body: JSON.stringify({ path: filePath, content: editingFile.content })
       })

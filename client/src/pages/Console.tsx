@@ -48,7 +48,8 @@ const Console = () => {
 
     const fetchServerData = async () => {
       try {
-        const response = await apiFetch(`http://localhost:3001/api/servers`);
+        const response = await apiFetch(`/api/servers`);
+
         const data = await response.json();
         const currentServer = data.find((s: any) => s.id.toString() === id);
         if (currentServer) setServer(currentServer);
@@ -60,8 +61,9 @@ const Console = () => {
     const fetchLogs = async () => {
       try {
         const response = await apiFetch(
-          `http://localhost:3001/api/servers/${id}/logs`
+          `/api/servers/${id}/logs`
         );
+
         if (response.ok) {
           const rawLogs = await response.json();
           const processedLogs = rawLogs.map((log: string) => {
@@ -177,7 +179,7 @@ const Console = () => {
   const fetchServerInfo = async () => {
     if (!id) return;
     try {
-      const response = await apiFetch(`http://localhost:3001/api/servers`);
+      const response = await apiFetch(`/api/servers`);
       const data = await response.json();
       const currentServer = data.find((s: any) => s.id.toString() === id);
       if (currentServer) setServer(currentServer);
@@ -191,7 +193,7 @@ const Console = () => {
     setActionLoading(true);
     try {
       const response = await apiFetch(
-        `http://localhost:3001/api/servers/${id}/${action}`,
+        `/api/servers/${id}/${action}`,
         {
           method: "POST",
         }
@@ -225,7 +227,8 @@ const Console = () => {
     setCommand(""); // Clear input immediately for UX
 
     try {
-      await apiFetch(`http://localhost:3001/api/servers/${id}/rcon`, {
+      await apiFetch(`/api/servers/${id}/rcon`, {
+
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ command: cmdToSubmit }),
@@ -267,7 +270,8 @@ const Console = () => {
     setActionLoading(true);
     try {
       const response = await apiFetch(
-        `http://localhost:3001/api/servers/${id}/install`,
+        `/api/servers/${id}/install`,
+
         {
           method: "POST",
         }
