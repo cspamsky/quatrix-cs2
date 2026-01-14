@@ -49,6 +49,7 @@ const Instances = () => {
   const [installingId, setInstallingId] = useState<number | null>(null)
   const [restartingId, setRestartingId] = useState<number | null>(null)
   const [startingId, setStartingId] = useState<number | null>(null)
+  const [stoppingId, setStoppingId] = useState<number | null>(null)
 
   const fetchSystemInfo = async () => {
     try {
@@ -174,6 +175,7 @@ const Instances = () => {
   }
 
   const handleStopServer = async (id: number) => {
+    setStoppingId(id)
     try {
       const response = await apiFetch(`http://localhost:3001/api/servers/${id}/stop`, {
         method: 'POST'
@@ -188,6 +190,8 @@ const Instances = () => {
     } catch (error) {
       console.error('Stop server error:', error)
       showNotification('error', 'Connection Error', 'Unable to reach the server')
+    } finally {
+      setStoppingId(null)
     }
   }
 
@@ -230,6 +234,7 @@ const Instances = () => {
             <div className="relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
               <input 
+                aria-label="Filter instances"
                 className="w-64 pl-10 pr-4 py-2 bg-[#111827] border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200" 
                 placeholder="Filter instances..." 
                 type="text"
@@ -378,15 +383,22 @@ const Instances = () => {
                         <>
                           <button 
                             onClick={() => handleStopServer(instance.id)}
-                            className="flex-1 bg-gray-800/40 hover:bg-red-500/10 hover:text-red-500 py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40"
+                            disabled={stoppingId === instance.id}
+                            className="flex-1 bg-gray-800/40 hover:bg-red-500/10 hover:text-red-500 py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40 disabled:opacity-50"
                           >
-                            <Square className="w-3 h-3 mr-1.5 fill-current" /> Stop
+                            {stoppingId === instance.id ? (
+                              <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
+                            ) : (
+                              <Square className="w-3 h-3 mr-1.5 fill-current" />
+                            )}
+                            {stoppingId === instance.id ? 'Stopping...' : 'Stop'}
                           </button>
                           <button 
                             onClick={() => handleRestartServer(instance.id)}
                             disabled={restartingId === instance.id}
                             className="p-2 bg-gray-800/40 hover:bg-amber-500/10 hover:text-amber-500 rounded transition-all border border-gray-800/40 disabled:opacity-50"
                             title="Restart Server"
+                            aria-label="Restart Server"
                           >
                             <RotateCcw className={`w-3.5 h-3.5 ${restartingId === instance.id ? 'animate-spin' : ''}`} />
                           </button>
