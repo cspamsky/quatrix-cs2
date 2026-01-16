@@ -601,6 +601,15 @@ try {
     }
   });
 
+  app.get("/api/system/health", authenticateToken, async (req: any, res) => {
+    try {
+      const health = await serverManager.getSystemHealth();
+      res.json(health);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch system health" });
+    }
+  });
+
   app.put("/api/settings", authenticateToken, (req: any, res) => {
     try {
       const updates = req.body;

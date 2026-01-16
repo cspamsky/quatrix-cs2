@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -7,6 +7,7 @@ import { Readable } from 'stream';
 import db from './db.js';
 import AdmZip from 'adm-zip';
 import { pluginRegistry, type PluginId } from './config/plugins.js';
+import si from 'systeminformation';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1111,6 +1112,70 @@ class ServerManager {
         const hasSimpleAdmin = fs.existsSync(simpleAdminDir);
 
         return { metamod: hasMetamod, cssharp: hasCssharp, matchzy: hasMatchZy, simpleadmin: hasSimpleAdmin };
+    }
+
+    async getSystemHealth(): Promise<any> {
+        const result: any = {
+            os: { platform: process.platform, arch: process.arch },
+            cpu: { avx: false, model: '', cores: 0 },
+            ram: { total: 0, free: 0, status: 'unknown' },
+            disk: { total: 0, free: 0, status: 'unknown' },
+            runtimes: {
+                dotnet: { status: 'missing', versions: [] as string[] },
+                vcruntime: { status: 'missing' }
+            }
+        };
+
+        try {
+            // CPU & AVX
+            const cpu = await si.cpu();
+            result.cpu.model = cpu.brand;
+            result.cpu.cores = cpu.cores;
+            result.cpu.avx = cpu.flags.toLowerCase().includes('avx');
+
+            // RAM
+            const mem = await si.mem();
+            result.ram.total = mem.total;
+            result.ram.free = mem.free;
+            result.ram.status = (mem.total / 1024 / 1024 / 1024) >= 8 ? 'good' : 'warning';
+
+            // Disk for the install dir
+            const disk = await si.fsSize();
+            const root = disk.find(d => this.installDir.startsWith(d.mount)) || disk[0];
+            if (root) {
+                result.disk.total = root.size;
+                result.disk.free = root.available;
+                result.disk.status = (root.available / 1024 / 1024 / 1024) >= 40 ? 'good' : 'warning';
+            }
+
+            // Dotnet Runtimes
+            await new Promise<void>((resolve) => {
+                exec('dotnet --list-runtimes', (error, stdout) => {
+                    if (!error && stdout) {
+                        result.runtimes.dotnet.versions = stdout.split('\n').filter(l => l.trim());
+                        const hasNet8 = stdout.includes('Microsoft.NETCore.App 8') || stdout.includes('Microsoft.AspNetCore.App 8');
+                        result.runtimes.dotnet.status = hasNet8 ? 'good' : 'warning';
+                    } else {
+                        result.runtimes.dotnet.status = 'missing';
+                    }
+                    resolve();
+                });
+            });
+
+            // VC++ Redist (Simple DLL check for Windows)
+            if (process.platform === 'win32') {
+                const sys32 = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32');
+                const hasVc = fs.existsSync(path.join(sys32, 'vcruntime140.dll'));
+                result.runtimes.vcruntime.status = hasVc ? 'good' : 'missing';
+            } else {
+                result.runtimes.vcruntime.status = 'skipped';
+            }
+
+        } catch (error) {
+            console.error("System health check error:", error);
+        }
+
+        return result;
     }
 }
 
