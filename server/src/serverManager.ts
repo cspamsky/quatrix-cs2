@@ -201,8 +201,8 @@ class ServerManager {
         return pluginManager.getPluginStatus(this.installDir, instanceId);
     }
 
-    async checkPluginUpdate(pluginId: PluginId) {
-        return pluginManager.checkPluginUpdate(pluginId);
+    async checkPluginUpdate(instanceId: string | number, pluginId: PluginId) {
+        return pluginManager.checkPluginUpdate(instanceId, pluginId);
     }
 
     async installPlugin(instanceId: string | number, pluginId: PluginId) {
@@ -232,7 +232,10 @@ class ServerManager {
             cpu: { avx: false, model: '', cores: 0 },
             ram: { total: 0, free: 0, status: 'unknown' },
             disk: { total: 0, free: 0, status: 'unknown' },
-            runtimes: { dotnet: { status: 'missing', versions: [] }, vcruntime: { status: 'missing' } }
+            runtimes: { 
+                dotnet: { status: 'missing', versions: [], details: [] }, 
+                vcruntime: { status: 'missing', missingFiles: [] } 
+            }
         };
         try {
             const cpu = await si.cpu();
@@ -251,17 +254,160 @@ class ServerManager {
                 result.disk.status = (root.available / 1024 / 1024 / 1024) >= 40 ? 'good' : 'warning';
             }
 
+            // Enhanced .NET 8.0 check
             await new Promise<void>(res => {
                 exec('dotnet --list-runtimes', (err, out) => {
-                    if (!err && out) result.runtimes.dotnet.status = out.includes('8.0') ? 'good' : 'warning';
+                    if (!err && out) {
+                        const lines = out.split('\n').filter(l => l.trim());
+                        result.runtimes.dotnet.details = lines;
+                        
+                        // Check for .NET 8.0 specifically
+                        const has80 = lines.some(l => l.includes('Microsoft.NETCore.App 8.0'));
+                        result.runtimes.dotnet.status = has80 ? 'good' : 'missing';
+                        
+                        if (has80) {
+                            result.runtimes.dotnet.versions = lines
+                                .filter(l => l.includes('8.0'))
+                                .map(l => l.trim());
+                        }
+                    }
                     res();
                 });
             });
+
+            // Enhanced VC++ Runtime check (Windows only)
             if (this.isWindows) {
-                result.runtimes.vcruntime.status = fs.existsSync(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'vcruntime140.dll')) ? 'good' : 'missing';
+                const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+                const system32 = path.join(systemRoot, 'System32');
+                
+                // Critical VC++ 2015-2022 Redistributable DLLs
+                const criticalDlls = [
+                    'vcruntime140.dll',      // Main VC++ Runtime
+                    'vcruntime140_1.dll',    // Additional VC++ Runtime (x64)
+                    'msvcp140.dll',          // C++ Standard Library
+                    'concrt140.dll',         // Concurrency Runtime
+                    'vccorlib140.dll'        // Core Library
+                ];
+
+                const missingDlls: string[] = [];
+                let allPresent = true;
+
+                for (const dll of criticalDlls) {
+                    const dllPath = path.join(system32, dll);
+                    if (!fs.existsSync(dllPath)) {
+                        missingDlls.push(dll);
+                        allPresent = false;
+                    }
+                }
+
+                result.runtimes.vcruntime.status = allPresent ? 'good' : 'missing';
+                result.runtimes.vcruntime.missingFiles = missingDlls;
+                
+                // Additional check: Verify DLL versions (optional but helpful)
+                if (allPresent) {
+                    try {
+                        // Check if VC++ is registered in Windows (via WMI)
+                        await new Promise<void>((resolve) => {
+                            exec('powershell -Command "Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like \'*Visual C++*Redistributable*2015-2022*\' } | Select-Object -First 1 | Select-Object Name, Version"',
+                                { timeout: 5000 },
+                                (err, stdout) => {
+                                    if (!err && stdout && stdout.trim()) {
+                                        result.runtimes.vcruntime.installed = stdout.trim();
+                                    }
+                                    resolve();
+                                }
+                            );
+                        });
+                    } catch (e) {
+                        // WMI check failed, but files exist so we're probably OK
+                    }
+                }
             }
         } catch (e) {}
         return result;
+    }
+
+    async repairSystemHealth(): Promise<{ success: boolean; message: string; details: any }> {
+        const details: any = { dotnet: null, vcruntime: null };
+        
+        try {
+            // Check .NET 8.0 Runtime
+            const dotnetCheck = await new Promise<boolean>((resolve) => {
+                exec('dotnet --list-runtimes', (err, out) => {
+                    resolve(!err && out.includes('8.0'));
+                });
+            });
+
+            if (!dotnetCheck) {
+                details.dotnet = { status: 'missing', action: 'download_required' };
+                return {
+                    success: false,
+                    message: '.NET 8.0 Runtime not found. Please download from: https://dotnet.microsoft.com/download/dotnet/8.0',
+                    details
+                };
+            } else {
+                details.dotnet = { status: 'ok' };
+            }
+
+            // Windows-specific: Check and repair VC++ Redistributable
+            if (this.isWindows) {
+                const vcRuntimePath = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'vcruntime140.dll');
+                
+                if (!fs.existsSync(vcRuntimePath)) {
+                    details.vcruntime = { status: 'missing', action: 'attempting_repair' };
+                    
+                    // Try to repair using Windows system tools
+                    const repairResult = await new Promise<{ success: boolean; output: string }>((resolve) => {
+                        // Check if VC++ Redist installer exists in common locations
+                        const possiblePaths = [
+                            'C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Redist\\MSVC\\*\\vc_redist.x64.exe',
+                            'C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Redist\\MSVC\\*\\vc_redist.x64.exe'
+                        ];
+
+                        exec('powershell -Command "Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like \'*Visual C++*Redistributable*\' } | Select-Object -First 1 | ForEach-Object { $_.Repair() }"', 
+                            { timeout: 60000 }, 
+                            (err, stdout, stderr) => {
+                                if (err) {
+                                    resolve({ success: false, output: stderr || err.message });
+                                } else {
+                                    resolve({ success: true, output: stdout });
+                                }
+                            }
+                        );
+                    });
+
+                    if (repairResult.success) {
+                        details.vcruntime = { status: 'repaired', output: repairResult.output };
+                        return {
+                            success: true,
+                            message: 'Visual C++ Redistributable repaired successfully. Please restart the application.',
+                            details
+                        };
+                    } else {
+                        details.vcruntime = { status: 'repair_failed', error: repairResult.output };
+                        return {
+                            success: false,
+                            message: 'Visual C++ Redistributable repair failed. Please download and install manually from: https://aka.ms/vs/17/release/vc_redist.x64.exe',
+                            details
+                        };
+                    }
+                } else {
+                    details.vcruntime = { status: 'ok' };
+                }
+            }
+
+            return {
+                success: true,
+                message: 'All system dependencies are healthy.',
+                details
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                message: `System health repair failed: ${error.message}`,
+                details
+            };
+        }
     }
 }
 

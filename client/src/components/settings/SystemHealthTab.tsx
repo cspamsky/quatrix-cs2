@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { 
   Monitor, 
   RefreshCw, 
@@ -9,16 +9,31 @@ import {
   Terminal, 
   Smartphone, 
   Lock, 
-  AlertTriangle 
+  AlertTriangle,
+  Wrench
 } from 'lucide-react'
 
 interface SystemHealthTabProps {
   healthData: any
   healthLoading: boolean
   onRefresh: () => void
+  onRepair: () => Promise<{ success: boolean; message: string }>
 }
 
-const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoading, onRefresh }) => {
+const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoading, onRefresh, onRepair }) => {
+  const [repairLoading, setRepairLoading] = useState(false);
+  
+  const handleRepair = async () => {
+    setRepairLoading(true);
+    try {
+      await onRepair();
+    } finally {
+      setRepairLoading(false);
+    }
+  };
+
+  const hasIssues = healthData?.runtimes?.dotnet?.status !== 'good' || healthData?.runtimes?.vcruntime?.status !== 'good';
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="flex items-center justify-between mb-8">
@@ -29,14 +44,26 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
             <p className="text-xs text-gray-500 mt-0.5">Verify your server meets all requirements for CS2 and plugins.</p>
           </div>
         </div>
-        <button 
-          onClick={onRefresh}
-          disabled={healthLoading}
-          className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-white transition-colors"
-        >
-          <RefreshCw size={14} className={healthLoading ? 'animate-spin' : ''} />
-          Refresh Check
-        </button>
+        <div className="flex items-center gap-3">
+          {hasIssues && (
+            <button 
+              onClick={handleRepair}
+              disabled={repairLoading || healthLoading}
+              className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-primary/20"
+            >
+              <Wrench size={14} className={repairLoading ? 'animate-spin' : ''} />
+              {repairLoading ? 'Repairing...' : 'Repair System'}
+            </button>
+          )}
+          <button 
+            onClick={onRefresh}
+            disabled={healthLoading}
+            className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-white transition-colors"
+          >
+            <RefreshCw size={14} className={healthLoading ? 'animate-spin' : ''} />
+            Refresh Check
+          </button>
+        </div>
       </div>
 
       {healthLoading && !healthData ? (

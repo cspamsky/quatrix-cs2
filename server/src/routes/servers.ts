@@ -126,4 +126,18 @@ router.post("/", createServerLimiter, (req: any, res) => {
   }
 });
 
+// POST /api/servers/health/repair
+router.post("/health/repair", async (req: any, res) => {
+  try {
+    const result = await serverManager.repairSystemHealth();
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      message: "System health repair failed", 
+      details: { error: error.message } 
+    });
+  }
+});
+
 export default router;

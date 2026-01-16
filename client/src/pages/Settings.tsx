@@ -54,6 +54,27 @@ const Settings = () => {
     }
   }
 
+  const repairSystemHealth = async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      const response = await apiFetch('/api/servers/health/repair', { method: 'POST' });
+      const result = await response.json();
+      
+      if (result.success) {
+        showNotification('success', 'System Repaired', result.message);
+        // Refresh health data after repair
+        await fetchHealth();
+      } else {
+        showNotification('error', 'Repair Failed', result.message);
+      }
+      
+      return result;
+    } catch (error: any) {
+      const errorMsg = 'Failed to repair system health';
+      showNotification('error', 'Repair Error', errorMsg);
+      return { success: false, message: errorMsg };
+    }
+  }
+
   const fetchSettings = async () => {
     try {
       const response = await apiFetch('/api/settings')
@@ -162,7 +183,8 @@ const Settings = () => {
             <SystemHealthTab 
               healthData={healthData} 
               healthLoading={healthLoading} 
-              onRefresh={fetchHealth} 
+              onRefresh={fetchHealth}
+              onRepair={repairSystemHealth}
             />
           )}
 
