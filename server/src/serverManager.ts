@@ -13,6 +13,7 @@ const __dirname = path.dirname(__filename);
 
 class ServerManager {
     private runningServers: Map<string, any> = new Map();
+    private logBuffers: Map<string, string[]> = new Map();
     private rconConnections: Map<string, any> = new Map();
     private installDir!: string;
     private steamCmdExe!: string;
@@ -119,11 +120,17 @@ class ServerManager {
 
         const serverProcess = spawn(cs2Exe, args, { cwd: serverPath, env: { ...process.env, SteamAppId: '730' } });
 
+        this.logBuffers.set(id, []);
+
         serverProcess.stdout.on('data', (data) => {
             const line = data.toString().trim();
             if (line && !line.includes('CTextConsoleWin')) {
                 if (onLog) onLog(line);
-                console.log(`[CS2 ${id}]: ${line}`);
+                
+                const buffer = this.logBuffers.get(id) || [];
+                buffer.push(line);
+                if (buffer.length > 100) buffer.shift();
+                this.logBuffers.set(id, buffer);
             }
         });
 
@@ -199,6 +206,7 @@ class ServerManager {
     }
 
     isServerRunning(id: string | number) { return this.runningServers.has(id.toString()); }
+    getLogs(id: string | number) { return this.logBuffers.get(id.toString()) || []; }
     getInstallDir() { return this.installDir; }
     getSteamCmdDir() { return path.dirname(this.steamCmdExe); }
     

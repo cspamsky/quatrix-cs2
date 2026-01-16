@@ -59,6 +59,16 @@ router.get("/:id", (req: any, res) => {
   }
 });
 
+// GET /api/servers/:id/logs
+router.get("/:id/logs", (req: any, res) => {
+  try {
+    const logs = serverManager.getLogs(req.params.id);
+    res.json(logs);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch logs" });
+  }
+});
+
 // DELETE /api/servers/:id
 router.delete("/:id", async (req: any, res) => {
   try {
@@ -109,13 +119,13 @@ router.post("/", createServerLimiter, (req: any, res) => {
   try {
     const result = createServerSchema.safeParse(req.body);
     if (!result.success) {
-      return res.status(400).json({ message: result.error.issues[0].message });
+      return res.status(400).json({ message: result.error.issues[0]?.message || "Validation failed" });
     }
 
     const { name, port, rcon_password, map, max_players, password, gslt_token, steam_api_key, vac_enabled } = result.data;
     
-    const count = db.prepare("SELECT count(*) as count FROM servers WHERE port = ?").get(port) as { count: number };
-    if (count.count > 0) {
+    const result_count = db.prepare("SELECT count(*) as count FROM servers WHERE port = ?").get(port) as { count: number } | undefined;
+    if (result_count && result_count.count > 0) {
       return res.status(400).json({ message: "Port is already in use" });
     }
 

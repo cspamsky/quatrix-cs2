@@ -120,16 +120,16 @@ const Console = () => {
       }
 
       setLogs((prev) => {
-        const isProgress =
-          message.includes("Update state") && message.includes("progress:");
+        const isProgress = message.includes("Update state") && message.includes("progress:");
+        const isFrameWarning = message.includes("UNEXPECTED LONG FRAME DETECTED") || message.includes("Long frame");
+        
         const lastLog = prev[prev.length - 1];
-        const wasProgress =
-          lastLog?.message.includes("Update state") &&
-          lastLog?.message.includes("progress:");
+        const wasProgress = lastLog?.message.includes("Update state") && lastLog?.message.includes("progress:");
+        const wasFrameWarning = lastLog?.message.includes("UNEXPECTED LONG FRAME DETECTED") || lastLog?.message.includes("Long frame");
 
         let newLogs;
-        if (isProgress && wasProgress) {
-          // Replace last log if both are progress updates (keep the same ID for smooth update)
+        if ((isProgress && wasProgress) || (isFrameWarning && wasFrameWarning)) {
+          // Replace last log to avoid flooding (Progress or Frame Warnings)
           newLogs = [
             ...prev.slice(0, -1),
             { id: lastLog.id, timestamp, type, message },
