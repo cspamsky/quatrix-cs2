@@ -2,7 +2,6 @@ import express from "express";
 import { createServer } from "http";
 import { Server, type Socket } from "socket.io";
 import cors from "cors";
-import dotenv from "dotenv";
 import si from "systeminformation";
 import db from "./db.js";
 import { serverManager } from "./serverManager.js";
@@ -16,7 +15,7 @@ import configRouter from "./routes/config.js";
 import filesRouter from "./routes/files.js";
 import pluginsRouter from "./routes/plugins.js";
 
-dotenv.config();
+// Environment variables are loaded via --env-file in package.json dev script
 
 const app = express();
 const httpServer = createServer(app);
@@ -101,18 +100,27 @@ setInterval(async () => {
 
 // 3. System Initialization
 serverManager.ensureSteamCMD().then(success => {
-    console.log(success ? "🚀 System Ready: SteamCMD is active." : "⚠️ Warning: SteamCMD not found.");
+    if (success) {
+        console.log("\x1b[32m[SYSTEM]\x1b[0m SteamCMD is \x1b[1mactive\x1b[0m");
+    } else {
+        console.log("\x1b[33m[WARNING]\x1b[0m SteamCMD not found. Installation may be required.");
+    }
 });
 
 // --- Server Lifecycle ---
 httpServer.on('error', (err: any) => {
-  if (err.code === 'EADDRINUSE') console.error(`❌ Port ${PORT} in use.`);
-  else console.error("❌ Server Error:", err);
+  if (err.code === 'EADDRINUSE') console.error(`\x1b[31m[ERROR]\x1b[0m Port ${PORT} is already in use.`);
+  else console.error("\x1b[31m[ERROR]\x1b[0m Server Error:", err);
   process.exit(1);
 });
 
 httpServer.listen(PORT, () => {
-  console.log(`🚀 Quatrix Backend refined and ready on port ${PORT}`);
+  console.log("\x1b[36m" + "=".repeat(50) + "\x1b[0m");
+  console.log("\x1b[1m\x1b[34m QUATRIX BACKEND \x1b[0m");
+  console.log("\x1b[36m" + "=".repeat(50) + "\x1b[0m");
+  console.log(`\x1b[32m[READY]\x1b[0m Running on port \x1b[1m${PORT}\x1b[0m`);
+  console.log(`\x1b[34m[INFO]\x1b[0m Environment: \x1b[35m${process.env.NODE_ENV || 'development'}\x1b[0m`);
+  console.log("\x1b[36m" + "=".repeat(50) + "\x1b[0m\n");
 });
 
 // Catch-all
