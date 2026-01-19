@@ -223,8 +223,22 @@ class ServerManager {
     }
 
     async deleteServerFiles(id: string | number) {
-        const serverDir = path.join(this.installDir, id.toString());
-        if (fs.existsSync(serverDir)) await fs.promises.rm(serverDir, { recursive: true, force: true });
+        const idStr = id.toString();
+        const serverDir = path.join(this.installDir, idStr);
+        
+        console.log(`[SYSTEM] Deleting physical files for instance ${idStr} at ${serverDir}`);
+        
+        if (fs.existsSync(serverDir)) {
+            try {
+                // First attempt
+                await fs.promises.rm(serverDir, { recursive: true, force: true });
+            } catch (err) {
+                // If it fails (e.g. process still exiting), wait 1s and retry
+                console.warn(`[SYSTEM] Delete failed, retrying in 1s...`, err);
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                await fs.promises.rm(serverDir, { recursive: true, force: true });
+            }
+        }
     }
 
     isServerRunning(id: string | number) { return this.runningServers.has(id.toString()); }

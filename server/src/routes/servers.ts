@@ -65,6 +65,9 @@ router.delete("/:id", async (req: any, res) => {
       await serverManager.stopServer(server.id);
     }
 
+    // Physically delete server folder
+    await serverManager.deleteServerFiles(server.id);
+
     db.prepare("DELETE FROM servers WHERE id = ?").run(req.params.id);
     res.json({ message: "Server deleted successfully" });
   } catch (error) {
