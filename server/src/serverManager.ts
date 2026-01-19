@@ -35,7 +35,8 @@ class ServerManager {
                 this.steamCmdExe = path.join(steamCmdPath, this.isWindows ? 'steamcmd.exe' : 'steamcmd.sh');
             }
         } else {
-            const steamCmdDir = path.resolve(process.cwd(), 'steamcmd');
+            // SteamCMD aslında server/data içinde duruyor
+            const steamCmdDir = path.resolve(__dirname, '../../server/data/steamcmd');
             this.steamCmdExe = path.join(steamCmdDir, this.isWindows ? 'steamcmd.exe' : 'steamcmd.sh');
         }
 
@@ -73,9 +74,18 @@ class ServerManager {
         if (!fs.existsSync(cs2Exe)) throw new Error(`CS2 binary not found at ${cs2Exe}`);
 
         if (this.isWindows) {
-            const sourceDll = path.join(path.dirname(this.steamCmdExe), 'steamclient64.dll');
+            const steamCmdDir = path.dirname(this.steamCmdExe);
+            const sourceDll = path.join(steamCmdDir, 'steamclient64.dll');
             const targetDll = path.join(binDir, 'steamclient64.dll');
-            if (fs.existsSync(sourceDll) && !fs.existsSync(targetDll)) fs.copyFileSync(sourceDll, targetDll);
+            
+            // DLL'i kopyala (Hata almamak için varlığını kontrol et)
+            if (fs.existsSync(sourceDll)) {
+                fs.copyFileSync(sourceDll, targetDll);
+                // Ek olarak 'steam' alt klasörü bazı sürümlerde gereklidir
+                const steamSubDir = path.join(binDir, 'steam');
+                if (!fs.existsSync(steamSubDir)) fs.mkdirSync(steamSubDir, { recursive: true });
+                fs.copyFileSync(sourceDll, path.join(steamSubDir, 'steamclient64.dll'));
+            }
         }
         fs.writeFileSync(path.join(binDir, 'steam_appid.txt'), '730');
 
@@ -100,7 +110,22 @@ class ServerManager {
         if (options.steam_api_key) args.push('-authkey', options.steam_api_key);
         if (options.name) args.push('+hostname', options.name);
 
-        const serverProcess = spawn(cs2Exe, args, { cwd: serverPath, env: { ...process.env, SteamAppId: '730' } });
+        // Sunucunun Steam kütüphanelerini bulabilmesi için PATH'i güncelle
+        const env: Record<string, string | undefined> = { 
+            ...process.env, 
+            SteamAppId: '730',
+            STEAM_APP_ID: '730'
+        };
+
+        if (this.isWindows) {
+            const steamCmdDir = path.dirname(this.steamCmdExe);
+            const currentPath = env.PATH || env.Path || "";
+            // Hem SteamCMD klasörünü hem sunucu bin klasörünü PATH'e ekle
+            env.PATH = `${steamCmdDir};${binDir};${currentPath}`;
+            env.Path = `${steamCmdDir};${binDir};${currentPath}`;
+        }
+
+        const serverProcess = spawn(cs2Exe, args, { cwd: serverPath, env });
 
         this.logBuffers.set(id, []);
 

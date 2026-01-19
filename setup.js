@@ -55,6 +55,16 @@ async function runSetup() {
         const install = (dir, name) => {
             log(C.magenta, "INSTALL", `Installing dependencies for ${C.bright}${name}${C.reset}...`);
             const targetDir = path.join(__dirname, dir);
+            
+            // Special cleanup for client (Vite cache)
+            if (dir === 'client') {
+                const viteCache = path.join(targetDir, 'node_modules', '.vite');
+                if (fs.existsSync(viteCache)) {
+                    log(C.yellow, "CLEAN", "Clearing Vite cache...");
+                    fs.rmSync(viteCache, { recursive: true, force: true });
+                }
+            }
+
             // check node_modules exists to skip if already installed for speed
             if (fs.existsSync(path.join(targetDir, 'node_modules'))) {
                 log(C.blue, "INFO", `${name} already has node_modules. Updating...`);
