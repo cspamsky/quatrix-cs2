@@ -31,7 +31,6 @@ export class PluginManager {
     private manifest: PluginManifest | null = null;
     private MANIFEST_PATH = path.resolve(__dirname, '../../../resources/plugins_manifest.json');
     private lastSync = 0;
-    private isWindows = process.platform === 'win32';
 
     async syncRegistry(): Promise<void> {
         if (this.manifest && Date.now() - this.lastSync < 30000) return; 

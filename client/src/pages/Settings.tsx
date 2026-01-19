@@ -98,9 +98,14 @@ const Settings = () => {
       if (response.ok) {
         showNotification('success', 'Settings updated successfully!')
         setEngineMessage({ type: 'success', text: 'Cloud Engine settings saved.' })
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setEngineMessage({ type: 'error', text: errorData.message || 'Server error while saving settings.' })
+        showNotification('error', 'Update Failed', errorData.message || 'Server error')
       }
     } catch (error) {
-      setEngineMessage({ type: 'error', text: 'Failed to save settings.' })
+      setEngineMessage({ type: 'error', text: 'Connection error while saving settings.' })
+      showNotification('error', 'Connection Error', 'Could not reach the server.')
     } finally {
       setEngineLoading(false)
     }

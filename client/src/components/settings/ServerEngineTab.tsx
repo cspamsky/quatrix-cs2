@@ -67,13 +67,13 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
                 <input 
                   className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-700 text-sm" 
                   type="text" 
-                  placeholder="C:\steamcmd\steamcmd.exe"
+                  placeholder="/home/user/quatrix/server/data/steamcmd/steamcmd.sh"
                   value={steamCmdPath}
                   onChange={(e) => setSteamCmdPath(e.target.value)}
                 />
               </div>
               <p className="text-[10px] text-gray-600 mt-2 leading-relaxed">
-                Absolute path to your <b>steamcmd.exe</b>. If you don't have it, click 'Download Online'.
+                Absolute path to your <b>steamcmd.sh</b>. If you don't have it, click 'Download Online'.
               </p>
             </div>
 
@@ -86,7 +86,7 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
                 <input 
                   className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-700 text-sm" 
                   type="text" 
-                  placeholder="D:\CS2_Servers"
+                  placeholder="/home/user/quatrix/instances"
                   value={installDir}
                   onChange={(e) => setInstallDir(e.target.value)}
                 />

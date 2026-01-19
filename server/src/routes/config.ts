@@ -63,9 +63,14 @@ router.put("/settings", (req: any, res) => {
         });
 
         transaction(updates);
+        
+        // Refresh manager settings to pick up changes
+        serverManager.refreshSettings();
+        
         res.json({ message: "Settings updated successfully" });
-    } catch (error) {
-        res.status(500).json({ message: "Failed to update settings" });
+    } catch (error: any) {
+        console.error("Settings update error:", error);
+        res.status(500).json({ message: "Failed to update settings", error: error.message });
     }
 });
 

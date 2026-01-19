@@ -123,7 +123,17 @@ httpServer.listen(Number(PORT), '0.0.0.0', () => {
   console.log("\x1b[36m" + "=".repeat(50) + "\x1b[0m\n");
 });
 
-// Catch-all
+// Catch-all 404
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.method} ${req.url} not found` });
+});
+
+// 4. Global Error Handler
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error("\x1b[31m[CRITICAL]\x1b[0m Uncaught Exception:", err);
+  res.status(500).json({ 
+    message: "Internal Server Error", 
+    error: err.message,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined 
+  });
 });

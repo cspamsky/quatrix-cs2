@@ -132,9 +132,9 @@ const initializeSetting = (key: string, defaultValue: string) => {
   }
 };
 
-const defaultDataDir = path.join(__dirname, '../data');
-initializeSetting('steamcmd_path', path.join(defaultDataDir, 'steamcmd/steamcmd.exe'));
-initializeSetting('install_dir', path.join(defaultDataDir, 'servers'));
+const defaultDataDir = path.resolve(__dirname, '../../server/data');
+initializeSetting('steamcmd_path', path.join(defaultDataDir, 'steamcmd/steamcmd.sh'));
+initializeSetting('install_dir', path.resolve(__dirname, '../../instances'));
 initializeSetting('auto_plugin_updates', 'false');
 
 // Create server_plugins table to track installed versions
