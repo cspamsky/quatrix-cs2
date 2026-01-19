@@ -8,7 +8,6 @@ import {
   FolderOpen, 
   Terminal, 
   Smartphone, 
-  Lock, 
   AlertTriangle,
   Wrench
 } from 'lucide-react'
@@ -32,7 +31,7 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
     }
   };
 
-  const hasIssues = healthData?.runtimes?.dotnet?.status !== 'good' || healthData?.runtimes?.vcruntime?.status !== 'good';
+  const hasIssues = healthData?.runtimes?.dotnet?.status !== 'good';
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -161,7 +160,7 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
                   <div className="flex items-center gap-3">
                     {healthData?.runtimes?.dotnet?.status !== 'good' && (
                       <a 
-                        href="https://dotnet.microsoft.com/en-us/download/dotnet/8.0" 
+                        href="https://learn.microsoft.com/en-us/dotnet/core/install/linux" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-[10px] font-black text-primary hover:underline uppercase tracking-widest"
@@ -183,38 +182,29 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
                 )}
               </div>
 
-              <div className={`flex items-center justify-between p-4 rounded-xl border ${healthData?.runtimes?.vcruntime?.status === 'good' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${healthData?.runtimes?.vcruntime?.status === 'good' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
-                    <Lock size={16} />
+              <div className={`p-4 rounded-xl border ${healthData?.runtimes?.steam_sdk?.status === 'good' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${healthData?.runtimes?.steam_sdk?.status === 'good' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                      <Activity size={16} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">Steam SDK (steamclient.so)</p>
+                      <p className="text-[10px] text-gray-500">Required for server initialization</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-white">Visual C++ Redistributable</p>
-                    <p className="text-[10px] text-gray-500">vcruntime140.dll check</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  {healthData?.runtimes?.vcruntime?.status !== 'good' && (
-                    <a 
-                      href="https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-[10px] font-black text-primary hover:underline uppercase tracking-widest"
-                    >
-                      Download
-                    </a>
-                  )}
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${healthData?.runtimes?.vcruntime?.status === 'good' ? 'text-green-500' : 'text-red-500'}`}>
-                    {healthData?.runtimes?.vcruntime?.status === 'good' ? 'Installed' : 'Missing'}
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${healthData?.runtimes?.steam_sdk?.status === 'good' ? 'text-green-500' : 'text-red-500'}`}>
+                    {healthData?.runtimes?.steam_sdk?.status === 'good' ? 'Ready' : 'Missing'}
                   </span>
                 </div>
               </div>
+
 
               <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
                 <div className="flex gap-3">
                   <AlertTriangle className="text-primary shrink-0" size={16} />
                   <p className="text-[10px] text-gray-400 leading-relaxed">
-                    If any items are <span className="text-red-500">Missing</span>, the CS2 server or certain plugins may fail to load. Please install the required packages from the Microsoft website and restart the panel.
+                    If any items are <span className="text-red-500">Missing</span>, the CS2 server or certain plugins may fail to load. Please ensure the required runtimes (.NET 8.0/32-bit libs) are installed on your Linux system.
                   </p>
                 </div>
               </div>

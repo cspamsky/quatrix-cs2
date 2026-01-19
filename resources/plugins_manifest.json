@@ -1,22 +1,22 @@
 {
     "metamod": {
         "name": "Metamod:Source",
-        "version": "2.0-git1380",
-        "downloadUrl": "https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1380-windows.zip",
+        "version": "2.0-git1382",
+        "downloadUrl": "https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1382-linux.tar.gz",
         "category": "core",
         "description": "Base framework for all server mods"
     },
     "cssharp": {
         "name": "CounterStrikeSharp",
         "version": "v1.0.355",
-        "downloadUrl": "https://github.com/roflmuffin/CounterStrikeSharp/releases/latest/download/counterstrikesharp-with-runtime-windows-1.0.355.zip",
+        "downloadUrl": "https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.355/counterstrikesharp-with-runtime-linux-1.0.355.zip",
         "category": "core",
         "description": "C# scripting platform for CS2"
     },
     "cs2fixes": {
         "name": "CS2Fixes",
         "version": "v1.17",
-        "downloadUrl": "https://github.com/Source2ZE/CS2Fixes/releases/latest/download/CS2Fixes-v1.17-windows.zip",
+        "downloadUrl": "https://github.com/Source2ZE/CS2Fixes/releases/latest/download/CS2Fixes-v1.17-linux.tar.gz",
         "category": "metamod",
         "description": "Essential fixes and performance improvements",
         "folderName": "cs2fixes"
@@ -24,7 +24,7 @@
     "playerfix": {
         "name": "ServerListPlayersFix",
         "version": "v1.0.5",
-        "downloadUrl": "https://github.com/Source2ZE/ServerListPlayersFix/releases/latest/download/ServerListPlayersFix-v1.0.5-windows.zip",
+        "downloadUrl": "https://github.com/Source2ZE/ServerListPlayersFix/releases/latest/download/ServerListPlayersFix-v1.0.5-linux.tar.gz",
         "category": "metamod",
         "description": "Fixes players count in server browser",
         "folderName": "serverlistplayersfix_mm"
@@ -32,7 +32,7 @@
     "movelock": {
         "name": "MovementUnlocker",
         "version": "v1.9",
-        "downloadUrl": "https://github.com/Source2ZE/MovementUnlocker/releases/latest/download/MovementUnlocker-v1.9-windows.zip",
+        "downloadUrl": "https://github.com/Source2ZE/MovementUnlocker/releases/latest/download/MovementUnlocker-v1.9-linux.tar.gz",
         "category": "metamod",
         "description": "Removes max speed limitation (BHOP/Surf)",
         "folderName": "MovementUnlocker"
@@ -40,7 +40,7 @@
     "addonmanager": {
         "name": "MultiAddonManager",
         "version": "v1.4.8",
-        "downloadUrl": "https://github.com/Source2ZE/MultiAddonManager/releases/latest/download/MultiAddonManager-v1.4.8-windows.zip",
+        "downloadUrl": "https://github.com/Source2ZE/MultiAddonManager/releases/latest/download/MultiAddonManager-v1.4.8-linux.tar.gz",
         "category": "metamod",
         "description": "Manage multiple workshop addons",
         "folderName": "multiaddonmanager"

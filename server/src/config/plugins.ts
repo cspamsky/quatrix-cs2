@@ -11,7 +11,7 @@ export const pluginRegistry = {
         name: 'CounterStrikeSharp',
         currentVersion: 'v1.0.355',
         githubRepo: 'roflmuffin/CounterStrikeSharp',
-        assetNamePattern: 'counterstrikesharp-with-runtime-linux-{version_clean}.tar.gz',
+        assetNamePattern: 'counterstrikesharp-with-runtime-linux-{version_clean}.zip',
         category: 'core'
     },
     // MetaMod Plugins

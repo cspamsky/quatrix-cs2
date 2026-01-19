@@ -109,9 +109,31 @@ class ServerManager {
             DOTNET_BUNDLE_EXTRACT_BASE_DIR: path.join(serverPath, '.net_cache')
         };
 
-        // Ensure net_cache exists for .NET
-        const netCache = path.join(serverPath, '.net_cache');
-        if (!fs.existsSync(netCache)) fs.mkdirSync(netCache, { recursive: true });
+        // Ensure Steam SDK directory exists for initialization
+        // CS2 Linux often requires steamclient.so in ~/.steam/sdk64/
+        try {
+            const homeDir = process.env.HOME || '/root';
+            const sdkDir = path.join(homeDir, '.steam/sdk64');
+            const targetLink = path.join(sdkDir, 'steamclient.so');
+            const steamCmdDir = path.dirname(this.steamCmdExe);
+            const sourceSo = path.join(steamCmdDir, 'linux64/steamclient.so');
+
+            if (!fs.existsSync(sdkDir)) {
+                fs.mkdirSync(sdkDir, { recursive: true });
+            }
+
+            if (!fs.existsSync(targetLink) && fs.existsSync(sourceSo)) {
+                console.log(`[SYSTEM] Creating Steam SDK symlink: ${sourceSo} -> ${targetLink}`);
+                // Use symlink if possible, or copy if not
+                try {
+                    fs.symlinkSync(sourceSo, targetLink);
+                } catch (e) {
+                    fs.copyFileSync(sourceSo, targetLink);
+                }
+            }
+        } catch (err) {
+            console.warn(`[SYSTEM] Potential non-fatal SDK setup issue:`, err);
+        }
 
         console.log(`[SERVER] Starting Linux CS2 instance: ${id}`);
         const serverProcess = spawn(cs2Exe, args, { 
@@ -262,8 +284,8 @@ class ServerManager {
             ram: { total: 0, free: 0, status: 'unknown' },
             disk: { total: 0, free: 0, status: 'unknown' },
             runtimes: { 
-                dotnet: { status: 'missing', versions: [], details: [] }, 
-                vcruntime: { status: 'missing', missingFiles: [] } 
+                dotnet: { status: 'missing', versions: [], details: [] },
+                steam_sdk: { status: 'missing' }
             }
         };
         try {
@@ -304,7 +326,10 @@ class ServerManager {
                 });
             });
 
-            // Removed VC++ Runtime check as it's Windows specific
+            // Steam SDK check
+            const homeDir = process.env.HOME || '/root';
+            const sdkSo = path.join(homeDir, '.steam/sdk64/steamclient.so');
+            result.runtimes.steam_sdk.status = fs.existsSync(sdkSo) ? 'good' : 'missing';
         } catch (e) {}
         return result;
     }
@@ -331,10 +356,34 @@ class ServerManager {
                 details.dotnet = { status: 'ok' };
             }
 
-            // Removed Windows VC++ repair logic
+            // Check and Repair Steam SDK
+            const homeDir = process.env.HOME || '/root';
+            const sdkDir = path.join(homeDir, '.steam/sdk64');
+            const targetLink = path.join(sdkDir, 'steamclient.so');
+            
+            if (!fs.existsSync(targetLink)) {
+                console.log(`[REPAIR] Fixing Steam SDK...`);
+                const steamCmdDir = path.dirname(this.steamCmdExe);
+                const sourceSo = path.join(steamCmdDir, 'linux64/steamclient.so');
+                
+                if (fs.existsSync(sourceSo)) {
+                    if (!fs.existsSync(sdkDir)) fs.mkdirSync(sdkDir, { recursive: true });
+                    try {
+                        fs.symlinkSync(sourceSo, targetLink);
+                    } catch (e) {
+                        fs.copyFileSync(sourceSo, targetLink);
+                    }
+                    details.steam_sdk = { status: 'repaired' };
+                } else {
+                    details.steam_sdk = { status: 'failed', reason: 'Source steamclient.so not found. Is SteamCMD installed?' };
+                }
+            } else {
+                details.steam_sdk = { status: 'ok' };
+            }
+
             return {
                 success: true,
-                message: 'All system dependencies are healthy.',
+                message: 'System dependencies have been checked and repaired where possible.',
                 details
             };
         } catch (error: any) {
