@@ -114,7 +114,7 @@ httpServer.on('error', (err: any) => {
   process.exit(1);
 });
 
-httpServer.listen(PORT, () => {
+httpServer.listen(Number(PORT), '0.0.0.0', () => {
   console.log("\x1b[36m" + "=".repeat(50) + "\x1b[0m");
   console.log("\x1b[1m\x1b[34m QUATRIX BACKEND \x1b[0m");
   console.log("\x1b[36m" + "=".repeat(50) + "\x1b[0m");
