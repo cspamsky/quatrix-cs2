@@ -111,27 +111,24 @@ export class PluginManager {
 
     async downloadAndExtract(url: string, targetDir: string, category: string = 'other', pluginName: string = 'unnamed_plugin'): Promise<void> {
         console.log(`[PLUGIN] Downloading: ${url}`);
-        const tempZip = path.join(targetDir, `temp_${Math.random().toString(36).substring(7)}.zip`);
+        const isTarGz = url.endsWith('.tar.gz');
+        const tempFile = path.join(targetDir, `temp_${Math.random().toString(36).substring(7)}${isTarGz ? '.tar.gz' : '.zip'}`);
         const tempExtractDir = path.join(targetDir, `temp_extract_${Math.random().toString(36).substring(7)}`);
         
         try {
             const response = await fetch(url);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             // @ts-ignore
-            await pipeline(Readable.fromWeb(response.body as any), fs.createWriteStream(tempZip));
+            await pipeline(Readable.fromWeb(response.body as any), fs.createWriteStream(tempFile));
             
             fs.mkdirSync(tempExtractDir, { recursive: true });
-            const zip = new AdmZip(tempZip);
-            zip.extractAllTo(tempExtractDir, true);
-
-            // AUTO-UNBLOCK ON WINDOWS
-            if (this.isWindows) {
-                try {
-                    console.log(`[PLUGIN] Unblocking files in ${tempExtractDir}...`);
-                    await execAsync(`powershell.exe -Command "Get-ChildItem -Path '${tempExtractDir}' -Recurse | Unblock-File"`);
-                } catch (err) {
-                    console.warn(`[PLUGIN] Failed to unblock files:`, err);
-                }
+            
+            if (isTarGz) {
+                console.log(`[PLUGIN] Extracting .tar.gz using system tar...`);
+                await execAsync(`tar -xzf "${tempFile}" -C "${tempExtractDir}"`);
+            } else {
+                const zip = new AdmZip(tempFile);
+                zip.extractAllTo(tempExtractDir, true);
             }
             
             // Smart Extraction Logic
@@ -139,13 +136,10 @@ export class PluginManager {
             const hasGame = fs.existsSync(path.join(tempExtractDir, 'game'));
             
             if (hasGame) {
-                // Zip has 'game/csgo/addons/...' structure
                 this.copyRecursiveSync(tempExtractDir, path.dirname(path.dirname(targetDir))); 
             } else if (hasAddons) {
-                // Zip has 'addons/...' structure
                 this.copyRecursiveSync(tempExtractDir, targetDir);
             } else {
-                // Zip is just plugin files/folder
                 if (category === 'cssharp') {
                     const pluginDest = path.join(targetDir, 'addons', 'counterstrikesharp', 'plugins');
                     if (!fs.existsSync(pluginDest)) fs.mkdirSync(pluginDest, { recursive: true });
@@ -160,7 +154,6 @@ export class PluginManager {
                         this.copyRecursiveSync(tempExtractDir, dest);
                     }
                 } else if (category === 'metamod') {
-                    // Metamod plugins (non-core) should go to /addons/
                     const addonsDest = path.join(targetDir, 'addons');
                     if (!fs.existsSync(addonsDest)) fs.mkdirSync(addonsDest, { recursive: true });
                     this.copyRecursiveSync(tempExtractDir, addonsDest);
@@ -170,7 +163,7 @@ export class PluginManager {
             }
             console.log(`[PLUGIN] Smart extraction complete.`);
         } finally {
-            if (fs.existsSync(tempZip)) fs.unlinkSync(tempZip);
+            if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
             if (fs.existsSync(tempExtractDir)) fs.rmSync(tempExtractDir, { recursive: true, force: true });
         }
     }

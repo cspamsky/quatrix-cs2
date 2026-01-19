@@ -4,14 +4,14 @@ export const pluginRegistry = {
         name: 'Metamod:Source',
         currentVersion: '2.0-git1380',
         githubRepo: null,
-        downloadUrl: 'https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1380-windows.zip',
+        downloadUrl: 'https://mms.alliedmods.net/mmsdrop/2.0/mmsource-2.0.0-git1380-linux.tar.gz',
         category: 'core'
     },
     cssharp: {
         name: 'CounterStrikeSharp',
         currentVersion: 'v1.0.355',
         githubRepo: 'roflmuffin/CounterStrikeSharp',
-        assetNamePattern: 'counterstrikesharp-with-runtime-windows-{version_clean}.zip',
+        assetNamePattern: 'counterstrikesharp-with-runtime-linux-{version_clean}.tar.gz',
         category: 'core'
     },
     // MetaMod Plugins

@@ -17,7 +17,6 @@ class ServerManager {
     private rconConnections: Map<string, any> = new Map();
     private installDir!: string;
     private steamCmdExe!: string;
-    private isWindows = process.platform === 'win32';
 
     constructor() {
         this.refreshSettings(); 
@@ -29,15 +28,14 @@ class ServerManager {
         const steamCmdPath = this.getSetting('steamcmd_path');
         
         if (steamCmdPath) {
-            if (steamCmdPath.endsWith('.exe') || steamCmdPath.endsWith('.sh')) {
+            if (steamCmdPath.endsWith('.sh')) {
                 this.steamCmdExe = steamCmdPath;
             } else {
-                this.steamCmdExe = path.join(steamCmdPath, this.isWindows ? 'steamcmd.exe' : 'steamcmd.sh');
+                this.steamCmdExe = path.join(steamCmdPath, 'steamcmd.sh');
             }
         } else {
-            // SteamCMD aslında server/data içinde duruyor
             const steamCmdDir = path.resolve(__dirname, '../../server/data/steamcmd');
-            this.steamCmdExe = path.join(steamCmdDir, this.isWindows ? 'steamcmd.exe' : 'steamcmd.sh');
+            this.steamCmdExe = path.join(steamCmdDir, 'steamcmd.sh');
         }
 
         if (!fs.existsSync(this.installDir)) {
@@ -67,31 +65,21 @@ class ServerManager {
     async startServer(instanceId: string | number, options: any, onLog?: (data: string) => void) {
         const id = instanceId.toString();
         const serverPath = path.join(this.installDir, id);
-        const relativeBinPath = this.isWindows ? path.join('game', 'bin', 'win64', 'cs2.exe') : path.join('game', 'bin', 'linuxsteamrt64', 'cs2');
+        // CS2 Linux uses linuxsteamrt64 directory
+        const relativeBinPath = path.join('game', 'bin', 'linuxsteamrt64', 'cs2');
         const cs2Exe = path.join(serverPath, relativeBinPath);
         const binDir = path.dirname(cs2Exe);
 
         if (!fs.existsSync(cs2Exe)) throw new Error(`CS2 binary not found at ${cs2Exe}`);
 
-        if (this.isWindows) {
-            const steamCmdDir = path.dirname(this.steamCmdExe);
-            const sourceDll = path.join(steamCmdDir, 'steamclient64.dll');
-            const targetDll = path.join(binDir, 'steamclient64.dll');
-            
-            // DLL'i kopyala (Hata almamak için varlığını kontrol et)
-            if (fs.existsSync(sourceDll)) {
-                fs.copyFileSync(sourceDll, targetDll);
-                // Ek olarak 'steam' alt klasörü bazı sürümlerde gereklidir
-                const steamSubDir = path.join(binDir, 'steam');
-                if (!fs.existsSync(steamSubDir)) fs.mkdirSync(steamSubDir, { recursive: true });
-                fs.copyFileSync(sourceDll, path.join(steamSubDir, 'steamclient64.dll'));
-            }
-        }
+        // steam_appid.txt is required for initialization
         fs.writeFileSync(path.join(binDir, 'steam_appid.txt'), '730');
 
         const cfgDir = path.join(serverPath, 'game', 'csgo', 'cfg');
         if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
         const serverCfgPath = path.join(cfgDir, 'server.cfg');
+        
+        // Handle server.cfg generation for secrets
         let cfgContent = fs.existsSync(serverCfgPath) ? fs.readFileSync(serverCfgPath, 'utf8') : '';
         const updateLine = (c: string, k: string, v: string) => {
             const r = new RegExp(`^${k}\\s+.*$`, 'm');
@@ -103,29 +91,34 @@ class ServerManager {
 
         const args = [
             '-dedicated', '+map', options.map || 'de_dust2', '-port', options.port.toString(),
-            '-maxplayers', (options.max_players || 16).toString(), '-nosteamclient', '-noconsole', '+ip', '0.0.0.0'
+            '-maxplayers', (options.max_players || 16).toString(), '-nosteamclient', '+ip', '0.0.0.0'
         ];
         if (options.vac_enabled) args.push('+sv_lan', '0'); else args.push('-insecure', '+sv_lan', '1');
         if (options.gslt_token) args.push('+sv_setsteamaccount', options.gslt_token);
         if (options.steam_api_key) args.push('-authkey', options.steam_api_key);
         if (options.name) args.push('+hostname', options.name);
 
-        // Sunucunun Steam kütüphanelerini bulabilmesi için PATH'i güncelle
+        // Linux Environment Setup
         const env: Record<string, string | undefined> = { 
             ...process.env, 
             SteamAppId: '730',
-            STEAM_APP_ID: '730'
+            STEAM_APP_ID: '730',
+            // Dedicated server requires LD_LIBRARY_PATH on Linux to find steamclient.so
+            LD_LIBRARY_PATH: `${binDir}:${path.join(binDir, 'steam')}:.`,
+            // Stabilization for .NET on Linux if needed (rarely an issue compared to Windows)
+            DOTNET_BUNDLE_EXTRACT_BASE_DIR: path.join(serverPath, '.net_cache')
         };
 
-        if (this.isWindows) {
-            const steamCmdDir = path.dirname(this.steamCmdExe);
-            const currentPath = env.PATH || env.Path || "";
-            // Hem SteamCMD klasörünü hem sunucu bin klasörünü PATH'e ekle
-            env.PATH = `${steamCmdDir};${binDir};${currentPath}`;
-            env.Path = `${steamCmdDir};${binDir};${currentPath}`;
-        }
+        // Ensure net_cache exists for .NET
+        const netCache = path.join(serverPath, '.net_cache');
+        if (!fs.existsSync(netCache)) fs.mkdirSync(netCache, { recursive: true });
 
-        const serverProcess = spawn(cs2Exe, args, { cwd: serverPath, env });
+        console.log(`[SERVER] Starting Linux CS2 instance: ${id}`);
+        const serverProcess = spawn(cs2Exe, args, { 
+            cwd: serverPath, 
+            env,
+            shell: false 
+        });
 
         this.logBuffers.set(id, []);
 
@@ -300,54 +293,7 @@ class ServerManager {
                 });
             });
 
-            // Enhanced VC++ Runtime check (Windows only)
-            if (this.isWindows) {
-                const systemRoot = process.env.SystemRoot || 'C:\\Windows';
-                const system32 = path.join(systemRoot, 'System32');
-                
-                // Critical VC++ 2015-2022 Redistributable DLLs
-                const criticalDlls = [
-                    'vcruntime140.dll',      // Main VC++ Runtime
-                    'vcruntime140_1.dll',    // Additional VC++ Runtime (x64)
-                    'msvcp140.dll',          // C++ Standard Library
-                    'concrt140.dll',         // Concurrency Runtime
-                    'vccorlib140.dll'        // Core Library
-                ];
-
-                const missingDlls: string[] = [];
-                let allPresent = true;
-
-                for (const dll of criticalDlls) {
-                    const dllPath = path.join(system32, dll);
-                    if (!fs.existsSync(dllPath)) {
-                        missingDlls.push(dll);
-                        allPresent = false;
-                    }
-                }
-
-                result.runtimes.vcruntime.status = allPresent ? 'good' : 'missing';
-                result.runtimes.vcruntime.missingFiles = missingDlls;
-                
-                // Additional check: Verify DLL versions (optional but helpful)
-                if (allPresent) {
-                    try {
-                        // Check if VC++ is registered in Windows (via WMI)
-                        await new Promise<void>((resolve) => {
-                            exec('powershell -Command "Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like \'*Visual C++*Redistributable*2015-2022*\' } | Select-Object -First 1 | Select-Object Name, Version"',
-                                { timeout: 5000 },
-                                (err, stdout) => {
-                                    if (!err && stdout && stdout.trim()) {
-                                        result.runtimes.vcruntime.installed = stdout.trim();
-                                    }
-                                    resolve();
-                                }
-                            );
-                        });
-                    } catch (e) {
-                        // WMI check failed, but files exist so we're probably OK
-                    }
-                }
-            }
+            // Removed VC++ Runtime check as it's Windows specific
         } catch (e) {}
         return result;
     }
@@ -359,7 +305,7 @@ class ServerManager {
             // Check .NET 8.0 Runtime
             const dotnetCheck = await new Promise<boolean>((resolve) => {
                 exec('dotnet --list-runtimes', (err, out) => {
-                    resolve(!err && out.includes('8.0'));
+                    resolve(!!(!err && out && out.includes('8.0')));
                 });
             });
 
@@ -374,53 +320,7 @@ class ServerManager {
                 details.dotnet = { status: 'ok' };
             }
 
-            // Windows-specific: Check and repair VC++ Redistributable
-            if (this.isWindows) {
-                const vcRuntimePath = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'vcruntime140.dll');
-                
-                if (!fs.existsSync(vcRuntimePath)) {
-                    details.vcruntime = { status: 'missing', action: 'attempting_repair' };
-                    
-                    // Try to repair using Windows system tools
-                    const repairResult = await new Promise<{ success: boolean; output: string }>((resolve) => {
-                        // Check if VC++ Redist installer exists in common locations
-                        const possiblePaths = [
-                            'C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Redist\\MSVC\\*\\vc_redist.x64.exe',
-                            'C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Community\\VC\\Redist\\MSVC\\*\\vc_redist.x64.exe'
-                        ];
-
-                        exec('powershell -Command "Get-WmiObject -Class Win32_Product | Where-Object { $_.Name -like \'*Visual C++*Redistributable*\' } | Select-Object -First 1 | ForEach-Object { $_.Repair() }"', 
-                            { timeout: 60000 }, 
-                            (err, stdout, stderr) => {
-                                if (err) {
-                                    resolve({ success: false, output: stderr || err.message });
-                                } else {
-                                    resolve({ success: true, output: stdout });
-                                }
-                            }
-                        );
-                    });
-
-                    if (repairResult.success) {
-                        details.vcruntime = { status: 'repaired', output: repairResult.output };
-                        return {
-                            success: true,
-                            message: 'Visual C++ Redistributable repaired successfully. Please restart the application.',
-                            details
-                        };
-                    } else {
-                        details.vcruntime = { status: 'repair_failed', error: repairResult.output };
-                        return {
-                            success: false,
-                            message: 'Visual C++ Redistributable repair failed. Please download and install manually from: https://aka.ms/vs/17/release/vc_redist.x64.exe',
-                            details
-                        };
-                    }
-                } else {
-                    details.vcruntime = { status: 'ok' };
-                }
-            }
-
+            // Removed Windows VC++ repair logic
             return {
                 success: true,
                 message: 'All system dependencies are healthy.',

@@ -4,8 +4,6 @@ import fs from 'fs';
 import db from '../db.js';
 
 export class SteamManager {
-    private isWindows = process.platform === 'win32';
-
     async ensureSteamCMD(steamCmdExe: string): Promise<boolean> {
         return fs.existsSync(steamCmdExe);
     }
@@ -16,21 +14,24 @@ export class SteamManager {
             fs.mkdirSync(steamCmdDir, { recursive: true });
         }
 
-        const zipPath = path.join(steamCmdDir, 'steamcmd.zip');
-        const url = 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip';
+        const tarPath = path.join(steamCmdDir, 'steamcmd_linux.tar.gz');
+        const url = 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz';
 
-        console.log(`Downloading SteamCMD to ${steamCmdDir}`);
+        console.log(`Downloading Linux SteamCMD to ${steamCmdDir}`);
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to download SteamCMD: ${response.statusText}`);
         
         const arrayBuffer = await response.arrayBuffer();
-        fs.writeFileSync(zipPath, Buffer.from(arrayBuffer));
+        fs.writeFileSync(tarPath, Buffer.from(arrayBuffer));
 
-        const AdmZip = (await import('adm-zip')).default;
-        const zip = new AdmZip(zipPath);
-        zip.extractAllTo(steamCmdDir, true);
+        const { exec } = await import('child_process');
+        const { promisify } = await import('util');
+        const execAsync = promisify(exec);
 
-        fs.unlinkSync(zipPath);
+        console.log(`Extracting Linux SteamCMD...`);
+        await execAsync(`tar -xzf "${tarPath}" -C "${steamCmdDir}"`);
+
+        fs.unlinkSync(tarPath);
     }
 
     async installOrUpdateServer(instanceId: string | number, steamCmdExe: string, installDir: string, onLog?: (data: string) => void): Promise<void> {
