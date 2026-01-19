@@ -103,6 +103,9 @@ router.post("/settings/steamcmd/download", async (req: any, res) => {
         // Update DB
         db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run('steamcmd_path', steamPath);
         
+        // Refresh manager settings to pick up new path
+        serverManager.refreshSettings();
+
         // Simple validation or trigger download
         const success = await serverManager.ensureSteamCMD();
         if (success) {

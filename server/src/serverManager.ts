@@ -236,8 +236,19 @@ class ServerManager {
     }
 
     // --- Steam/Server Installation ---
+    // --- Steam/Server Installation ---
     async ensureSteamCMD() {
-        return steamManager.ensureSteamCMD(this.getSteamCmdDir());
+        const exists = await steamManager.ensureSteamCMD(this.steamCmdExe);
+        if (exists) return true;
+
+        try {
+            console.log(`[SYSTEM] SteamCMD missing at ${this.steamCmdExe}. Downloading...`);
+            await steamManager.downloadSteamCmd(this.steamCmdExe);
+            return true;
+        } catch (err) {
+            console.error(`[SYSTEM] Failed to download SteamCMD:`, err);
+            return false;
+        }
     }
 
     async installOrUpdateServer(id: string | number, onLog?: any) {
