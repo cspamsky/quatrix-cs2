@@ -8,15 +8,15 @@
     },
     "cssharp": {
         "name": "CounterStrikeSharp",
-        "version": "v1.0.355",
-        "downloadUrl": "https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.355/counterstrikesharp-with-runtime-linux-1.0.355.zip",
+        "version": "v1.0.356",
+        "downloadUrl": "https://github.com/roflmuffin/CounterStrikeSharp/releases/download/v1.0.356/counterstrikesharp-with-runtime-linux-1.0.356.zip",
         "category": "core",
         "description": "C# scripting platform for CS2"
     },
     "cs2fixes": {
         "name": "CS2Fixes",
         "version": "v1.17",
-        "downloadUrl": "https://github.com/Source2ZE/CS2Fixes/releases/latest/download/CS2Fixes-v1.17-linux.tar.gz",
+        "downloadUrl": "https://github.com/Source2ZE/CS2Fixes/releases/download/v1.17/CS2Fixes-v1.17-linux.tar.gz",
         "category": "metamod",
         "description": "Essential fixes and performance improvements",
         "folderName": "cs2fixes"
