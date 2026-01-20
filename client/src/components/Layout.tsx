@@ -46,6 +46,14 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0F172A] text-gray-100 font-display">
+      {/* Skip Navigation Link - Accessibility for keyboard users */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#1890ff] focus:text-white focus:rounded-lg focus:shadow-lg"
+      >
+        Skip to main content
+      </a>
+
       {/* Sidebar */}
       <aside className="w-60 bg-[#001529] text-gray-400 flex flex-col border-r border-gray-800 shrink-0">
         <div className="p-4 flex items-center gap-3">
@@ -56,20 +64,21 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
 
         
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="flex-1 px-4 space-y-1" aria-label="Main navigation">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path
             return (
               <Link
                 key={item.path}
                 to={item.path}
+                aria-current={isActive ? 'page' : undefined}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                   isActive 
                     ? 'bg-[#1890ff] text-white shadow-lg shadow-blue-500/20' 
                     : 'hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <item.icon size={20} />
+                <item.icon size={20} aria-hidden="true" />
                 <span className="font-medium">{item.label}</span>
               </Link>
             )
@@ -92,15 +101,16 @@ const Layout = ({ children }: LayoutProps) => {
               onClick={handleLogout} 
               className="text-gray-500 hover:text-red-400 transition-colors p-1.5 hover:bg-red-400/10 rounded-lg"
               title="Logout"
+              aria-label="Logout"
             >
-              <LogOut size={18} />
+              <LogOut size={18} aria-hidden="true" />
             </button>
           </div>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto">
+      <main id="main-content" className="flex-1 overflow-y-auto">
         {children}
       </main>
     </div>

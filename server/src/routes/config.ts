@@ -35,15 +35,19 @@ router.get("/settings", (req: any, res) => {
     }
 });
 
-// GET /api/stats - Global dashboard stats
+// GET /api/stats - Global dashboard stats (Optimized with SQL aggregation)
 router.get("/stats", (req: any, res) => {
     try {
-        const servers: any[] = db.prepare("SELECT status, current_players FROM servers WHERE user_id = ?").all(req.user.id);
-        const stats = {
-            totalServers: servers.length,
-            activeServers: servers.filter(s => s.status === 'ONLINE').length,
-            totalPlayers: servers.reduce((acc, s) => acc + (s.current_players || 0), 0)
-        };
+        // Single SQL query with aggregation - offloads work to SQLite engine
+        const stats = db.prepare(`
+            SELECT 
+                COUNT(*) as totalServers,
+                COALESCE(SUM(CASE WHEN status = 'ONLINE' THEN 1 ELSE 0 END), 0) as activeServers,
+                COALESCE(SUM(current_players), 0) as totalPlayers
+            FROM servers 
+            WHERE user_id = ?
+        `).get(req.user.id) as { totalServers: number; activeServers: number; totalPlayers: number };
+        
         res.json(stats);
     } catch (error) {
         res.status(500).json({ message: "Failed to fetch stats" });

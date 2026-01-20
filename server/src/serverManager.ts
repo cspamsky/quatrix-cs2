@@ -20,11 +20,17 @@ class ServerManager {
     private steamCmdExe!: string;
 
     constructor() {
-        this.refreshSettings(); 
+        // Async initialization - call init() after construction
+        this.installDir = '';
+        this.steamCmdExe = '';
+    }
+
+    async init() {
+        await this.refreshSettings();
         this.recoverOrphanedServers();
     }
 
-    refreshSettings() {
+    async refreshSettings() {
         this.installDir = this.getSetting('install_dir') || path.resolve(__dirname, '../../instances');
         const steamCmdPath = this.getSetting('steamcmd_path');
         
@@ -39,8 +45,11 @@ class ServerManager {
             this.steamCmdExe = path.join(steamCmdDir, 'steamcmd.sh');
         }
 
-        if (!fs.existsSync(this.installDir)) {
-            fs.mkdirSync(this.installDir, { recursive: true });
+        // Async mkdir
+        try {
+            await fs.promises.mkdir(this.installDir, { recursive: true });
+        } catch (error: any) {
+            if (error.code !== 'EEXIST') throw error;
         }
     }
 
@@ -52,13 +61,18 @@ class ServerManager {
     // --- Core Management ---
     recoverOrphanedServers() {
         const servers = db.prepare("SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'").all() as any[];
+        
+        // Prepare UPDATE statement once, outside the loop
+        const updateStmt = db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?");
+        
         for (const server of servers) {
             let isAlive = false;
             if (server.pid) {
                 try { process.kill(server.pid, 0); isAlive = true; } catch (e) { isAlive = false; }
             }
             if (!isAlive) {
-                db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(server.id);
+                // Reuse pre-compiled statement
+                updateStmt.run(server.id);
             }
         }
     }
@@ -71,13 +85,22 @@ class ServerManager {
         const cs2Exe = path.join(serverPath, relativeBinPath);
         const binDir = path.dirname(cs2Exe);
 
-        if (!fs.existsSync(cs2Exe)) throw new Error(`CS2 binary not found at ${cs2Exe}`);
+        // Check if CS2 binary exists (async)
+        try {
+            await fs.promises.access(cs2Exe);
+        } catch {
+            throw new Error(`CS2 binary not found at ${cs2Exe}`);
+        }
 
         // steam_appid.txt is required for initialization
-        fs.writeFileSync(path.join(binDir, 'steam_appid.txt'), '730');
+        await fs.promises.writeFile(path.join(binDir, 'steam_appid.txt'), '730');
 
         const cfgDir = path.join(serverPath, 'game', 'csgo', 'cfg');
-        if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
+        try {
+            await fs.promises.mkdir(cfgDir, { recursive: true });
+        } catch (error: any) {
+            if (error.code !== 'EEXIST') throw error;
+        }
         const serverCfgPath = path.join(cfgDir, 'server.cfg');
         
         // Handle server.cfg generation for secrets
@@ -116,7 +139,7 @@ class ServerManager {
             DOTNET_BUNDLE_EXTRACT_BASE_DIR: path.join(serverPath, '.net_cache')
         };
 
-        // Ensure Steam SDK directory exists for initialization
+        // Ensure Steam SDK directory exists for initialization (ASYNC)
         // CS2 Linux often requires steamclient.so in ~/.steam/sdk64/
         try {
             const homeDir = process.env.HOME || '/root';
@@ -125,17 +148,22 @@ class ServerManager {
             const steamCmdDir = path.dirname(this.steamCmdExe);
             const sourceSo = path.join(steamCmdDir, 'linux64/steamclient.so');
 
-            if (!fs.existsSync(sdkDir)) {
-                fs.mkdirSync(sdkDir, { recursive: true });
-            }
+            // Async mkdir
+            await fs.promises.mkdir(sdkDir, { recursive: true });
 
-            if (!fs.existsSync(targetLink) && fs.existsSync(sourceSo)) {
+            // Check if target link and source exist (async)
+            const [targetExists, sourceExists] = await Promise.all([
+                fs.promises.access(targetLink).then(() => true).catch(() => false),
+                fs.promises.access(sourceSo).then(() => true).catch(() => false)
+            ]);
+
+            if (!targetExists && sourceExists) {
                 console.log(`[SYSTEM] Creating Steam SDK symlink: ${sourceSo} -> ${targetLink}`);
                 // Use symlink if possible, or copy if not
                 try {
-                    fs.symlinkSync(sourceSo, targetLink);
+                    await fs.promises.symlink(sourceSo, targetLink);
                 } catch (e) {
-                    fs.copyFileSync(sourceSo, targetLink);
+                    await fs.promises.copyFile(sourceSo, targetLink);
                 }
             }
         } catch (err) {
@@ -461,22 +489,53 @@ class ServerManager {
         }
     }
 
-    async listFiles(id: string | number, subDir: string = '') {
+    /**
+     * SECURITY: Resolve and validate file path to prevent path traversal attacks (CWE-22)
+     * @param id Server instance ID
+     * @param userPath User-provided path (untrusted input)
+     * @returns Validated absolute path
+     * @throws Error if path escapes the allowed directory
+     */
+    private _resolveSecurePath(id: string | number, userPath: string): string {
         const base = path.join(this.installDir, id.toString(), 'game', 'csgo');
-        const target = path.resolve(base, subDir);
-        if (!target.startsWith(base)) throw new Error("Security: Path escape");
-        if (!fs.existsSync(target)) return [];
-        return fs.promises.readdir(target, { withFileTypes: true }).then(entries => 
-            entries.map(e => ({ name: e.name, isDirectory: e.isDirectory(), size: 0, mtime: new Date() }))
-        );
+        const resolved = path.resolve(base, userPath);
+        
+        // Strict check: resolved path must start with base + separator (or be exactly base)
+        // This prevents both "../" traversal and sibling attacks (e.g., /var/www vs /var/www-secret)
+        const normalizedBase = path.normalize(base + path.sep);
+        const normalizedResolved = path.normalize(resolved + path.sep);
+        
+        if (!normalizedResolved.startsWith(normalizedBase)) {
+            throw new Error(`Security: Path traversal attempt detected. Path "${userPath}" escapes allowed directory.`);
+        }
+        
+        return resolved;
+    }
+
+    async listFiles(id: string | number, subDir: string = '') {
+        // SECURITY: Validate path before use
+        const target = this._resolveSecurePath(id, subDir);
+        
+        // Async readdir with error handling
+        try {
+            const entries = await fs.promises.readdir(target, { withFileTypes: true });
+            return entries.map(e => ({ name: e.name, isDirectory: e.isDirectory(), size: 0, mtime: new Date() }));
+        } catch (error: any) {
+            if (error.code === 'ENOENT') return [];
+            throw error;
+        }
     }
 
     async readFile(id: string | number, filePath: string) {
-        return fs.promises.readFile(path.join(this.installDir, id.toString(), 'game', 'csgo', filePath), 'utf8');
+        // SECURITY: Validate path to prevent directory traversal (CWE-22)
+        const safePath = this._resolveSecurePath(id, filePath);
+        return fs.promises.readFile(safePath, 'utf8');
     }
 
     async writeFile(id: string | number, filePath: string, content: string) {
-        return fs.promises.writeFile(path.join(this.installDir, id.toString(), 'game', 'csgo', filePath), content);
+        // SECURITY: Validate path to prevent directory traversal (CWE-22)
+        const safePath = this._resolveSecurePath(id, filePath);
+        return fs.promises.writeFile(safePath, content);
     }
 
     async deleteServerFiles(id: string | number) {
@@ -485,12 +544,13 @@ class ServerManager {
         
         console.log(`[SYSTEM] Deleting physical files for instance ${idStr} at ${serverDir}`);
         
-        if (fs.existsSync(serverDir)) {
-            try {
-                // First attempt
-                await fs.promises.rm(serverDir, { recursive: true, force: true });
-            } catch (err) {
-                // If it fails (e.g. process still exiting), wait 1s and retry
+        // No need for existsSync - fs.promises.rm handles ENOENT gracefully with force: true
+        try {
+            // First attempt
+            await fs.promises.rm(serverDir, { recursive: true, force: true });
+        } catch (err: any) {
+            // If it fails (e.g. process still exiting), wait 1s and retry
+            if (err.code !== 'ENOENT') {
                 console.warn(`[SYSTEM] Delete failed, retrying in 1s...`, err);
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 await fs.promises.rm(serverDir, { recursive: true, force: true });
@@ -597,10 +657,15 @@ class ServerManager {
                 });
             });
 
-            // Steam SDK check
+            // Steam SDK check (async)
             const homeDir = process.env.HOME || '/root';
             const sdkSo = path.join(homeDir, '.steam/sdk64/steamclient.so');
-            result.runtimes.steam_sdk.status = fs.existsSync(sdkSo) ? 'good' : 'missing';
+            try {
+                await fs.promises.access(sdkSo);
+                result.runtimes.steam_sdk.status = 'good';
+            } catch {
+                result.runtimes.steam_sdk.status = 'missing';
+            }
         } catch (e) {}
         return result;
     }
@@ -627,22 +692,30 @@ class ServerManager {
                 details.dotnet = { status: 'ok' };
             }
 
-            // Check and Repair Steam SDK
+            // Check and Repair Steam SDK (ASYNC)
             const homeDir = process.env.HOME || '/root';
             const sdkDir = path.join(homeDir, '.steam/sdk64');
             const targetLink = path.join(sdkDir, 'steamclient.so');
             
-            if (!fs.existsSync(targetLink)) {
+            // Check if target link exists (async)
+            const targetExists = await fs.promises.access(targetLink).then(() => true).catch(() => false);
+            
+            if (!targetExists) {
                 console.log(`[REPAIR] Fixing Steam SDK...`);
                 const steamCmdDir = path.dirname(this.steamCmdExe);
                 const sourceSo = path.join(steamCmdDir, 'linux64/steamclient.so');
                 
-                if (fs.existsSync(sourceSo)) {
-                    if (!fs.existsSync(sdkDir)) fs.mkdirSync(sdkDir, { recursive: true });
+                // Check if source exists (async)
+                const sourceExists = await fs.promises.access(sourceSo).then(() => true).catch(() => false);
+                
+                if (sourceExists) {
+                    // Ensure directory exists (async)
+                    await fs.promises.mkdir(sdkDir, { recursive: true });
+                    
                     try {
-                        fs.symlinkSync(sourceSo, targetLink);
+                        await fs.promises.symlink(sourceSo, targetLink);
                     } catch (e) {
-                        fs.copyFileSync(sourceSo, targetLink);
+                        await fs.promises.copyFile(sourceSo, targetLink);
                     }
                     details.steam_sdk = { status: 'repaired' };
                 } else {
@@ -651,6 +724,7 @@ class ServerManager {
             } else {
                 details.steam_sdk = { status: 'ok' };
             }
+        
 
             return {
                 success: true,
@@ -667,4 +741,17 @@ class ServerManager {
     }
 }
 
-export const serverManager = new ServerManager();
+// Async initialization pattern
+const serverManager = new ServerManager();
+
+// Initialize asynchronously
+(async () => {
+    try {
+        await serverManager.init();
+        console.log('[ServerManager] Initialized successfully');
+    } catch (error) {
+        console.error('[ServerManager] Initialization failed:', error);
+    }
+})();
+
+export { serverManager };

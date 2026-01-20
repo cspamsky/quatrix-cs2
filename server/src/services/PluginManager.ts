@@ -14,54 +14,26 @@ const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export interface PluginManifest {
-    [key: string]: {
-        name: string;
-        version: string;
-        downloadUrl: string;
-        category: string;
-        description: string;
-        dependencies?: string[];
-        folderName?: string;
-    }
-}
-
 export class PluginManager {
     public pluginRegistry = pluginRegistry;
-    private manifest: PluginManifest | null = null;
-    private MANIFEST_PATH = path.resolve(__dirname, '../../../resources/plugins_manifest.json');
-    private lastSync = 0;
-
-    async syncRegistry(): Promise<void> {
-        try {
-            if (fs.existsSync(this.MANIFEST_PATH)) {
-                const data = fs.readFileSync(this.MANIFEST_PATH, 'utf8');
-                this.manifest = JSON.parse(data);
-                this.lastSync = Date.now();
-            } else { this.useFallback(); }
-        } catch (error) { this.useFallback(); }
-    }
-
-    private useFallback() {
-        this.manifest = {};
-        for (const [id, info] of Object.entries(this.pluginRegistry)) {
-            this.manifest[id] = {
-                name: info.name,
-                version: (info as any).currentVersion || 'latest',
-                downloadUrl: (info as any).downloadUrl || '',
-                category: info.category,
-                description: (info as any).description || ''
-            };
-        }
-    }
 
     async getRegistry() {
-        await this.syncRegistry();
-        return this.manifest || {};
+        // Convert pluginRegistry to manifest format
+        const manifest: Record<string, any> = {};
+        for (const [id, info] of Object.entries(this.pluginRegistry)) {
+            manifest[id] = {
+                name: info.name,
+                version: info.currentVersion || 'latest',
+                downloadUrl: (info as any).downloadUrl || '',
+                category: info.category,
+                description: (info as any).description || '',
+                folderName: (info as any).folderName
+            };
+        }
+        return manifest;
     }
 
     async getPluginStatus(installDir: string, instanceId: string | number): Promise<Record<string, boolean>> {
-        await this.syncRegistry();
         const id = instanceId.toString();
         const csgoDir = path.join(installDir, id, 'game', 'csgo');
         const addonsDir = path.join(csgoDir, 'addons');
@@ -84,9 +56,8 @@ export class PluginManager {
             });
         };
 
-        const registryToUse = this.manifest || (this.pluginRegistry as any);
-        for (const pid of Object.keys(registryToUse)) {
-            const info = registryToUse[pid];
+        for (const pid of Object.keys(this.pluginRegistry)) {
+            const info = (this.pluginRegistry as any)[pid];
             if (info.category === 'core') {
                 status[pid] = status[pid] || false;
                 continue;
@@ -204,9 +175,8 @@ export class PluginManager {
     }
 
     async installPlugin(installDir: string, instanceId: string | number, pluginId: PluginId): Promise<void> {
-        await this.syncRegistry();
         const csgoDir = path.join(installDir, instanceId.toString(), 'game', 'csgo');
-        const pluginInfo = this.manifest ? this.manifest[pluginId] : (this.pluginRegistry[pluginId] as any);
+        const pluginInfo = (this.pluginRegistry[pluginId] as any);
         if (pluginInfo?.downloadUrl) {
             console.log(`[PLUGIN] Installing ${pluginInfo.name}...`);
             await this.downloadAndExtract(pluginInfo.downloadUrl, csgoDir, pluginInfo.category, pluginId);
@@ -246,8 +216,7 @@ export class PluginManager {
     }
 
     async checkPluginUpdate(instanceId: string | number, pluginId: PluginId): Promise<any> {
-        await this.syncRegistry();
-        const info = this.manifest ? this.manifest[pluginId] : (this.pluginRegistry[pluginId] as any);
+        const info = (this.pluginRegistry[pluginId] as any);
         if (!info) return { hasUpdate: false };
 
         try {
@@ -273,14 +242,13 @@ export class PluginManager {
     }
 
     async uninstallPlugin(installDir: string, instanceId: string | number, pluginId: PluginId): Promise<void> {
-        await this.syncRegistry();
         const csgoDir = path.join(installDir, instanceId.toString(), 'game', 'csgo');
         const addonsDir = path.join(csgoDir, 'addons');
         
         if (pluginId === 'metamod' as any) return this.uninstallMetamod(installDir, instanceId);
         if (pluginId === 'cssharp' as any) return this.uninstallCounterStrikeSharp(installDir, instanceId);
 
-        const info = this.manifest ? this.manifest[pluginId] : (this.pluginRegistry[pluginId] as any);
+        const info = (this.pluginRegistry[pluginId] as any);
         if (!info) return;
 
         console.log(`[PLUGIN] Uninstalling ${info.name}...`);
