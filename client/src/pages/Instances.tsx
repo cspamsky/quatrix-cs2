@@ -7,8 +7,8 @@ import {
 import { apiFetch } from '../utils/api'
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import socket from '../utils/socket'
-import { useNotification } from '../contexts/NotificationContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import ServerCard from '../components/ServerCard'
 
@@ -26,7 +26,6 @@ interface Instance {
 
 const Instances = () => {
   const navigate = useNavigate()
-  const { showNotification } = useNotification()
   const { showConfirm } = useConfirmDialog()
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [instances, setInstances] = useState<Instance[]>([])
@@ -117,18 +116,18 @@ const Instances = () => {
         method: 'DELETE'
       })
       if (response.ok) {
-        showNotification('success', 'Server Deleted', 'Server and all associated files have been permanently removed')
+        toast.success('Server deleted successfully')
         setInstances(prev => prev.filter(i => i.id !== id))
       } else {
-        showNotification('error', 'Delete Failed', 'Failed to delete server')
+        toast.error('Failed to delete server')
       }
     } catch (error) {
       console.error('Delete server error:', error)
-      showNotification('error', 'Connection Error', 'Unable to reach the server')
+      toast.error('Connection Error: Unable to reach the server')
     } finally {
       setDeletingId(null)
     }
-  }, [showConfirm, showNotification])
+  }, [showConfirm])
 
   const handleInstall = useCallback(async (id: number) => {
     setInstallingId(id)
@@ -154,68 +153,80 @@ const Instances = () => {
   const handleStartServer = useCallback(async (id: number) => {
     setStartingId(id)
     try {
-      const response = await apiFetch(`/api/servers/${id}/start`, {
-
-        method: 'POST'
-      })
-      if (response.ok) {
-        showNotification('success', 'Server Starting', 'Your server is now booting up...')
-        fetchServers()
-      } else {
-        const data = await response.json()
-        showNotification('error', 'Start Failed', data.message || 'Failed to start server')
-      }
+      await toast.promise(
+        (async () => {
+          const response = await apiFetch(`/api/servers/${id}/start`, { method: 'POST' })
+          if (!response.ok) {
+            const data = await response.json()
+            throw new Error(data.message || 'Failed to start server')
+          }
+          return response
+        })(),
+        {
+          loading: 'Starting server...',
+          success: 'Server is booting up',
+          error: (err) => err.message || 'Failed to start server'
+        }
+      )
+      fetchServers()
     } catch (error) {
       console.error('Start server error:', error)
-      showNotification('error', 'Connection Error', 'Unable to reach the server')
     } finally {
       setStartingId(null)
     }
-  }, [fetchServers, showNotification])
+  }, [fetchServers])
 
   const handleStopServer = useCallback(async (id: number) => {
     setStoppingId(id)
     try {
-      const response = await apiFetch(`/api/servers/${id}/stop`, {
-
-        method: 'POST'
-      })
-      if (response.ok) {
-        showNotification('success', 'Server Stopped', 'Server has been shut down successfully')
-        fetchServers()
-      } else {
-        const data = await response.json()
-        showNotification('error', 'Stop Failed', data.message || 'Failed to stop server')
-      }
+      await toast.promise(
+        (async () => {
+          const response = await apiFetch(`/api/servers/${id}/stop`, { method: 'POST' })
+          if (!response.ok) {
+            const data = await response.json()
+            throw new Error(data.message || 'Failed to stop server')
+          }
+          return response
+        })(),
+        {
+          loading: 'Stopping server...',
+          success: 'Server stopped successfully',
+          error: (err) => err.message || 'Failed to stop server'
+        }
+      )
+      fetchServers()
     } catch (error) {
       console.error('Stop server error:', error)
-      showNotification('error', 'Connection Error', 'Unable to reach the server')
     } finally {
       setStoppingId(null)
     }
-  }, [fetchServers, showNotification])
+  }, [fetchServers])
 
   const handleRestartServer = useCallback(async (id: number) => {
     setRestartingId(id)
     try {
-      const response = await apiFetch(`/api/servers/${id}/restart`, {
-
-        method: 'POST'
-      })
-      if (response.ok) {
-        showNotification('info', 'Server Restarting', 'Server will be back online shortly...')
-        fetchServers()
-      } else {
-        const data = await response.json()
-        showNotification('error', 'Restart Failed', data.message || 'Failed to restart server')
-      }
+      await toast.promise(
+        (async () => {
+          const response = await apiFetch(`/api/servers/${id}/restart`, { method: 'POST' })
+          if (!response.ok) {
+            const data = await response.json()
+            throw new Error(data.message || 'Failed to restart server')
+          }
+          return response
+        })(),
+        {
+          loading: 'Restarting server...',
+          success: 'Server will be online shortly',
+          error: (err) => err.message || 'Failed to restart server'
+        }
+      )
+      fetchServers()
     } catch (error) {
       console.error('Restart error:', error)
-      showNotification('error', 'Connection Error', 'Unable to reach the server')
     } finally {
       setRestartingId(null)
     }
-  }, [fetchServers, showNotification])
+  }, [fetchServers])
 
   const copyToClipboard = useCallback((text: string, id: string) => {
     navigator.clipboard.writeText(text)

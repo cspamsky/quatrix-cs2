@@ -2,7 +2,7 @@ import { apiFetch } from '../utils/api'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Server, MapPin, Users, Lock, Key, Shield } from 'lucide-react'
-import { useNotification } from '../contexts/NotificationContext'
+import toast from 'react-hot-toast'
 
 interface ServerData {
   id: number
@@ -31,7 +31,6 @@ const GAME_MODES = [
 const ServerSettings = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { showNotification } = useNotification()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [server, setServer] = useState<ServerData | null>(null)
@@ -69,13 +68,13 @@ const ServerSettings = () => {
       })
 
       if (response.ok) {
-        showNotification('success', 'Settings Saved', 'Server settings have been updated successfully')
+        toast.success('Server settings updated successfully')
       } else {
-        showNotification('error', 'Save Failed', 'Failed to save server settings')
+        toast.error('Failed to save server settings')
       }
     } catch (error) {
       console.error('Save error:', error)
-      showNotification('error', 'Connection Error', 'Unable to reach the server')
+      toast.error('Connection error: Unable to reach the server')
     } finally {
       setSaving(false)
     }

@@ -23,6 +23,8 @@
     "quatrix-root": "file:..",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-hot-toast": "^2.6.0",
+    "react-loading-icons": "^1.1.0",
     "react-router-dom": "^7.12.0",
     "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.4.0"

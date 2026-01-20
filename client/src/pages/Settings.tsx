@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { RefreshCw } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { apiFetch } from '../utils/api'
-import { useNotification } from '../contexts/NotificationContext'
 
 // Sub-components
 import GeneralTab from '../components/settings/GeneralTab'
@@ -13,7 +13,6 @@ import ActivityLogTab from '../components/settings/ActivityLogTab'
 type TabType = 'General' | 'Security' | 'Notifications' | 'API Keys' | 'Activity Log' | 'Server Engine' | 'System Health'
 
 const Settings = () => {
-  const { showNotification } = useNotification()
   const [activeTab, setActiveTab] = useState<TabType>('General')
   
   // State for General
@@ -60,17 +59,17 @@ const Settings = () => {
       const result = await response.json();
       
       if (result.success) {
-        showNotification('success', 'System Repaired', result.message);
+        toast.success(result.message || 'System repaired successfully');
         // Refresh health data after repair
         await fetchHealth();
       } else {
-        showNotification('error', 'Repair Failed', result.message);
+        toast.error(result.message || 'Repair failed');
       }
       
       return result;
     } catch (error: any) {
       const errorMsg = 'Failed to repair system health';
-      showNotification('error', 'Repair Error', errorMsg);
+      toast.error(errorMsg);
       return { success: false, message: errorMsg };
     }
   }
@@ -96,16 +95,16 @@ const Settings = () => {
         body: JSON.stringify({ steamcmd_path: steamCmdPath, install_dir: installDir })
       })
       if (response.ok) {
-        showNotification('success', 'Settings updated successfully!')
+        toast.success('Settings updated successfully!')
         setEngineMessage({ type: 'success', text: 'Cloud Engine settings saved.' })
       } else {
         const errorData = await response.json().catch(() => ({}));
         setEngineMessage({ type: 'error', text: errorData.message || 'Server error while saving settings.' })
-        showNotification('error', 'Update Failed', errorData.message || 'Server error')
+        toast.error(errorData.message || 'Failed to update settings')
       }
     } catch (error) {
       setEngineMessage({ type: 'error', text: 'Connection error while saving settings.' })
-      showNotification('error', 'Connection Error', 'Could not reach the server.')
+      toast.error('Connection error: Could not reach the server')
     } finally {
       setEngineLoading(false)
     }
@@ -122,7 +121,7 @@ const Settings = () => {
       })
       if (response.ok) {
         setEngineMessage({ type: 'success', text: 'SteamCMD downloaded and extracted successfully!' })
-        showNotification('success', 'SteamCMD installed!')
+        toast.success('SteamCMD installed successfully!')
       } else {
         const data = await response.json()
         setEngineMessage({ type: 'error', text: data.message || 'Failed to download SteamCMD.' })
@@ -170,7 +169,7 @@ const Settings = () => {
               defaultPort={defaultPort} setDefaultPort={setDefaultPort}
               autoBackup={autoBackup} setAutoBackup={setAutoBackup}
               autoPluginUpdates={autoPluginUpdates} setAutoPluginUpdates={setAutoPluginUpdates}
-              onSave={() => showNotification('success', 'Local settings saved.')}
+              onSave={() => toast.success('Local settings saved')}
             />
           )}
 

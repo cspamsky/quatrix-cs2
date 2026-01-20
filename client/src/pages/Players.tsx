@@ -12,7 +12,7 @@ import {
   MoreHorizontal,
   Server
 } from 'lucide-react'
-import { useNotification } from '../contexts/NotificationContext'
+import toast from 'react-hot-toast'
 
 interface Player {
   userId: string
@@ -31,7 +31,6 @@ interface ServerInfo {
 }
 
 const Players = () => {
-  const { showNotification } = useNotification()
   const [searchQuery, setSearchQuery] = useState('')
   const [servers, setServers] = useState<ServerInfo[]>([])
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
@@ -83,16 +82,16 @@ const Players = () => {
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Failed to fetch players' }))
         if (isManual) {
-          showNotification('error', 'Update Failed', errorData.message || 'Server might be starting or unreachable')
+          toast.error(errorData.message || 'Server might be starting or unreachable')
         }
       }
     } catch (error) {
       console.error('Failed to fetch players:', error)
-      if (isManual) showNotification('error', 'Connection Error', 'Unable to reach the panel backend')
+      if (isManual) toast.error('Connection Error: Unable to reach the panel backend')
     } finally {
       setRefreshing(false)
     }
-  }, [selectedServerId, showNotification, loading])
+  }, [selectedServerId, loading])
 
   useEffect(() => {
     if (!selectedServerId) return
@@ -114,11 +113,11 @@ const Players = () => {
         body: JSON.stringify({ reason })
       })
       if (response.ok) {
-        showNotification('success', 'Success', `Player ${action}ed successfully`)
+        toast.success(`Player ${action}ed successfully`)
         fetchPlayers(true)
       }
     } catch (error) {
-      showNotification('error', 'Error', `Failed to ${action} player`)
+      toast.error(`Failed to ${action} player`)
     }
   }
 

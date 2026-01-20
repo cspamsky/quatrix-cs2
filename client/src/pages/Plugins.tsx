@@ -12,7 +12,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { apiFetch } from '../utils/api'
-import { useNotification } from '../contexts/NotificationContext'
+import toast from 'react-hot-toast'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 
 interface Instance {
@@ -30,7 +30,6 @@ interface PluginInfo {
 
 const Plugins = () => {
   const navigate = useNavigate()
-  const { showNotification } = useNotification()
   const { showConfirm } = useConfirmDialog()
   const [instances, setInstances] = useState<Instance[]>([])
   const [selectedServer, setSelectedServer] = useState<string | null>(null)
@@ -49,7 +48,7 @@ const Plugins = () => {
           setRegistry(data);
       } catch (e) { 
           console.error("Failed to fetch registry", e);
-          showNotification('error', 'Plugin Gallery Error', 'Could not load plugin list from server.');
+          toast.error('Could not load plugin list from server');
       } finally {
           setRegistryLoading(false);
       }
@@ -124,10 +123,10 @@ const Plugins = () => {
     // Logic guards
     if (action === 'install') {
         if (pluginInfo.category === 'cssharp' && !pluginStatus.metamod) {
-            return showNotification('warning', 'Requirement Missing', 'Metamod:Source is required before installing C# plugins.');
+            return toast.error('Metamod:Source is required before installing C# plugins');
         }
         if (pluginInfo.category === 'cssharp' && plugin !== 'cssharp' && !pluginStatus.cssharp) {
-            return showNotification('warning', 'Requirement Missing', 'CounterStrikeSharp is required first.');
+            return toast.error('CounterStrikeSharp is required first');
         }
     }
 
@@ -146,14 +145,14 @@ const Plugins = () => {
       const data = await response.json();
 
       if (response.ok) {
-        showNotification('success', 'Operation Successful', `${pluginName} ${action}ed successfully!`);
+        toast.success(`${pluginName} ${action}ed successfully!`);
         await fetchPluginStatus(selectedServer);
         await fetchPluginUpdates(selectedServer);
       } else {
-        showNotification('error', 'Operation Failed', data.message || 'Action failed');
+        toast.error(data.message || 'Action failed');
       }
     } catch (error) {
-      showNotification('error', 'Critical Error', 'Network or Server failure.');
+      toast.error('Network or Server failure.');
     } finally {
       setActionLoading(null);
     }

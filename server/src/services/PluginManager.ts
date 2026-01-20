@@ -187,7 +187,7 @@ export class PluginManager {
                     INSERT INTO server_plugins (server_id, plugin_id, version) 
                     VALUES (?, ?, ?)
                     ON CONFLICT(server_id, plugin_id) DO UPDATE SET version = EXCLUDED.version
-                `).run(instanceId, pluginId, pluginInfo.version);
+                `).run(instanceId, pluginId, pluginInfo.currentVersion);
             } catch (err) {
                 console.error(`[DB] Failed to record plugin install:`, err);
             }
@@ -223,17 +223,17 @@ export class PluginManager {
             const installed = db.prepare(`SELECT version FROM server_plugins WHERE server_id = ? AND plugin_id = ?`)
                                .get(instanceId, pluginId) as { version: string } | undefined;
             
-            if (!installed) return { hasUpdate: false, latestVersion: info.version };
+            if (!installed) return { hasUpdate: false, latestVersion: info.currentVersion };
 
-            const hasUpdate = installed.version !== info.version;
+            const hasUpdate = installed.version !== info.currentVersion;
             return { 
                 name: info.name, 
                 hasUpdate, 
                 currentVersion: installed.version, 
-                latestVersion: info.version 
+                latestVersion: info.currentVersion 
             };
         } catch (err) {
-            return { hasUpdate: false, latestVersion: info.version };
+            return { hasUpdate: false, latestVersion: info.currentVersion };
         }
     }
 

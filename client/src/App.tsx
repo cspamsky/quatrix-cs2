@@ -1,9 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
+import { Toaster } from 'react-hot-toast'
+import { Oval } from 'react-loading-icons'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
 import PublicRoute from './components/PublicRoute'
-import { NotificationProvider } from './contexts/NotificationContext'
 import { ConfirmDialogProvider } from './contexts/ConfirmDialogContext'
 
 // Lazy load pages for code splitting
@@ -20,18 +21,42 @@ const Maps = lazy(() => import('./pages/Maps'))
 const ServerSettings = lazy(() => import('./pages/ServerSettings'))
 const FileManager = lazy(() => import('./pages/FileManager'))
 
-// Loading component
+// Loading component with react-loading-icons
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#0F172A]">
-    <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+    <Oval stroke="#1890ff" strokeWidth={4} speed={1} />
   </div>
 )
 
 const App = () => {
   return (
     <ConfirmDialogProvider>
-      <NotificationProvider>
       <Router>
+        {/* Global Toast Notifications */}
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#1E293B',
+              color: '#F1F5F9',
+              border: '1px solid #334155',
+            },
+            success: {
+              iconTheme: {
+                primary: '#10B981',
+                secondary: '#F1F5F9',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#EF4444',
+                secondary: '#F1F5F9',
+              },
+            },
+          }}
+        />
+        
         <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Auth Routes (No Sidebar, Prevent logged-in access) */}
@@ -59,7 +84,6 @@ const App = () => {
           </Routes>
         </Suspense>
       </Router>
-    </NotificationProvider>
     </ConfirmDialogProvider>
   )
 }
