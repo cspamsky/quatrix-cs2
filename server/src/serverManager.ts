@@ -16,6 +16,7 @@ class ServerManager {
     private logBuffers: Map<string, string[]> = new Map();
     private rconConnections: Map<string, any> = new Map();
     private playerIdentityCache: Map<string, Map<string, string>> = new Map();
+    private playerIdentityBuffer: Map<string, string> = new Map();
     private installDir!: string;
     private steamCmdExe!: string;
 
@@ -23,6 +24,9 @@ class ServerManager {
         // Async initialization - call init() after construction
         this.installDir = '';
         this.steamCmdExe = '';
+
+        // Performance: Flush player identities every 5 seconds in batches
+        setInterval(() => this.flushPlayerIdentities(), 5000);
     }
 
     async init() {
@@ -60,20 +64,67 @@ class ServerManager {
 
     // --- Core Management ---
     recoverOrphanedServers() {
-        const servers = db.prepare("SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'").all() as any[];
+        interface ServerRow { id: number; pid: number | null; status: string; }
+        const servers = db.prepare("SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'").all() as ServerRow[];
         
-        // Prepare UPDATE statement once, outside the loop
-        const updateStmt = db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?");
+        const deadServerIds: number[] = [];
         
         for (const server of servers) {
             let isAlive = false;
             if (server.pid) {
-                try { process.kill(server.pid, 0); isAlive = true; } catch (e) { isAlive = false; }
+                try { 
+                    process.kill(server.pid, 0); 
+                    isAlive = true; 
+                } catch (e) { 
+                    isAlive = false; 
+                }
             }
             if (!isAlive) {
-                // Reuse pre-compiled statement
-                updateStmt.run(server.id);
+                deadServerIds.push(server.id);
             }
+        }
+
+        if (deadServerIds.length > 0) {
+            console.log(`[SYSTEM] Recovering ${deadServerIds.length} orphaned servers...`);
+            const updateStmt = db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?");
+            
+            // Execute all updates in a single transaction for maximum SQLite performance
+            const performBatchUpdate = db.transaction((ids: number[]) => {
+                for (const id of ids) {
+                    updateStmt.run(id);
+                }
+            });
+
+            performBatchUpdate(deadServerIds);
+        }
+    }
+
+    private flushPlayerIdentities() {
+        if (this.playerIdentityBuffer.size === 0) return;
+
+        const identities = Array.from(this.playerIdentityBuffer.entries());
+        this.playerIdentityBuffer.clear();
+
+        console.log(`[DB] Batch flushing ${identities.length} player identities...`);
+
+        const checkStmt = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?");
+        const updateStmt = db.prepare("UPDATE player_identities SET steam_id = ?, last_seen = CURRENT_TIMESTAMP WHERE name = ?");
+        const insertStmt = db.prepare("INSERT INTO player_identities (name, steam_id, first_seen, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)");
+
+        try {
+            const transaction = db.transaction((data) => {
+                for (const [name, steamId64] of data) {
+                    const existing = checkStmt.get(name);
+                    if (existing) {
+                        updateStmt.run(steamId64, name);
+                    } else {
+                        insertStmt.run(name, steamId64);
+                    }
+                }
+            });
+            transaction(identities);
+        } catch (error) {
+            console.error('[DB] Batch flush failed:', error);
         }
     }
 
@@ -103,15 +154,21 @@ class ServerManager {
         }
         const serverCfgPath = path.join(cfgDir, 'server.cfg');
         
-        // Handle server.cfg generation for secrets
-        let cfgContent = fs.existsSync(serverCfgPath) ? fs.readFileSync(serverCfgPath, 'utf8') : '';
+        // Handle server.cfg generation for secrets (ASYNC)
+        let cfgContent = '';
+        try {
+            cfgContent = await fs.promises.readFile(serverCfgPath, 'utf8');
+        } catch (e: any) {
+            if (e.code !== 'ENOENT') throw e;
+        }
+
         const updateLine = (c: string, k: string, v: string) => {
             const r = new RegExp(`^${k}\\s+.*$`, 'm');
             return r.test(c) ? c.replace(r, `${k} "${v}"`) : c + `\n${k} "${v}"`;
         };
         cfgContent = updateLine(cfgContent, 'sv_password', options.password || '');
         cfgContent = updateLine(cfgContent, 'rcon_password', options.rcon_password || 'secret');
-        fs.writeFileSync(serverCfgPath, cfgContent);
+        await fs.promises.writeFile(serverCfgPath, cfgContent);
 
         const args = [
             '-dedicated', 
@@ -203,21 +260,11 @@ class ServerManager {
                     if (nameMatch) {
                         const name = nameMatch[1];
                         cache?.set(name, steamId64);
-                        try {
-                            // Önce oyuncu var mı kontrol et
-                            const existing = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?").get(name);
-                            
-                            if (existing) {
-                                // Varsa sadece last_seen güncelle
-                                db.prepare("UPDATE player_identities SET steam_id = ?, last_seen = CURRENT_TIMESTAMP WHERE name = ?")
-                                  .run(steamId64, name);
-                            } else {
-                                // Yoksa yeni kayıt oluştur (first_seen ve last_seen aynı anda)
-                                db.prepare("INSERT INTO player_identities (name, steam_id, first_seen, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)")
-                                  .run(name, steamId64);
-                            }
-                        } catch (e) {}
-                        console.log(`[IDENTITY] Steam64 Saved: ${name} -> ${steamId64}`);
+                        
+                        // Performance: Buffer the identity instead of writing to DB on every single log line
+                        this.playerIdentityBuffer.set(name, steamId64);
+                        
+                        console.log(`[IDENTITY] Steam64 Buffered: ${name} -> ${steamId64}`);
                     }
                 }
             }
@@ -355,6 +402,8 @@ class ServerManager {
             }
 
             // 2. Normal liste tarama ve Derin Kimlik Eşleştirme (Veritabanı + Log desteği)
+            const playerIdentityStmt = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?");
+            
             for (const line of lines) {
                 const trimmed = line.trim();
                 
@@ -427,8 +476,7 @@ class ServerManager {
 
                         // 3. Veritabanı Taraması (Sadece SteamID için)
                         if (!steamId) {
-                            const dbRow = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?")
-                                           .get(name) as { steam_id: string } | undefined;
+                            const dbRow = playerIdentityStmt.get(name) as { steam_id: string } | undefined;
                             if (dbRow) {
                                 steamId = dbRow.steam_id;
                                 if (cache) cache.set(idPart, steamId);
@@ -574,6 +622,10 @@ class ServerManager {
 
     async checkPluginUpdate(instanceId: string | number, pluginId: PluginId) {
         return pluginManager.checkPluginUpdate(instanceId, pluginId);
+    }
+
+    async checkAllPluginUpdates(instanceId: string | number) {
+        return pluginManager.checkAllPluginUpdates(instanceId);
     }
 
     async installPlugin(instanceId: string | number, pluginId: PluginId) {

@@ -32,15 +32,7 @@ router.get("/:id/plugins/status", async (req: any, res) => {
 router.get("/:id/plugins/updates", async (req: any, res) => {
     const { id } = req.params;
     try {
-        const updateChecks = await Promise.all(
-            (Object.keys(pluginRegistry) as PluginId[]).map(pid => serverManager.checkPluginUpdate(id, pid))
-        );
-
-        const updates: Record<string, any> = {};
-        (Object.keys(pluginRegistry) as PluginId[]).forEach((pid, index) => {
-            updates[pid] = updateChecks[index];
-        });
-
+        const updates = await serverManager.checkAllPluginUpdates(id);
         res.json(updates);
     } catch (error: any) {
         res.status(500).json({ message: error.message });

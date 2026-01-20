@@ -16,6 +16,27 @@ const __dirname = path.dirname(__filename);
 
 export class PluginManager {
     public pluginRegistry = pluginRegistry;
+    private manifest: any = null;
+    private checkAllStmt: any;
+
+    constructor() {
+        this.checkAllStmt = db.prepare("SELECT plugin_id, version FROM server_plugins WHERE server_id = ?");
+    }
+
+    async syncRegistry() {
+        // In a real scenarios, this might fetch from a remote URL.
+        // For now, we populate our manifest from the static registry.
+        const manifest: Record<string, any> = {};
+        for (const [id, info] of Object.entries(this.pluginRegistry)) {
+            manifest[id] = {
+                name: info.name,
+                version: info.currentVersion || 'latest',
+                folderName: (info as any).folderName
+            };
+        }
+        this.manifest = manifest;
+        return manifest;
+    }
 
     async getRegistry() {
         // Convert pluginRegistry to manifest format
@@ -40,12 +61,27 @@ export class PluginManager {
         const cssPluginsDir = path.join(addonsDir, 'counterstrikesharp', 'plugins');
         const status: Record<string, boolean> = {};
 
-        status.metamod = fs.existsSync(path.join(addonsDir, 'metamod.vdf')) || fs.existsSync(path.join(addonsDir, 'metamod_x64.vdf'));
-        status.cssharp = fs.existsSync(path.join(addonsDir, 'counterstrikesharp'));
+        // PERFORMANCE: Cache directory listings as Promises to prevent "dog-piling" duplicate reads
+        const dirCache = new Map<string, Promise<string[]>>();
+        const getDirItems = (dir: string): Promise<string[]> => {
+            if (!dirCache.has(dir)) {
+                dirCache.set(dir, fs.promises.readdir(dir).catch(() => []));
+            }
+            return dirCache.get(dir)!;
+        };
 
-        const checkExists = (dir: string, name: string) => {
-            if (!fs.existsSync(dir)) return false;
-            const items = fs.readdirSync(dir);
+        // Parallel check for core components
+        const [hasMetaVdf, hasMetaX64Vdf, hasCSS] = await Promise.all([
+            fs.promises.access(path.join(addonsDir, 'metamod.vdf')).then(() => true).catch(() => false),
+            fs.promises.access(path.join(addonsDir, 'metamod_x64.vdf')).then(() => true).catch(() => false),
+            fs.promises.access(path.join(addonsDir, 'counterstrikesharp')).then(() => true).catch(() => false)
+        ]);
+
+        status.metamod = hasMetaVdf || hasMetaX64Vdf;
+        status.cssharp = hasCSS;
+
+        const checkExistsInDir = async (dir: string, name: string) => {
+            const items = await getDirItems(dir);
             const lowerName = name.toLowerCase();
             return items.some(item => {
                 const lowerItem = item.toLowerCase();
@@ -56,25 +92,27 @@ export class PluginManager {
             });
         };
 
-        for (const pid of Object.keys(this.pluginRegistry)) {
+        const checks = Object.keys(this.pluginRegistry).map(async (pid) => {
             const info = (this.pluginRegistry as any)[pid];
             if (info.category === 'core') {
                 status[pid] = status[pid] || false;
-                continue;
+                return;
             }
 
             // Check primary locations
             if (info.category === 'metamod') {
-                status[pid] = checkExists(addonsDir, pid) || checkExists(addonsDir, info.folderName || "") || checkExists(addonsDir, info.name);
+                status[pid] = await checkExistsInDir(addonsDir, pid) || await checkExistsInDir(addonsDir, info.folderName || "") || await checkExistsInDir(addonsDir, info.name);
             } else if (info.category === 'cssharp') {
-                status[pid] = checkExists(cssPluginsDir, pid) || checkExists(cssPluginsDir, info.folderName || "") || checkExists(cssPluginsDir, info.name);
+                status[pid] = await checkExistsInDir(cssPluginsDir, pid) || await checkExistsInDir(cssPluginsDir, info.folderName || "") || await checkExistsInDir(cssPluginsDir, info.name);
                 
                 // Fallback check: Did it extract to root game/csgo/ by mistake?
                 if (!status[pid]) {
-                    status[pid] = checkExists(csgoDir, pid) || checkExists(csgoDir, info.folderName || "") || checkExists(csgoDir, info.name);
+                    status[pid] = await checkExistsInDir(csgoDir, pid) || await checkExistsInDir(csgoDir, info.folderName || "") || await checkExistsInDir(csgoDir, info.name);
                 }
             }
-        }
+        });
+
+        await Promise.all(checks);
         return status;
     }
 
@@ -90,7 +128,7 @@ export class PluginManager {
             // @ts-ignore
             await pipeline(Readable.fromWeb(response.body as any), fs.createWriteStream(tempFile));
             
-            fs.mkdirSync(tempExtractDir, { recursive: true });
+            await fs.promises.mkdir(tempExtractDir, { recursive: true });
             
             if (isTarGz) {
                 console.log(`[PLUGIN] Extracting .tar.gz using system tar...`);
@@ -101,75 +139,88 @@ export class PluginManager {
             }
             
             // Smart Extraction Logic
-            const hasAddons = fs.existsSync(path.join(tempExtractDir, 'addons'));
-            const hasGame = fs.existsSync(path.join(tempExtractDir, 'game'));
+            const [hasAddons, hasGame] = await Promise.all([
+                fs.promises.access(path.join(tempExtractDir, 'addons')).then(() => true).catch(() => false),
+                fs.promises.access(path.join(tempExtractDir, 'game')).then(() => true).catch(() => false)
+            ]);
             
             // Standard CS2 asset folders often found at the root of plugin ZIPs
             const assetFolders = ['cfg', 'materials', 'models', 'particles', 'sound', 'soundevents', 'translations', 'maps', 'scripts'];
-            const hasAnyAssetFolder = assetFolders.some(folder => fs.existsSync(path.join(tempExtractDir, folder)));
+            const assetChecks = await Promise.all(assetFolders.map(folder => 
+                fs.promises.access(path.join(tempExtractDir, folder)).then(() => true).catch(() => false)
+            ));
+            const hasAnyAssetFolder = assetChecks.some(exists => exists);
             
             // Special CSS roots
-            const hasCSSRoot = fs.existsSync(path.join(tempExtractDir, 'counterstrikesharp'));
-            const hasConfigsRoot = fs.existsSync(path.join(tempExtractDir, 'configs'));
+            const [hasCSSRoot, hasConfigsRoot] = await Promise.all([
+                fs.promises.access(path.join(tempExtractDir, 'counterstrikesharp')).then(() => true).catch(() => false),
+                fs.promises.access(path.join(tempExtractDir, 'configs')).then(() => true).catch(() => false)
+            ]);
             
             if (hasGame) {
                 // If it has a 'game' folder, we merge from its parent (treating zip as root containing game/...)
-                this.copyRecursiveSync(tempExtractDir, path.dirname(path.dirname(targetDir))); 
+                await this.copyRecursive(tempExtractDir, path.dirname(path.dirname(targetDir))); 
             } else if (hasAddons || hasAnyAssetFolder) {
                 // If it has 'addons' OR any standard asset folder like 'cfg' or 'sound', 
                 // we treat the extraction root as the 'game/csgo' directory.
                 console.log(`[PLUGIN] Smart Merge: Detected standard CS2 folder structure. Merging into game/csgo...`);
-                this.copyRecursiveSync(tempExtractDir, targetDir);
+                await this.copyRecursive(tempExtractDir, targetDir);
             } else if (hasCSSRoot || hasConfigsRoot) {
                 // Some plugins (like SimpleAdmin) put everything inside a 'counterstrikesharp' or 'configs' folder
                 const cssDest = path.join(targetDir, 'addons', 'counterstrikesharp');
                 if (hasCSSRoot) {
-                    this.copyRecursiveSync(path.join(tempExtractDir, 'counterstrikesharp'), cssDest);
+                    await this.copyRecursive(path.join(tempExtractDir, 'counterstrikesharp'), cssDest);
                 }
                 if (hasConfigsRoot) {
-                    this.copyRecursiveSync(path.join(tempExtractDir, 'configs'), path.join(cssDest, 'configs'));
+                    await this.copyRecursive(path.join(tempExtractDir, 'configs'), path.join(cssDest, 'configs'));
                 }
             } else {
                 if (category === 'cssharp') {
                     const pluginDest = path.join(targetDir, 'addons', 'counterstrikesharp', 'plugins');
-                    if (!fs.existsSync(pluginDest)) fs.mkdirSync(pluginDest, { recursive: true });
+                    try { await fs.promises.mkdir(pluginDest, { recursive: true }); } catch {}
                     
-                    const items = fs.readdirSync(tempExtractDir);
-                    if (items.length === 1 && items[0] && fs.statSync(path.join(tempExtractDir, items[0])).isDirectory()) {
-                        const firstItem = items[0];
+                    const items = await fs.promises.readdir(tempExtractDir);
+                    const firstItem = items[0];
+                    const firstItemPath = (items.length === 1 && firstItem) ? path.join(tempExtractDir, firstItem) : null;
+                    const isDir = firstItemPath ? (await fs.promises.stat(firstItemPath)).isDirectory() : false;
+
+                    if (items.length === 1 && isDir && firstItem) {
                         // If the only folder is NOT 'counterstrikesharp' (already handled above), copy it as the plugin folder
-                        this.copyRecursiveSync(path.join(tempExtractDir, firstItem), path.join(pluginDest, firstItem));
+                        await this.copyRecursive(path.join(tempExtractDir, firstItem), path.join(pluginDest, firstItem));
                     } else {
                         const dest = path.join(pluginDest, pluginName);
-                        if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
-                        this.copyRecursiveSync(tempExtractDir, dest);
+                        try { await fs.promises.mkdir(dest, { recursive: true }); } catch {}
+                        await this.copyRecursive(tempExtractDir, dest);
                     }
                 } else if (category === 'metamod') {
                     const addonsDest = path.join(targetDir, 'addons');
-                    if (!fs.existsSync(addonsDest)) fs.mkdirSync(addonsDest, { recursive: true });
-                    this.copyRecursiveSync(tempExtractDir, addonsDest);
+                    try { await fs.promises.mkdir(addonsDest, { recursive: true }); } catch {}
+                    await this.copyRecursive(tempExtractDir, addonsDest);
                 } else {
-                    this.copyRecursiveSync(tempExtractDir, targetDir);
+                    await this.copyRecursive(tempExtractDir, targetDir);
                 }
             }
             console.log(`[PLUGIN] Smart extraction complete.`);
         } finally {
-            if (fs.existsSync(tempFile)) fs.unlinkSync(tempFile);
-            if (fs.existsSync(tempExtractDir)) fs.rmSync(tempExtractDir, { recursive: true, force: true });
+            try { await fs.promises.unlink(tempFile); } catch {}
+            try { await fs.promises.rm(tempExtractDir, { recursive: true, force: true }); } catch {}
         }
     }
 
-    private copyRecursiveSync(src: string, dest: string) {
-        if (!fs.existsSync(src)) return;
-        if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+    private async copyRecursive(src: string, dest: string) {
+        try { await fs.promises.access(src); } catch { return; }
+        try { await fs.promises.mkdir(dest, { recursive: true }); } catch {}
         
-        for (const item of fs.readdirSync(src)) {
+        const items = await fs.promises.readdir(src);
+        for (const item of items) {
             const srcItem = path.join(src, item);
             const destItem = path.join(dest, item);
-            if (fs.statSync(srcItem).isDirectory()) {
-                this.copyRecursiveSync(srcItem, destItem);
+            const stat = await fs.promises.stat(srcItem);
+            
+            if (stat.isDirectory()) {
+                await this.copyRecursive(srcItem, destItem);
             } else {
-                fs.copyFileSync(srcItem, destItem);
+                await fs.promises.copyFile(srcItem, destItem);
             }
         }
     }
@@ -192,49 +243,65 @@ export class PluginManager {
                 console.error(`[DB] Failed to record plugin install:`, err);
             }
 
-            if (pluginId === 'metamod') this.configureMetamod(csgoDir);
+            if (pluginId === 'metamod') await this.configureMetamod(csgoDir);
         }
     }
 
-    private configureMetamod(csgoDir: string) {
+    private async configureMetamod(csgoDir: string) {
         const gameinfo = path.join(csgoDir, 'gameinfo.gi');
-        if (fs.existsSync(gameinfo)) {
-            let content = fs.readFileSync(gameinfo, 'utf8');
+        try {
+            await fs.promises.access(gameinfo);
+            let content = await fs.promises.readFile(gameinfo, 'utf8');
             if (!content.includes('csgo/addons/metamod')) {
-                // Target the specific line requested by the user
                 const targetLine = /Game_LowViolence\s+csgo_lv\s+\/\/\s+Perfect World content override/i;
-                
                 if (targetLine.test(content)) {
                     content = content.replace(targetLine, '$&\n\t\t\tGame\tcsgo/addons/metamod');
                 } else {
-                    // Fallback injection point
                     content = content.replace(/(SearchPaths\s*\{)/, '$1\n\t\t\tGame\tcsgo/addons/metamod');
                 }
-                fs.writeFileSync(gameinfo, content);
+                await fs.promises.writeFile(gameinfo, content);
             }
+        } catch {}
+    }
+
+    async checkAllPluginUpdates(instanceId: string | number): Promise<Record<string, any>> {
+        await this.syncRegistry();
+        const results: Record<string, any> = {};
+
+        try {
+            const installedPlugins = this.checkAllStmt.all(instanceId) as { plugin_id: string, version: string }[];
+            const installedMap = new Map(installedPlugins.map(p => [p.plugin_id, p.version]));
+
+            for (const pid of Object.keys(this.pluginRegistry)) {
+                const info = this.manifest ? this.manifest[pid] : (this.pluginRegistry as any)[pid];
+                if (!info) continue;
+
+                const installedVersion = installedMap.get(pid);
+                if (!installedVersion) {
+                    results[pid] = { hasUpdate: false, latestVersion: info.version || info.currentVersion };
+                    continue;
+                }
+
+                const latestVersion = info.version || info.currentVersion;
+                const hasUpdate = installedVersion !== latestVersion;
+                
+                results[pid] = {
+                    name: info.name,
+                    hasUpdate,
+                    currentVersion: installedVersion,
+                    latestVersion
+                };
+            }
+        } catch (err) {
+            console.error(`[PLUGIN] Batch update check failed:`, err);
         }
+
+        return results;
     }
 
     async checkPluginUpdate(instanceId: string | number, pluginId: PluginId): Promise<any> {
-        const info = (this.pluginRegistry[pluginId] as any);
-        if (!info) return { hasUpdate: false };
-
-        try {
-            const installed = db.prepare(`SELECT version FROM server_plugins WHERE server_id = ? AND plugin_id = ?`)
-                               .get(instanceId, pluginId) as { version: string } | undefined;
-            
-            if (!installed) return { hasUpdate: false, latestVersion: info.currentVersion };
-
-            const hasUpdate = installed.version !== info.currentVersion;
-            return { 
-                name: info.name, 
-                hasUpdate, 
-                currentVersion: installed.version, 
-                latestVersion: info.currentVersion 
-            };
-        } catch (err) {
-            return { hasUpdate: false, latestVersion: info.currentVersion };
-        }
+        const updates = await this.checkAllPluginUpdates(instanceId);
+        return updates[pluginId] || { hasUpdate: false };
     }
 
     async updatePlugin(installDir: string, instanceId: string | number, pluginId: PluginId): Promise<void> {
@@ -271,42 +338,38 @@ export class PluginManager {
             path.join(csgoDir, 'translations')
         ];
 
-        searchDirs.forEach(dir => {
-            if (!fs.existsSync(dir)) return;
-            const items = fs.readdirSync(dir);
-            items.forEach(item => {
-                const lowerItem = item.toLowerCase();
-                const lowerPluginId = pluginId.toLowerCase();
-                const lowerFolderName = folderName.toLowerCase();
-                
-                const isMatch = lowerItem === lowerPluginId || 
-                                lowerItem === lowerFolderName ||
-                                lowerItem === lowerPluginId + ".vdf" ||
-                                lowerItem === lowerFolderName + ".vdf" ||
-                                lowerItem === lowerPluginId + ".dll" ||
-                                lowerItem === lowerFolderName + ".dll" ||
-                                (lowerPluginId.length > 3 && lowerItem.includes(lowerPluginId)) ||
-                                (lowerFolderName.length > 3 && lowerItem.includes(lowerFolderName));
-                
-                if (isMatch) {
-                    pathsToDelete.add(path.join(dir, item));
-                }
-            });
-        });
-
-        // Special case: CS2Fixes often has multiple folders/files. 
-        // We already added basic ones, but we can add more if needed.
-
-        pathsToDelete.forEach(p => {
+        for (const dir of searchDirs) {
             try {
-                if (fs.existsSync(p)) {
-                    fs.rmSync(p, { recursive: true, force: true });
-                    console.log(`[PLUGIN] Deep Deleted: ${p}`);
+                const items = await fs.promises.readdir(dir);
+                for (const item of items) {
+                    const lowerItem = item.toLowerCase();
+                    const lowerPluginId = pluginId.toLowerCase();
+                    const lowerFolderName = folderName.toLowerCase();
+                    
+                    const isMatch = lowerItem === lowerPluginId || 
+                                    lowerItem === lowerFolderName ||
+                                    lowerItem === lowerPluginId + ".vdf" ||
+                                    lowerItem === lowerFolderName + ".vdf" ||
+                                    lowerItem === lowerPluginId + ".dll" ||
+                                    lowerItem === lowerFolderName + ".dll" ||
+                                    (lowerPluginId.length > 3 && lowerItem.includes(lowerPluginId)) ||
+                                    (lowerFolderName.length > 3 && lowerItem.includes(lowerFolderName));
+                    
+                    if (isMatch) {
+                        pathsToDelete.add(path.join(dir, item));
+                    }
                 }
+            } catch {}
+        }
+
+        for (const p of pathsToDelete) {
+            try {
+                await fs.promises.rm(p, { recursive: true, force: true });
+                console.log(`[PLUGIN] Deep Deleted: ${p}`);
             } catch (err) {
                 console.error(`[PLUGIN] Failed to delete ${p}:`, err);
             }
-        });
+        }
 
         // Remove from DB
         try {
@@ -324,38 +387,37 @@ export class PluginManager {
         console.log(`[PLUGIN] Performing deep cleanup of Metamod and all dependencies...`);
 
         // 1. Remove Metamod files
-        ['metamod', 'metamod.vdf', 'metamod_x64.vdf'].forEach(p => {
-            const fullPath = path.join(addonsDir, p);
-            if (fs.existsSync(fullPath)) fs.rmSync(fullPath, { recursive: true, force: true });
-        });
+        const metaFiles = ['metamod', 'metamod.vdf', 'metamod_x64.vdf'];
+        await Promise.all(metaFiles.map(p => 
+            fs.promises.rm(path.join(addonsDir, p), { recursive: true, force: true }).catch(() => {})
+        ));
 
         // 2. Remove dependencies (CS# and all plugins inside it)
         const cssDir = path.join(addonsDir, 'counterstrikesharp');
-        if (fs.existsSync(cssDir)) {
-            try {
-                fs.rmSync(cssDir, { recursive: true, force: true });
-                console.log(`[PLUGIN] CounterStrikeSharp and all associated plugins removed.`);
-                // Clear all CSS eklentileri from DB
-                db.prepare(`DELETE FROM server_plugins WHERE server_id = ? AND plugin_id != 'metamod'`).run(instanceId);
-            } catch (err: any) {
-                console.error(`[PLUGIN] Failed to remove CS# directory. It might be in use by the server: ${err.message}`);
+        try {
+            await fs.promises.rm(cssDir, { recursive: true, force: true });
+            console.log(`[PLUGIN] CounterStrikeSharp and all associated plugins removed.`);
+            db.prepare(`DELETE FROM server_plugins WHERE server_id = ? AND plugin_id != 'metamod'`).run(instanceId);
+        } catch (err: any) {
+            if (err.code !== 'ENOENT') {
+                console.error(`[PLUGIN] Failed to remove CS# directory: ${err.message}`);
                 throw new Error("Cannot remove CounterStrikeSharp: Files are in use. Is the server running?");
             }
         }
 
         // 3. Clean up gameinfo.gi
         const gameinfo = path.join(csgoDir, 'gameinfo.gi');
-        if (fs.existsSync(gameinfo)) {
-            let content = fs.readFileSync(gameinfo, 'utf8');
+        try {
+            let content = await fs.promises.readFile(gameinfo, 'utf8');
             content = content.replace(/\s*Game\tcsgo\/addons\/metamod/g, '');
-            fs.writeFileSync(gameinfo, content);
-        }
+            await fs.promises.writeFile(gameinfo, content);
+        } catch {}
         console.log(`[PLUGIN] Metamod uninstalled successfully.`);
     }
 
     async uninstallCounterStrikeSharp(installDir: string, instanceId: string | number): Promise<void> {
         const cssDir = path.join(installDir, instanceId.toString(), 'game', 'csgo', 'addons', 'counterstrikesharp');
-        if (fs.existsSync(cssDir)) fs.rmSync(cssDir, { recursive: true, force: true });
+        await fs.promises.rm(cssDir, { recursive: true, force: true }).catch(() => {});
     }
 }
 

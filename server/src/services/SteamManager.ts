@@ -5,13 +5,21 @@ import db from '../db.js';
 
 export class SteamManager {
     async ensureSteamCMD(steamCmdExe: string): Promise<boolean> {
-        return fs.existsSync(steamCmdExe);
+        try {
+            await fs.promises.access(steamCmdExe);
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     async downloadSteamCmd(targetExe: string): Promise<void> {
         const steamCmdDir = path.dirname(targetExe);
-        if (!fs.existsSync(steamCmdDir)) {
-            fs.mkdirSync(steamCmdDir, { recursive: true });
+        
+        try {
+            await fs.promises.mkdir(steamCmdDir, { recursive: true });
+        } catch (error: any) {
+            if (error.code !== 'EEXIST') throw error;
         }
 
         const tarPath = path.join(steamCmdDir, 'steamcmd_linux.tar.gz');
@@ -22,7 +30,7 @@ export class SteamManager {
         if (!response.ok) throw new Error(`Failed to download SteamCMD: ${response.statusText}`);
         
         const arrayBuffer = await response.arrayBuffer();
-        fs.writeFileSync(tarPath, Buffer.from(arrayBuffer));
+        await fs.promises.writeFile(tarPath, Buffer.from(arrayBuffer));
 
         const { exec } = await import('child_process');
         const { promisify } = await import('util');
@@ -31,15 +39,17 @@ export class SteamManager {
         console.log(`Extracting Linux SteamCMD...`);
         await execAsync(`tar -xzf "${tarPath}" -C "${steamCmdDir}"`);
 
-        fs.unlinkSync(tarPath);
+        await fs.promises.unlink(tarPath);
     }
 
     async installOrUpdateServer(instanceId: string | number, steamCmdExe: string, installDir: string, onLog?: (data: string) => void): Promise<void> {
         const id = instanceId.toString();
         const serverPath = path.join(installDir, id);
         
-        if (!fs.existsSync(serverPath)) {
-            fs.mkdirSync(serverPath, { recursive: true });
+        try {
+            await fs.promises.mkdir(serverPath, { recursive: true });
+        } catch (error: any) {
+            if (error.code !== 'EEXIST') throw error;
         }
 
         return new Promise((resolve, reject) => {
