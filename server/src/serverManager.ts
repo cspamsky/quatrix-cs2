@@ -170,15 +170,29 @@ class ServerManager {
                 const cache = this.playerIdentityCache.get(serverId);
 
                 if (validatedMatch) {
+                    const name = validatedMatch[1];
                     const userId = validatedMatch[2];
                     const steamId = validatedMatch[3];
                     cache?.set(userId, steamId);
-                    // İsim de yedek olarak kalsın
-                    cache?.set(validatedMatch[1], steamId);
+                    cache?.set(name, steamId);
+                    
+                    // Veritabanına da kaydet
+                    try {
+                        db.prepare("INSERT OR REPLACE INTO player_identities (name, steam_id, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP)")
+                          .run(name, steamId);
+                    } catch (e) {}
+                    console.log(`[IDENTITY] Validated & Saved: ${name} -> ${steamId}`);
                 } else if (udpMatch && line.includes("'")) {
                     const steamId64 = udpMatch[1];
                     const nameMatch = line.match(/'(.+)'/);
-                    if (nameMatch) cache?.set(nameMatch[1], steamId64);
+                    if (nameMatch) {
+                        cache?.set(nameMatch[1], steamId64);
+                        try {
+                            db.prepare("INSERT OR REPLACE INTO player_identities (name, steam_id, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP)")
+                              .run(nameMatch[1], steamId64);
+                        } catch (e) {}
+                        console.log(`[IDENTITY] UDP Saved: ${nameMatch[1]} -> ${steamId64}`);
+                    }
                 }
             }
         });
@@ -261,30 +275,25 @@ class ServerManager {
 
     async getPlayers(id: string | number): Promise<any[]> {
         try {
-            // CS2 için en güçlü komut kombinasyonu
-            const combinedOutput = await this.sendCommand(id, 'status; css_players');
+            // CS2 için mevcut komutları gönder (dump_player_list CS2'de yok)
+            const combinedOutput = await this.sendCommand(id, 'status');
             const players: any[] = [];
             const lines = combinedOutput.split('\n');
+            const idStr = id.toString();
+            const cache = this.playerIdentityCache.get(idStr);
             
-            // 1. Önce CSS_PLAYERS tablosunu tara (En detaylı veri buradadır)
-            // Format Genellikle: "Slot  Name  SteamID  IP" veya benzeri bir tablo
+            // 1. Önce CSS_PLAYERS veya DUMP_PLAYER_LIST tablosunu tara
             for (const line of lines) {
                 const trimmed = line.trim();
-                
-                // Steam64 (765...) yakala
                 const steam64Match = trimmed.match(/(\b765611\d{10,12}\b)/);
                 if (steam64Match) {
                     const steamId64 = steam64Match[1];
-                    // Satırı parçalara ayırıp ismi ve ID'yi bulmaya çalışalım
-                    // Genellikle tablo: [ID] [Name] [SteamID]
                     const parts = trimmed.split(/\s+/);
                     if (parts.length >= 2) {
-                        // Eğer isim tırnak içindeyse temizle
                         const nameMatch = trimmed.match(/["'](.+)["']/);
                         const name = nameMatch ? nameMatch[1] : parts[1];
-                        
                         if (!players.find(p => p.steamId === steamId64)) {
-                            const userId = (parts[0] || '0').replace(/#/g, '');
+                            const userId = parts[0] ? parts[0].replace(/#/g, '') : '0';
                             players.push({
                                 userId: userId,
                                 name: name,
@@ -298,45 +307,50 @@ class ServerManager {
                 }
             }
 
-            // 2. Eğer hala oyuncu bulunamadıysa (CSS yüklü değilse), status çıktısına geri dön
-            const idStr = id.toString();
-            const cache = this.playerIdentityCache.get(idStr);
-
+            // 2. Normal liste tarama ve Derin Kimlik Eşleştirme (Veritabanı + Log desteği)
             for (const line of lines) {
                 const trimmed = line.trim();
                 const nameMatch = trimmed.match(/["'](.+)["']/);
                 if (nameMatch && nameMatch[1]) {
                     const name = nameMatch[1];
                     const idPart = trimmed.replace('[Client]', '').trim().split(/\s+/)[0];
-                    if (idPart && /^\d+$/.test(idPart) && idPart !== '65535') {
-                        if (!players.find(p => p.name === name)) {
-                            // 1. Önce Cache'den (ID bazlı veya isim bazlı) bak
-                            let steamId = cache?.get(idPart) || cache?.get(name);
-                            
-                            // 2. Eğer hala yoksa, mevcut log buffer'ını son kez tara (Geriye dönük)
-                            if (!steamId) {
-                                const buffer = this.logBuffers.get(idStr) || [];
-                                for (const logLine of buffer) {
-                                    if (logLine.includes(name) && (logLine.includes('U:1:') || logLine.includes('STEAM_'))) {
-                                        const m = logLine.match(/(\[?U:\d:\d+\]?|STEAM_\d:\d:\d+)/i);
-                                        if (m && m[1]) {
-                                            steamId = m[1];
-                                            if (cache) cache.set(idPart, steamId); // Bir dahaki sefere daha hızlı bul
-                                            break;
-                                        }
+                    if (idPart && /^\d+$/.test(idPart) && idPart !== '65535' && !players.find(p => p.name === name)) {
+                        // 1. Memory Cache
+                        let steamId = cache?.get(idPart) || cache?.get(name);
+                        
+                        // 2. Log History Taraması
+                        if (!steamId) {
+                            const buffer = this.logBuffers.get(idStr) || [];
+                            for (const logLine of buffer) {
+                                if (logLine.includes(name) && (logLine.includes('U:1:') || logLine.includes('STEAM_'))) {
+                                    const m = logLine.match(/(\[?U:\d:\d+\]?|STEAM_\d:\d:\d+)/i);
+                                    if (m && m[0]) {
+                                        steamId = m[0];
+                                        if (cache) cache.set(idPart, steamId);
+                                        break;
                                     }
                                 }
                             }
-
-                            players.push({
-                                userId: idPart,
-                                name: name,
-                                steamId: steamId || 'Hidden/Pending',
-                                connected: '00:00',
-                                ping: 0,
-                                state: 'active'
-                            });
                         }
+
+                        // 3. Veritabanı Taraması (En güçlü yedek)
+                        if (!steamId) {
+                            const dbRow = db.prepare("SELECT steam_id FROM player_identities WHERE name = ?")
+                                           .get(name) as { steam_id: string } | undefined;
+                            if (dbRow) {
+                                steamId = dbRow.steam_id;
+                                if (cache) cache.set(idPart, steamId);
+                            }
+                        }
+
+                        players.push({
+                            userId: idPart,
+                            name: name,
+                            steamId: steamId || 'Hidden/Pending',
+                            connected: '00:00',
+                            ping: 0,
+                            state: 'active'
+                        });
                     }
                 }
             }

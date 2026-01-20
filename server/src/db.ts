@@ -136,6 +136,15 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS player_identities (
+    name TEXT,
+    steam_id TEXT,
+    last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (name)
+  )
+`);
+
 // Initialize default settings if they don't exist
 const initializeSetting = (key: string, defaultValue: string) => {
   const existing = db.prepare("SELECT * FROM settings WHERE key = ?").get(key);

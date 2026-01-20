@@ -33,7 +33,7 @@ router.get("/:id/plugins/updates", async (req: any, res) => {
     const { id } = req.params;
     try {
         const updateChecks = await Promise.all(
-            (Object.keys(pluginRegistry) as PluginId[]).map(pid => serverManager.checkPluginUpdate(pid))
+            (Object.keys(pluginRegistry) as PluginId[]).map(pid => serverManager.checkPluginUpdate(id, pid))
         );
 
         const updates: Record<string, any> = {};
