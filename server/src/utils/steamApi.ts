@@ -1,5 +1,3 @@
-import db from '../db.js';
-
 interface SteamPlayerSummary {
     steamid: string;
     personaname: string;
@@ -15,15 +13,13 @@ interface SteamPlayerSummary {
  */
 export async function getPlayerAvatar(steamId64: string): Promise<string | null> {
     try {
-        // Steam Web API Key'i settings'den al
-        const apiKeyRow = db.prepare("SELECT value FROM settings WHERE key = 'steam_api_key'").get() as { value: string } | undefined;
+        // .env dosyasından Steam API key'i al
+        const apiKey = process.env.STEAM_API_KEY;
         
-        if (!apiKeyRow || !apiKeyRow.value) {
+        if (!apiKey) {
             console.warn('[Steam API] No API key configured');
             return null;
         }
-
-        const apiKey = apiKeyRow.value;
         const url = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${apiKey}&steamids=${steamId64}`;
         
         const response = await fetch(url);
@@ -58,15 +54,16 @@ export async function getPlayerAvatars(steamIds: string[]): Promise<Map<string, 
     if (steamIds.length === 0) return avatarMap;
 
     try {
-        const apiKeyRow = db.prepare("SELECT value FROM settings WHERE key = 'steam_api_key'").get() as { value: string } | undefined;
+        // .env dosyasından Steam API key'i al
+        const apiKey = process.env.STEAM_API_KEY;
         
-        if (!apiKeyRow || !apiKeyRow.value) {
-            console.warn('[Steam API] No API key configured. Please add Steam API key to database.');
-            console.warn('[Steam API] Run: sqlite3 data/quatrix.db "INSERT OR REPLACE INTO settings (key, value) VALUES (\'steam_api_key\', \'YOUR_KEY\');"');
+        if (!apiKey) {
+            console.warn('[Steam API] No API key configured in .env file');
+            console.warn('[Steam API] Please add STEAM_API_KEY to your .env file');
+            console.warn('[Steam API] Get your key from: https://steamcommunity.com/dev/apikey');
             return avatarMap;
         }
 
-        const apiKey = apiKeyRow.value;
         console.log(`[Steam API] API key found, fetching avatars for ${steamIds.length} players`);
         
         // Steam API maksimum 100 ID'yi aynı anda kabul eder

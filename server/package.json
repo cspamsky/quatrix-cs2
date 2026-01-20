@@ -4,9 +4,9 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "tsx --watch --env-file=.env src/index.ts",
+    "dev": "tsx --watch --env-file=../.env src/index.ts",
     "build": "tsc",
-    "start": "node --env-file=.env dist/index.js",
+    "start": "node --env-file=../.env dist/index.js",
     "clean": "rimraf dist",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
