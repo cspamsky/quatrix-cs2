@@ -53,8 +53,8 @@ if (isProduction) {
   app.use(express.static(clientBuildPath));
   
   // SPA fallback - tüm non-API route'ları index.html'e yönlendir
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) {
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
       return next();
     }
     res.sendFile(path.join(clientBuildPath, 'index.html'));
