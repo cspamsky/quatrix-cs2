@@ -226,7 +226,7 @@ class ServerManager {
         return true;
     }
 
-    async sendCommand(id: string | number, command: string): Promise<string> {
+    async sendCommand(id: string | number, command: string, retries = 3): Promise<string> {
         const idStr = id.toString();
         const server = db.prepare("SELECT * FROM servers WHERE id = ?").get(idStr) as any;
         if (!server) throw new Error("Server not found in database");
@@ -237,25 +237,41 @@ class ServerManager {
         // RCON portu: Eğer rcon_port tanımlıysa onu kullan, yoksa game port'u kullan
         const rconPort = server.rcon_port || server.port;
         
-        try {
-            if (!rcon) {
-                console.log(`[RCON] Connecting to server ${id} at 127.0.0.1:${rconPort}`);
-                rcon = await Rcon.connect({ 
-                    host: '127.0.0.1', 
-                    port: rconPort, 
-                    password: server.rcon_password, 
-                    timeout: 3000
-                });
-                rcon.on('error', () => this.rconConnections.delete(idStr));
-                rcon.on('end', () => this.rconConnections.delete(idStr));
-                this.rconConnections.set(idStr, rcon);
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                if (!rcon) {
+                    if (attempt === 1) {
+                        console.log(`[RCON] Connecting to server ${id} at 127.0.0.1:${rconPort}`);
+                    } else {
+                        console.log(`[RCON] Retry ${attempt}/${retries} for server ${id}`);
+                    }
+                    
+                    rcon = await Rcon.connect({ 
+                        host: '127.0.0.1', 
+                        port: rconPort, 
+                        password: server.rcon_password, 
+                        timeout: 3000
+                    });
+                    rcon.on('error', () => this.rconConnections.delete(idStr));
+                    rcon.on('end', () => this.rconConnections.delete(idStr));
+                    this.rconConnections.set(idStr, rcon);
+                }
+                return await rcon.send(command);
+            } catch (error) {
+                this.rconConnections.delete(idStr);
+                rcon = undefined;
+                
+                if (attempt === retries) {
+                    console.error(`[RCON] Failed to connect to server ${id} at 127.0.0.1:${rconPort} after ${retries} attempts`);
+                    throw new Error(`RCON Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                }
+                
+                // Sunucu başlatılıyorsa biraz bekle
+                await new Promise(resolve => setTimeout(resolve, 2000));
             }
-            return await rcon.send(command);
-        } catch (error) {
-            this.rconConnections.delete(idStr);
-            console.error(`[RCON] Failed to connect to server ${id} at 127.0.0.1:${rconPort} - ${error instanceof Error ? error.message : 'Unknown'}`);
-            throw new Error(`RCON Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+        
+        throw new Error('RCON connection failed after all retries');
     }
 
     async getCurrentMap(id: string | number): Promise<string | null> {
