@@ -50,7 +50,7 @@ Game server management shouldn't feel like 1999. Quatrix bridges the gap between
 ### 1. Prerequisites
 
 - **Node.js**: v20.6.0+ (Required for native `--env-file` support)
-- **OS**: Linux (Ubuntu 22.04+ RECOMMENDED) or Windows
+- **OS**: Linux (Ubuntu 22.04+ RECOMMENDED)
 - **Linux Deps**: `lib32gcc-s1`, `lib32stdc++6`, `libc6-i386` (Required for SteamCMD)
 
 ### 2. Rapid Installation
