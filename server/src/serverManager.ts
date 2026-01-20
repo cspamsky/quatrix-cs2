@@ -161,37 +161,25 @@ class ServerManager {
                 if (buffer.length > 200) buffer.shift();
                 this.logBuffers.set(id, buffer);
 
-                // --- OYUNCU TAKIBI (ID ve SteamID Yakalama) ---
-                const validatedMatch = line.match(/["'](.+)<(\d+)><(\[?U:\d:\d+\]?|STEAM_\d:\d:\d+|BOT)>/i);
-                const udpMatch = line.match(/steamid:(\d{17})/);
+                // --- OYUNCU TAKIBI (Sadece Steam64 Yakalama) ---
+                // Steam64 formatı: steamid:76561198968591397
+                const steam64Match = line.match(/steamid:(\d{17})/i);
                 
                 const serverId = id.toString();
                 if (!this.playerIdentityCache.has(serverId)) this.playerIdentityCache.set(serverId, new Map());
                 const cache = this.playerIdentityCache.get(serverId);
 
-                if (validatedMatch) {
-                    const name = validatedMatch[1];
-                    const userId = validatedMatch[2];
-                    const steamId = validatedMatch[3];
-                    cache?.set(userId, steamId);
-                    cache?.set(name, steamId);
-                    
-                    // Veritabanına da kaydet
-                    try {
-                        db.prepare("INSERT OR REPLACE INTO player_identities (name, steam_id, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP)")
-                          .run(name, steamId);
-                    } catch (e) {}
-                    console.log(`[IDENTITY] Validated & Saved: ${name} -> ${steamId}`);
-                } else if (udpMatch && line.includes("'")) {
-                    const steamId64 = udpMatch[1];
-                    const nameMatch = line.match(/'(.+)'/);
+                if (steam64Match) {
+                    const steamId64 = steam64Match[1];
+                    const nameMatch = line.match(/['"](.+?)['"]/);
                     if (nameMatch) {
-                        cache?.set(nameMatch[1], steamId64);
+                        const name = nameMatch[1];
+                        cache?.set(name, steamId64);
                         try {
                             db.prepare("INSERT OR REPLACE INTO player_identities (name, steam_id, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP)")
-                              .run(nameMatch[1], steamId64);
+                              .run(name, steamId64);
                         } catch (e) {}
-                        console.log(`[IDENTITY] UDP Saved: ${nameMatch[1]} -> ${steamId64}`);
+                        console.log(`[IDENTITY] Steam64 Saved: ${name} -> ${steamId64}`);
                     }
                 }
             }
@@ -310,22 +298,35 @@ class ServerManager {
             // 2. Normal liste tarama ve Derin Kimlik Eşleştirme (Veritabanı + Log desteği)
             for (const line of lines) {
                 const trimmed = line.trim();
+                
+                // Bot satırlarını direkt atla
+                if (trimmed.includes('BOT') || trimmed.includes('<BOT>')) {
+                    continue;
+                }
+                
                 const nameMatch = trimmed.match(/["'](.+)["']/);
                 if (nameMatch && nameMatch[1]) {
                     const name = nameMatch[1];
+                    
+                    // Bot isimlerini filtrele (genelde kısa isimler veya BOT içerir)
+                    if (name.length < 2 || name.toUpperCase().includes('BOT')) {
+                        continue;
+                    }
+                    
                     const idPart = trimmed.replace('[Client]', '').trim().split(/\s+/)[0];
                     if (idPart && /^\d+$/.test(idPart) && idPart !== '65535' && !players.find(p => p.name === name)) {
                         // 1. Memory Cache
                         let steamId = cache?.get(idPart) || cache?.get(name);
                         
-                        // 2. Log History Taraması
+                        // 2. Log History Taraması (Sadece Steam64)
                         if (!steamId) {
                             const buffer = this.logBuffers.get(idStr) || [];
                             for (const logLine of buffer) {
-                                if (logLine.includes(name) && (logLine.includes('U:1:') || logLine.includes('STEAM_'))) {
-                                    const m = logLine.match(/(\[?U:\d:\d+\]?|STEAM_\d:\d:\d+)/i);
-                                    if (m && m[0]) {
-                                        steamId = m[0];
+                                if (logLine.includes(name)) {
+                                    // Sadece Steam64 formatını ara (76561...)
+                                    const steam64 = logLine.match(/\b(765611\d{10,12})\b/);
+                                    if (steam64 && steam64[1]) {
+                                        steamId = steam64[1];
                                         if (cache) cache.set(idPart, steamId);
                                         break;
                                     }
@@ -341,6 +342,11 @@ class ServerManager {
                                 steamId = dbRow.steam_id;
                                 if (cache) cache.set(idPart, steamId);
                             }
+                        }
+
+                        // Bot'ları listeye ekleme (Ekstra kontrol)
+                        if (steamId && steamId.toUpperCase() === 'BOT') {
+                            continue;
                         }
 
                         players.push({
