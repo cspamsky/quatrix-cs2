@@ -134,10 +134,31 @@ export class PluginManager {
             const hasAddons = fs.existsSync(path.join(tempExtractDir, 'addons'));
             const hasGame = fs.existsSync(path.join(tempExtractDir, 'game'));
             
+            // Standard CS2 asset folders often found at the root of plugin ZIPs
+            const assetFolders = ['cfg', 'materials', 'models', 'particles', 'sound', 'soundevents', 'translations', 'maps', 'scripts'];
+            const hasAnyAssetFolder = assetFolders.some(folder => fs.existsSync(path.join(tempExtractDir, folder)));
+            
+            // Special CSS roots
+            const hasCSSRoot = fs.existsSync(path.join(tempExtractDir, 'counterstrikesharp'));
+            const hasConfigsRoot = fs.existsSync(path.join(tempExtractDir, 'configs'));
+            
             if (hasGame) {
+                // If it has a 'game' folder, we merge from its parent (treating zip as root containing game/...)
                 this.copyRecursiveSync(tempExtractDir, path.dirname(path.dirname(targetDir))); 
-            } else if (hasAddons) {
+            } else if (hasAddons || hasAnyAssetFolder) {
+                // If it has 'addons' OR any standard asset folder like 'cfg' or 'sound', 
+                // we treat the extraction root as the 'game/csgo' directory.
+                console.log(`[PLUGIN] Smart Merge: Detected standard CS2 folder structure. Merging into game/csgo...`);
                 this.copyRecursiveSync(tempExtractDir, targetDir);
+            } else if (hasCSSRoot || hasConfigsRoot) {
+                // Some plugins (like SimpleAdmin) put everything inside a 'counterstrikesharp' or 'configs' folder
+                const cssDest = path.join(targetDir, 'addons', 'counterstrikesharp');
+                if (hasCSSRoot) {
+                    this.copyRecursiveSync(path.join(tempExtractDir, 'counterstrikesharp'), cssDest);
+                }
+                if (hasConfigsRoot) {
+                    this.copyRecursiveSync(path.join(tempExtractDir, 'configs'), path.join(cssDest, 'configs'));
+                }
             } else {
                 if (category === 'cssharp') {
                     const pluginDest = path.join(targetDir, 'addons', 'counterstrikesharp', 'plugins');
@@ -146,6 +167,7 @@ export class PluginManager {
                     const items = fs.readdirSync(tempExtractDir);
                     if (items.length === 1 && items[0] && fs.statSync(path.join(tempExtractDir, items[0])).isDirectory()) {
                         const firstItem = items[0];
+                        // If the only folder is NOT 'counterstrikesharp' (already handled above), copy it as the plugin folder
                         this.copyRecursiveSync(path.join(tempExtractDir, firstItem), path.join(pluginDest, firstItem));
                     } else {
                         const dest = path.join(pluginDest, pluginName);
