@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { apiFetch } from '../utils/api'
 import { 
   Users, 
@@ -57,7 +57,7 @@ const Players = () => {
     fetchServers()
   }, [])
 
-  const fetchPlayers = async (isManual = false) => {
+  const fetchPlayers = useCallback(async (isManual = false) => {
     if (!selectedServerId) {
       setPlayers([])
       return
@@ -85,14 +85,14 @@ const Players = () => {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [selectedServerId, players.length, loading, showNotification])
 
   useEffect(() => {
     fetchPlayers()
     // 10 saniyede bir otomatik yenile (Sürekli yenilenme hissini azaltmak için)
     const interval = setInterval(() => fetchPlayers(false), 10000)
     return () => clearInterval(interval)
-  }, [selectedServerId])
+  }, [selectedServerId, fetchPlayers])
 
   const handleAction = async (action: 'kick' | 'ban', userId: string) => {
     if (!selectedServerId) return
