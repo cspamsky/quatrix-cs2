@@ -8,13 +8,14 @@
     "setup": "node setup.js",
     "install-all": "node setup.js",
     "dev": "npx concurrently --names \"SERVER,CLIENT\" --prefix-colors \"cyan.bold,magenta.bold\" --prefix \"[{name}]\" \"npm run dev --prefix server\" \"npx wait-on tcp:3001 && npm run dev --prefix client\"",
+    "stop": "pkill -f 'tsx' || pkill -f 'vite' || pkill -f 'cs2' || true",
     "build": "npm run build:server && npm run build:client",
     "build:server": "cd server && npm run build",
     "build:client": "cd client && npm run build",
     "start": "cd server && npm start",
     "clean": "rimraf dist && rimraf server/dist && rimraf client/dist",
     "lint": "cd client && npm run lint",
-    "fix-client": "taskkill /F /IM node.exe /T && cd client && rimraf node_modules && npm install"
+    "fix-client": "rimraf client/node_modules && npm install --prefix client"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
