@@ -63,9 +63,12 @@ const Players = () => {
       return
     }
     
-    // Sadece manuel yenilemede veya ilk yüklemede loading göster
-    if (isManual) setRefreshing(true)
-    else if (players.length === 0 && !loading) setLoading(true)
+    // Sadece manuel yenilemede loading göster
+    if (isManual) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
 
     try {
       const response = await apiFetch(`/api/servers/${selectedServerId}/players`)
@@ -85,11 +88,13 @@ const Players = () => {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [selectedServerId, players.length, loading, showNotification])
+  }, [selectedServerId, showNotification])
 
   useEffect(() => {
+    if (!selectedServerId) return
+    
     fetchPlayers()
-    // 10 saniyede bir otomatik yenile (Sürekli yenilenme hissini azaltmak için)
+    // 10 saniyede bir otomatik yenile
     const interval = setInterval(() => fetchPlayers(false), 10000)
     return () => clearInterval(interval)
   }, [selectedServerId, fetchPlayers])
