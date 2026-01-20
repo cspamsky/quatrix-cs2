@@ -6,6 +6,8 @@ import si from "systeminformation";
 import db from "./db.js";
 import { serverManager } from "./serverManager.js";
 import { apiLimiter } from "./middleware/rateLimiter.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 // Routes
 import authRouter from "./routes/auth.js";
@@ -17,6 +19,8 @@ import pluginsRouter from "./routes/plugins.js";
 import playersRouter from "./routes/players.js";
 
 // Environment variables are loaded via --env-file in package.json dev script
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const httpServer = createServer(app);
@@ -28,6 +32,7 @@ const io = new Server(httpServer, {
 app.set('io', io);
 
 const PORT = process.env.PORT || 3001;
+const isProduction = process.env.NODE_ENV === 'production';
 
 app.use(cors());
 app.use(express.json());
@@ -41,6 +46,20 @@ app.use('/api/servers', serversRouter); // /api/servers (base)
 app.use('/api/servers', commandsRouter); // /api/servers/:id/start, etc.
 app.use('/api/servers', filesRouter); // /api/servers/:id/files
 app.use('/api/servers', playersRouter); // /api/servers/:id/players
+
+// --- Serve Frontend in Production ---
+if (isProduction) {
+  const clientBuildPath = path.join(__dirname, '../../client/dist');
+  app.use(express.static(clientBuildPath));
+  
+  // SPA fallback - tüm non-API route'ları index.html'e yönlendir
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}
 
 // --- Background Tasks ---
 

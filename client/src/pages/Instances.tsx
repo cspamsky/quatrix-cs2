@@ -60,14 +60,21 @@ const Instances = () => {
       setInstances(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Failed to fetch servers:', error)
-    } finally {
-      setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchServers()
-    fetchSystemInfo()
+    // Paralel olarak her ikisini de çalıştır
+    const loadData = async () => {
+      setLoading(true)
+      await Promise.all([
+        fetchServers(),
+        fetchSystemInfo()
+      ])
+      setLoading(false)
+    }
+    
+    loadData()
 
     // Listen for real-time status updates
     socket.on('status_update', ({ serverId, status }: { serverId: number, status: string }) => {
@@ -90,7 +97,7 @@ const Instances = () => {
       socket.off('status_update')
       socket.off('server_update')
     }
-  }, [fetchServers, fetchSystemInfo])
+  }, []) // Boş dependency array - sadece mount'ta çalışır
 
   const handleDeleteServer = useCallback(async (id: number) => {
     const confirmed = await showConfirm({

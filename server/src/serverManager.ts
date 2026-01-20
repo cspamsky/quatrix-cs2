@@ -292,7 +292,7 @@ class ServerManager {
         } catch (e) { return null; }
     }
 
-    async getPlayers(id: string | number): Promise<any[]> {
+    async getPlayers(id: string | number): Promise<{ players: any[], averagePing: number }> {
         try {
             // CS2 için mevcut komutları gönder (dump_player_list CS2'de yok)
             const combinedOutput = await this.sendCommand(id, 'status');
@@ -450,10 +450,14 @@ class ServerManager {
                 }
             }
 
-            return players;
+            // Ortalama ping hesapla
+            const totalPing = players.reduce((sum, p) => sum + p.ping, 0);
+            const averagePing = players.length > 0 ? Math.round(totalPing / players.length) : 0;
+
+            return { players, averagePing };
         } catch (e) {
             console.error(`[RCON] Player fetch failed:`, e);
-            return [];
+            return { players: [], averagePing: 0 };
         }
     }
 

@@ -36,6 +36,7 @@ const Players = () => {
   const [servers, setServers] = useState<ServerInfo[]>([])
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
+  const [averagePing, setAveragePing] = useState(0)
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -61,6 +62,7 @@ const Players = () => {
   const fetchPlayers = useCallback(async (isManual = false) => {
     if (!selectedServerId) {
       setPlayers([])
+      setAveragePing(0)
       return
     }
     
@@ -74,7 +76,8 @@ const Players = () => {
       const response = await apiFetch(`/api/servers/${selectedServerId}/players`)
       if (response.ok) {
         const data = await response.json()
-        setPlayers(data)
+        setPlayers(data.players || data)
+        setAveragePing(data.averagePing || 0)
         // İlk başarılı yüklemeden sonra loading'i kapat
         if (loading) setLoading(false)
       } else {
@@ -123,8 +126,6 @@ const Players = () => {
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     p.steamId.toLowerCase().includes(searchQuery.toLowerCase())
   )
-
-  const avgPing = players.length > 0 ? Math.round(players.reduce((acc, p) => acc + p.ping, 0) / players.length) : 0
 
   return (
     <div className="p-6 font-display">
@@ -187,7 +188,7 @@ const Players = () => {
           </div>
           <div>
             <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Average Ping</p>
-            <p className="text-2xl font-bold text-white tracking-tight">{avgPing} <span className="text-sm font-normal text-gray-600">ms</span></p>
+            <p className="text-2xl font-bold text-white tracking-tight">{averagePing} <span className="text-sm font-normal text-gray-600">ms</span></p>
           </div>
         </div>
       </div>

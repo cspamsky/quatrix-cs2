@@ -11,13 +11,14 @@
     "build": "npm run build:server && npm run build:client",
     "build:server": "cd server && npm run build",
     "build:client": "cd client && npm run build",
-    "start": "cd server && npm start",
+    "start": "cross-env NODE_ENV=production npm start --prefix server",
     "clean": "rimraf dist && rimraf server/dist && rimraf client/dist",
     "lint": "cd client && npm run lint",
     "fix-client": "rimraf client/node_modules && npm install --prefix client"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
     "rimraf": "^6.0.1",
     "wait-on": "^9.0.3"
   },
