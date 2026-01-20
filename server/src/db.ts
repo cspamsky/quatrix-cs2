@@ -147,6 +147,14 @@ db.exec(`
   )
 `);
 
+// migrations for player_identities
+try {
+  db.exec(`ALTER TABLE player_identities ADD COLUMN avatar_url TEXT`);
+} catch (e) {}
+try {
+  db.exec(`ALTER TABLE player_identities ADD COLUMN first_seen DATETIME`);
+} catch (e) {}
+
 // Initialize default settings if they don't exist
 const initializeSetting = (key: string, defaultValue: string) => {
   const existing = db.prepare("SELECT * FROM settings WHERE key = ?").get(key);
