@@ -217,7 +217,7 @@ const Plugins = () => {
     return (
       <div className="flex flex-col gap-6 max-h-[calc(100vh-250px)]">
         {/* Filter Bar */}
-        <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex flex-col lg:flex-row gap-4 shrink-0">
             <div className="relative flex-1 group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={18} />
                 <input 
@@ -256,7 +256,7 @@ const Plugins = () => {
         </div>
 
         {/* Tag Cloud */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide w-full min-w-0">
+        <div className="flex items-center gap-2 overflow-x-auto py-1 pb-2 scrollbar-hide w-full min-w-0 shrink-0">
             <Tag size={14} className="text-primary mr-2 shrink-0" />
             <button
                 onClick={() => setSelectedTag(null)}
