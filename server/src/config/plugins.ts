@@ -499,6 +499,36 @@ export const pluginRegistry = {
         tags: ['fun', 'utility', 'teleport'],
         description: 'Teleport to victim position on kill',
         folderName: 'TeleportKill'
+    },
+    menumanager: {
+        name: 'MenuManager',
+        currentVersion: '1.4.1',
+        githubRepo: 'NickFox007/MenuManagerCS2',
+        downloadUrl: 'https://github.com/NickFox007/MenuManagerCS2/releases/download/1.4.1/MenuManager.zip',
+        category: 'cssharp' as const,
+        tags: ['utility', 'menu', 'library'],
+        description: 'Advanced menu management system for CS2',
+        folderName: 'MenuManager'
+    },
+    playersettings: {
+        name: 'PlayerSettings',
+        currentVersion: '0.9.3',
+        githubRepo: 'NickFox007/PlayerSettingsCS2',
+        downloadUrl: 'https://github.com/NickFox007/PlayerSettingsCS2/releases/download/0.9.3/PlayerSettings.zip',
+        category: 'cssharp' as const,
+        tags: ['utility', 'settings', 'persistence'],
+        description: 'Persistent player settings and preferences',
+        folderName: 'PlayerSettings'
+    },
+    anybaselib: {
+        name: 'AnyBaseLib',
+        currentVersion: '0.9.4',
+        githubRepo: 'NickFox007/AnyBaseLibCS2',
+        downloadUrl: 'https://github.com/NickFox007/AnyBaseLibCS2/releases/download/0.9.4/AnyBaseLib.zip',
+        category: 'cssharp' as const,
+        tags: ['library', 'utility', 'core'],
+        description: 'Base library for NickFox007 plugins',
+        folderName: 'AnyBaseLib'
     }
 } as const;
 
