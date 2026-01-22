@@ -44,7 +44,7 @@ class ServerManager {
     }
 
     async refreshSettings() {
-        this.installDir = this.getSetting('install_dir') || path.resolve(__dirname, '../../instances');
+        this.installDir = this.getSetting('install_dir') || path.resolve(__dirname, '../../server/data/instances');
         const steamCmdPath = this.getSetting('steamcmd_path');
         
         if (steamCmdPath) {
