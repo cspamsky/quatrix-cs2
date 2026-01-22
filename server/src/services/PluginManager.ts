@@ -83,6 +83,7 @@ export class PluginManager {
     const csgoDir = path.join(installDir, id, "game", "csgo");
     const addonsDir = path.join(csgoDir, "addons");
     const cssPluginsDir = path.join(addonsDir, "counterstrikesharp", "plugins");
+    const cssSharedDir = path.join(addonsDir, "counterstrikesharp", "shared");
     const status: Record<string, boolean> = {};
 
     const dirCache = new Map<
@@ -153,7 +154,10 @@ export class PluginManager {
         status[pid] =
           (await checkExists(cssPluginsDir, pid)) ||
           (await checkExists(cssPluginsDir, info.folderName || "")) ||
-          (await checkExists(cssPluginsDir, info.name));
+          (await checkExists(cssPluginsDir, info.name)) ||
+          (await checkExists(cssSharedDir, pid)) ||
+          (await checkExists(cssSharedDir, info.folderName || "")) ||
+          (await checkExists(cssSharedDir, info.name));
 
         if (!status[pid]) {
           status[pid] =

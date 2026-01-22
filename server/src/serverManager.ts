@@ -18,6 +18,8 @@ class ServerManager {
     private playerIdentityCache: Map<string, Map<string, string>> = new Map();
     private playerIdentityBuffer: Map<string, string> = new Map();
     private installDir!: string;
+    private lastInstallDir: string = "";
+    private lastSteamCmdPath: string = "";
     private steamCmdExe!: string;
 
     // Prepared statements for performance
@@ -44,21 +46,43 @@ class ServerManager {
     }
 
     async refreshSettings() {
-        this.installDir = this.getSetting('install_dir') || path.resolve(__dirname, '../../server/data/instances');
-        const steamCmdPath = this.getSetting('steamcmd_path');
-        
-        if (steamCmdPath) {
-            if (steamCmdPath.endsWith('.sh')) {
-                this.steamCmdExe = steamCmdPath;
-            } else {
-                this.steamCmdExe = path.join(steamCmdPath, 'steamcmd.sh');
+        const newInstallDir = this.getSetting('install_dir') || path.resolve(__dirname, '../../server/data/instances');
+        const newSteamCmdPath = this.getSetting('steamcmd_path') || '';
+        const dataDir = path.resolve(__dirname, '../../server/data');
+
+        // If this is not the first run and paths have changed, clean up the local data directory
+        if (this.lastInstallDir && (newInstallDir !== this.lastInstallDir || newSteamCmdPath !== this.lastSteamCmdPath)) {
+            console.log(`[SYSTEM] Installation paths changed detected. Cleaning up local data directory: ${dataDir}`);
+            try {
+                if (fs.existsSync(dataDir)) {
+                    // Use a small delay or ensure no servers are running? 
+                    // For now, we follow user request and attempt deletion.
+                    await fs.promises.rm(dataDir, { recursive: true, force: true });
+                    console.log(`[SYSTEM] Successfully cleaned up ${dataDir}`);
+                }
+            } catch (error) {
+                console.error(`[SYSTEM] Error cleaning up data directory:`, error);
             }
-        } else {
-            const steamCmdDir = path.resolve(__dirname, '../../server/data/steamcmd');
-            this.steamCmdExe = path.join(steamCmdDir, 'steamcmd.sh');
         }
 
-        // Async mkdir
+        this.installDir = newInstallDir;
+        this.lastInstallDir = newInstallDir;
+        this.lastSteamCmdPath = newSteamCmdPath;
+
+        if (newSteamCmdPath) {
+            if (newSteamCmdPath.endsWith('.sh') || newSteamCmdPath.endsWith('.exe')) {
+                this.steamCmdExe = newSteamCmdPath;
+            } else {
+                const exeName = process.platform === 'win32' ? 'steamcmd.exe' : 'steamcmd.sh';
+                this.steamCmdExe = path.join(newSteamCmdPath, exeName);
+            }
+        } else {
+            const steamCmdDir = path.join(dataDir, 'steamcmd');
+            const exeName = process.platform === 'win32' ? 'steamcmd.exe' : 'steamcmd.sh';
+            this.steamCmdExe = path.join(steamCmdDir, exeName);
+        }
+
+        // Re-create the necessary directory
         try {
             await fs.promises.mkdir(this.installDir, { recursive: true });
         } catch (error: any) {
