@@ -128,6 +128,12 @@ try {
   // Column already exists
 }
 
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN tickrate INTEGER DEFAULT 128`);
+} catch (error) {
+  // Column already exists
+}
+
 // Create settings table
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (

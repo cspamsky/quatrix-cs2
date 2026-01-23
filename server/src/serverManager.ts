@@ -319,6 +319,8 @@ class ServerManager {
       "-nosteamclient",
       "+ip",
       "0.0.0.0",
+      "-tickrate",
+      (options.tickrate || 128).toString(),
     ];
     if (options.vac_enabled) args.push("+sv_lan", "0");
     else args.push("-insecure", "+sv_lan", "1");

@@ -19,7 +19,8 @@ export const createServerSchema = z.object({
   steam_api_key: z.string().nullable().optional(),
   vac_enabled: z.number().min(0).max(1).default(1),
   game_type: z.number().int().min(0).default(0),
-  game_mode: z.number().int().min(0).default(0)
+  game_mode: z.number().int().min(0).default(0),
+  tickrate: z.number().int().min(1).max(128).default(128)
 });
 
 // Middleware for this router
@@ -80,7 +81,7 @@ router.delete("/:id", async (req: any, res) => {
 // PUT /api/servers/:id
 router.put("/:id", (req: any, res) => {
   const { id } = req.params;
-  const { name, map, max_players, port, password, rcon_password, vac_enabled, gslt_token, steam_api_key, game_type, game_mode } = req.body;
+  const { name, map, max_players, port, password, rcon_password, vac_enabled, gslt_token, steam_api_key, game_type, game_mode, tickrate } = req.body;
   
   try {
     const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
@@ -90,9 +91,9 @@ router.put("/:id", (req: any, res) => {
       UPDATE servers 
       SET name = ?, map = ?, max_players = ?, port = ?, password = ?, 
           rcon_password = ?, vac_enabled = ?, gslt_token = ?, steam_api_key = ?,
-          game_type = ?, game_mode = ?
+          game_type = ?, game_mode = ?, tickrate = ?
       WHERE id = ?
-    `).run(name, map, max_players, port, password, rcon_password, vac_enabled ? 1 : 0, gslt_token, steam_api_key, game_type || 0, game_mode || 0, id);
+    `).run(name, map, max_players, port, password, rcon_password, vac_enabled ? 1 : 0, gslt_token, steam_api_key, game_type || 0, game_mode || 0, tickrate || 128, id);
 
     // Emit socket event for real-time UI update
     const io = req.app.get('io');
@@ -113,7 +114,7 @@ router.post("/", createServerLimiter, (req: any, res) => {
       return res.status(400).json({ message: result.error.issues[0]?.message || "Validation failed" });
     }
 
-    const { name, port, rcon_password, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type, game_mode } = result.data;
+    const { name, port, rcon_password, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type, game_mode, tickrate } = result.data;
     
     const result_count = db.prepare("SELECT count(*) as count FROM servers WHERE port = ?").get(port) as { count: number } | undefined;
     if (result_count && result_count.count > 0) {
@@ -121,9 +122,9 @@ router.post("/", createServerLimiter, (req: any, res) => {
     }
 
     const info = db.prepare(`
-      INSERT INTO servers (name, port, rcon_password, status, is_installed, user_id, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type, game_mode)
-      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(name, port, rcon_password, req.user.id, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type || 0, game_mode || 0);
+      INSERT INTO servers (name, port, rcon_password, status, is_installed, user_id, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type, game_mode, tickrate)
+      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(name, port, rcon_password, req.user.id, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type || 0, game_mode || 0, tickrate || 128);
 
     res.status(201).json({ id: info.lastInsertRowid, ...result.data });
   } catch (error) {
