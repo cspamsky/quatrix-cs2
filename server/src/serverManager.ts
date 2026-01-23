@@ -8,6 +8,9 @@ import { pluginManager } from "./services/PluginManager.js";
 import { steamManager } from "./services/SteamManager.js";
 import type { PluginId } from "./config/plugins.js";
 
+import { promisify } from "util";
+const execAsync = promisify(exec);
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -508,6 +511,18 @@ class ServerManager {
 
   async stopServer(id: string | number) {
     const idStr = id.toString();
+    console.log(`[SERVER] Stopping instance ${idStr}...`);
+
+    // 1. Try graceful shutdown via RCON
+    try {
+      await this.sendCommand(id, "quit");
+      // Wait a bit for the process to exit naturally
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    } catch (e) {
+      console.log(`[SERVER] RCON quit failed for ${idStr}, proceeding to kill.`);
+    }
+
+    // 2. Clear RCON Connection
     if (this.rconConnections.has(idStr)) {
       try {
         await this.rconConnections.get(idStr).end();
@@ -515,16 +530,36 @@ class ServerManager {
       this.rconConnections.delete(idStr);
     }
 
+    // 3. Force Kill if still running
     const proc = this.runningServers.get(idStr);
-    if (proc) proc.kill();
     const server = this.getServerStmt.get(idStr) as any;
-    if (server?.pid)
+    const pid = proc?.pid || server?.pid;
+
+    if (pid) {
       try {
-        process.kill(server.pid);
-      } catch (e) {}
+        // Send SIGKILL to ensure port is released
+        process.kill(pid, "SIGKILL");
+        console.log(`[SERVER] Sent SIGKILL to PID ${pid}`);
+      } catch (e: any) {
+        if (e.code !== "ESRCH") {
+          console.error(`[SERVER] Error killing process ${pid}:`, e);
+        }
+      }
+    }
+
+    // 4. Update Database & Cleanup
     this.updateStatusStmt.run("OFFLINE", null, idStr);
     this.updatePlayerCountStmt.run(0, idStr);
     this.runningServers.delete(idStr);
+    
+    // Also clean up any potential stale processes on Linux if they have same port (advanced)
+    if (process.platform === "linux" && server?.port) {
+      try {
+          // kill -9 $(lsof -t -i:PORT)
+          await execAsync(`fuser -k ${server.port}/udp`).catch(() => {});
+      } catch {}
+    }
+
     return true;
   }
 
