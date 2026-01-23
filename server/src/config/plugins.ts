@@ -2,6 +2,7 @@ export const pluginRegistry = {
     metamod: {
         name: 'Metamod:Source',
         currentVersion: '2.0-git1382',
+        folderName: 'metamod',
         category: 'core' as const,
         tags: ['core', 'framework'],
         description: 'Base framework for all server mods'
@@ -9,6 +10,7 @@ export const pluginRegistry = {
     cssharp: {
         name: 'CounterStrikeSharp',
         currentVersion: 'v1.0.356',
+        folderName: 'counterstrikesharp',
         category: 'core' as const,
         tags: ['core', 'scripting'],
         description: 'C# scripting platform for CS2'
