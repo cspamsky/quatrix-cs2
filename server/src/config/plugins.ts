@@ -122,9 +122,9 @@ export const pluginRegistry = {
     },
     rtv: {
         name: 'RockTheVote',
-        currentVersion: 'v1.9.6',
-        githubRepo: 'Oz-Lin/cs2-rockthevote',
-        downloadUrl: 'https://github.com/Oz-Lin/cs2-rockthevote/releases/latest/download/RockTheVote-v1.9.6.RELEASE.zip',
+        currentVersion: 'v1.8.5',
+        githubRepo: 'abnerfs/cs2-rockthevote',
+        downloadUrl: 'https://github.com/abnerfs/cs2-rockthevote/releases/download/v1.8.5/RockTheVote_v1.8.5.zip',
         category: 'cssharp' as const,
         tags: ['utility', 'map-voting'],
         description: 'Map voting and management system',
