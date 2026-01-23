@@ -9,7 +9,7 @@ export const pluginRegistry = {
     },
     cssharp: {
         name: 'CounterStrikeSharp',
-        currentVersion: 'v1.0.356',
+        currentVersion: 'v1.0.358',
         folderName: 'counterstrikesharp',
         category: 'core' as const,
         tags: ['core', 'scripting'],

@@ -666,6 +666,11 @@
             <param name="pitch">The pitch of the soundevent.</param>
             <returns>The sound event guid.</returns>
         </member>
+        <member name="M:CounterStrikeSharp.API.Core.CBaseEntity.IsPlayerPawn">
+            <summary>
+            Returns true if the entity is a player pawn.
+            </summary>
+        </member>
         <member name="M:CounterStrikeSharp.API.Core.CBaseModelEntity.SetModel(System.String)">
             <exception cref="T:System.InvalidOperationException">Entity is not valid</exception>
         </member>
