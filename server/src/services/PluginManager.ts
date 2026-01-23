@@ -300,24 +300,41 @@ export class PluginManager {
   }
 
   private async findContentRoot(searchDir: string): Promise<string> {
-    const markers = ["addons", "game", "cfg", "counterstrikesharp", "configs", "materials", "sound", "models", "maps", "translations"];
-    const junkFolders = ["__macosx", ".ds_store", ".git", ".github"];
+    const dirMarkers = ["addons", "game", "cfg", "counterstrikesharp", "configs", "materials", "sound", "models", "maps", "translations"];
+    const fileMarkers = [".dll", ".deps.json", ".vdf"];
+    const junkFiles = ["__macosx", ".ds_store", ".git", ".github", "readme", "license", "changelog"];
 
     const walk = async (currentDir: string): Promise<string | null> => {
       const items = await fs.promises.readdir(currentDir, { withFileTypes: true });
+      
+      const dirs = items.filter(i => i.isDirectory());
+      const files = items.filter(i => i.isFile());
 
-      for (const item of items) {
-        if (item.isDirectory() && markers.includes(item.name.toLowerCase())) {
+      // 1. Check for directory markers (e.g. 'addons', 'game')
+      for (const dir of dirs) {
+        if (dirMarkers.includes(dir.name.toLowerCase())) {
           return currentDir;
         }
       }
 
-      const dirs = items.filter((i) => i.isDirectory() && !junkFolders.includes(i.name.toLowerCase()));
-      if (dirs.length === 1 && dirs[0]) {
-        return await walk(path.join(currentDir, dirs[0].name));
+      // 2. Check for file markers (e.g. '.dll') at this level
+      for (const file of files) {
+        if (fileMarkers.some(m => file.name.toLowerCase().endsWith(m))) {
+          return currentDir;
+        }
       }
 
-      if (items.some((i) => i.isFile())) {
+      // 3. If there is exactly ONE significant directory, descend into it
+      const significantDirs = dirs.filter(d => !junkFiles.some(j => d.name.toLowerCase().includes(j)));
+      const significantFiles = files.filter(f => !junkFiles.some(j => f.name.toLowerCase().includes(j)));
+
+      const firstDir = significantDirs[0];
+      if (significantDirs.length === 1 && firstDir && significantFiles.length === 0) {
+        return await walk(path.join(currentDir, firstDir.name));
+      }
+
+      // 4. If we have files here, this might be the root
+      if (files.length > 0) {
         return currentDir;
       }
 
