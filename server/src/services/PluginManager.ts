@@ -173,69 +173,24 @@ export class PluginManager {
   }
 
   /**
-   * Ensures a plugin is clean and ready in the central pool.
-   * If not present, downloads and performs smart extraction.
+   * Validates that the plugin exists in the central pool.
+   * Downloads are disabled; the pool must be populated manually.
    */
   async ensurePluginInPool(pluginId: PluginId): Promise<string> {
     const pluginPoolPath = this.getPoolDir(pluginId);
-    
+
     // Check if we already have it in the pool
     if (fs.existsSync(pluginPoolPath)) {
       const items = await fs.promises.readdir(pluginPoolPath);
       if (items.length > 0) {
-        console.log(`[PLUGIN] ${pluginId} found in pool at ${path.basename(pluginPoolPath)}, skipping download.`);
+        console.log(`[PLUGIN] Syncing ${pluginId} from local pool.`);
         return pluginPoolPath;
       }
     }
 
-    const pluginInfo = this.pluginRegistry[pluginId] as any;
-    if (!pluginInfo?.downloadUrl) throw new Error(`Download URL not found for ${pluginId}`);
-
-    console.log(`[PLUGIN] ${pluginId} not in pool. Downloading to populate pool...`);
-    
-    const isTarGz = pluginInfo.downloadUrl.endsWith(".tar.gz");
-    const tempFile = path.join(POOL_DIR, `temp_${pluginId}_${Math.random().toString(36).substring(7)}${isTarGz ? ".tar.gz" : ".zip"}`);
-    const tempExtractDir = path.join(POOL_DIR, `temp_extract_${pluginId}_${Math.random().toString(36).substring(7)}`);
-
-    try {
-      const response = await fetch(pluginInfo.downloadUrl);
-      if (!response.ok) throw new Error(`HTTP ${response.status} while downloading ${pluginId}`);
-      
-      // @ts-ignore
-      await pipeline(Readable.fromWeb(response.body as any), fs.createWriteStream(tempFile));
-      await fs.promises.mkdir(tempExtractDir, { recursive: true });
-
-      if (isTarGz) {
-        await execAsync(`tar -xzf "${tempFile}" -C "${tempExtractDir}"`);
-      } else {
-        const zip = new AdmZip(tempFile);
-        zip.extractAllTo(tempExtractDir, true);
-      }
-
-      const contentRoot = await this.findContentRoot(tempExtractDir);
-      
-      // We will perform some specific organization before moving to pool
-      // If it's a CSS plugin that's JUST files (no addons dir), we should put it in a proper subfolder
-      // to make the pool copy more structured.
-      const hasAddons = fs.existsSync(path.join(contentRoot, "addons"));
-      const hasGame = fs.existsSync(path.join(contentRoot, "game"));
-      
-      await fs.promises.mkdir(pluginPoolPath, { recursive: true });
-
-      if (hasAddons || hasGame) {
-        // Standard structure, copy as is
-        await fs.promises.cp(contentRoot, pluginPoolPath, { recursive: true });
-      } else {
-        // Flat or custom structure, move content as base
-        await fs.promises.cp(contentRoot, pluginPoolPath, { recursive: true });
-      }
-
-      console.log(`[PLUGIN] ${pluginId} successfully added to central pool as ${path.basename(pluginPoolPath)}.`);
-      return pluginPoolPath;
-    } finally {
-      try { await fs.promises.unlink(tempFile); } catch {}
-      try { await fs.promises.rm(tempExtractDir, { recursive: true, force: true }); } catch {}
-    }
+    throw new Error(
+      `Plugin "${pluginId}" not found in local pool. Please add its files to: ${pluginPoolPath}`,
+    );
   }
 
   async installPlugin(
@@ -274,7 +229,8 @@ export class PluginManager {
     } else {
       // Non-standard or single-file plugin
       if (pluginInfo.category === "cssharp") {
-        const dest = path.join(csgoDir, "addons", "counterstrikesharp", "plugins", pluginId);
+        const folderName = pluginInfo.folderName || pluginId;
+        const dest = path.join(csgoDir, "addons", "counterstrikesharp", "plugins", folderName);
         await fs.promises.mkdir(dest, { recursive: true });
         await fs.promises.cp(poolPath, dest, { recursive: true });
       } else if (pluginInfo.category === "metamod") {
