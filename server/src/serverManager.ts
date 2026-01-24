@@ -151,8 +151,21 @@ class ServerManager {
         ];
 
         // Be smart about map vs workshop map
-        const mapVal = options.map || "de_dust2";
-        if (/^\d+$/.test(mapVal)) {
+        let mapVal = options.map || "de_dust2";
+        let isWorkshop = false;
+
+        // Try to resolve workshop ID if it's a name but exists in workshop_maps
+        if (!/^\d+$/.test(mapVal)) {
+            const workshopMap = db.prepare("SELECT workshop_id FROM workshop_maps WHERE map_file = ? OR LOWER(name) = ?").get(mapVal, mapVal.toLowerCase()) as any;
+            if (workshopMap) {
+                mapVal = workshopMap.workshop_id;
+                isWorkshop = true;
+            }
+        } else {
+            isWorkshop = true;
+        }
+
+        if (isWorkshop) {
             args.push("+host_workshop_map", mapVal);
         } else {
             args.push("+map", mapVal);
