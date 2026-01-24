@@ -32,6 +32,9 @@ const io = new Server(httpServer, {
 // Make io accessible to routes
 app.set('io', io);
 
+// Inject Socket.IO into ServerManager for real-time updates
+serverManager.setSocketIO(io);
+
 const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -151,7 +154,7 @@ setInterval(async () => {
       console.log(`[SYNC] Synced maps for ${validUpdates.length} servers.`);
     }
   } catch (err) { /* silent map sync fail */ }
-}, 30000);
+}, 5000); // Check every 5 seconds for faster UI updates
 
 // 3. System Initialization
 serverManager.ensureSteamCMD().then(success => {

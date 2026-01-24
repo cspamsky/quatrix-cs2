@@ -20,6 +20,7 @@ class ServerManager {
   private steamCmdExe: string;
   private installDir: string;
   private getServerStmt = db.prepare("SELECT * FROM servers WHERE id = ?");
+  private io: any = null; // Socket.IO instance for real-time updates
 
   // Noise filter for logs
   private static isNoise(line: string): boolean {
@@ -45,6 +46,11 @@ class ServerManager {
         /breakpad/i
     ];
     return noisePatterns.some(p => p.test(line));
+  }
+
+  // Method to inject Socket.IO instance
+  setSocketIO(socketIO: any) {
+    this.io = socketIO;
   }
 
   constructor() {
@@ -329,7 +335,20 @@ class ServerManager {
     try {
       const res = await this.sendCommand(id, "host_map");
       const match = res.match(/Map: "([^"]+)"/i) || res.match(/Map: ([^\s]+)/i);
-      return (match && match[1]) ? match[1] : null;
+      const currentMap = (match && match[1]) ? match[1] : null;
+      
+      // Check if map changed and emit real-time update
+      if (currentMap) {
+        const server = this.getServerStmt.get(id.toString()) as any;
+        if (server && server.map !== currentMap) {
+          db.prepare("UPDATE servers SET map = ? WHERE id = ?").run(currentMap, id.toString());
+          if (this.io) {
+            this.io.emit('server_update', { serverId: parseInt(id.toString()) });
+          }
+        }
+      }
+      
+      return currentMap;
     } catch (e) { return null; }
   }
 
