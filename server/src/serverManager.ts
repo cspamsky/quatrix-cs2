@@ -130,31 +130,39 @@ class ServerManager {
         throw new Error(`CS2 binary not found at ${cs2Exe}`);
     }
 
-    // --- Linux Stability Fixes (Automated Symlinking) ---
+    // --- Advanced Linux Stability Fixes (Automated Symlinking) ---
     const binDir = path.join(serverPath, 'game/bin/linuxsteamrt64');
-    const steamSubDir = path.join(binDir, 'steam'); // Some versions look here
-    const steamCmdDir = path.dirname(this.getSteamCmdDir());
-    const steamClientSrc = path.join(steamCmdDir, 'linux64/steamclient.so');
+    const steamSubDir = path.join(binDir, 'steam');
+    
+    // Attempt to find steamclient.so in multiple potential locations
+    const potentialSteamCmdDirs = [
+        path.dirname(this.getSteamCmdDir()),
+        path.join(__dirname, "../data/steamcmd"),
+        "/root/quatrix/server/data/steamcmd",
+        "/root/.steam/sdk64"
+    ];
 
-    if (process.platform === 'linux' && fs.existsSync(steamClientSrc)) {
+    let steamClientSrc = "";
+    for (const dir of potentialSteamCmdDirs) {
+        const testPath = path.join(dir, 'linux64/steamclient.so');
+        const testPathDirect = path.join(dir, 'steamclient.so');
+        if (fs.existsSync(testPath)) { steamClientSrc = testPath; break; }
+        if (fs.existsSync(testPathDirect)) { steamClientSrc = testPathDirect; break; }
+    }
+
+    if (process.platform === 'linux' && steamClientSrc) {
       try {
-        // Ensure directories exist
         if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
         if (!fs.existsSync(steamSubDir)) fs.mkdirSync(steamSubDir, { recursive: true });
 
-        // Link 1: bin/linuxsteamrt64/steamclient.so
-        const dest1 = path.join(binDir, 'steamclient.so');
-        if (fs.existsSync(dest1)) fs.unlinkSync(dest1);
-        fs.symlinkSync(steamClientSrc, dest1);
-
-        // Link 2: bin/linuxsteamrt64/steam/steamclient.so
-        const dest2 = path.join(steamSubDir, 'steamclient.so');
-        if (fs.existsSync(dest2)) fs.unlinkSync(dest2);
-        fs.symlinkSync(steamClientSrc, dest2);
-
-        console.log(`[SYSTEM] Automatically linked Steam API for instance ${id}`);
+        [binDir, steamSubDir].forEach(destDir => {
+            const dest = path.join(destDir, 'steamclient.so');
+            if (fs.existsSync(dest)) fs.unlinkSync(dest);
+            fs.symlinkSync(steamClientSrc, dest);
+        });
+        console.log(`[SYSTEM] Dynamically linked Steam API from ${steamClientSrc}`);
       } catch (e) { 
-        console.warn(`[SYSTEM] Steam API linking failed: ${e instanceof Error ? e.message : String(e)}`); 
+        console.warn(`[SYSTEM] Steam API linking failed: ${e}`); 
       }
     }
 
@@ -166,44 +174,45 @@ class ServerManager {
     const cfgContent = `hostname "${options.name || 'CS2 Server'}"\nrcon_password "${server.rcon_password || ''}"\nsv_cheats 0\n`;
     await fs.promises.writeFile(serverCfgPath, cfgContent);
 
-    // Command line arguments (standard SRCDS order)
+    // Command line arguments (Cleaned for CS2 Linux)
     const args = [
       "-dedicated",
       "-port", options.port.toString(),
       "-maxplayers", (options.max_players || 64).toString(),
-      "+ip", (this.getSetting("server_ip") || "0.0.0.0"),
-      server.tickrate ? `-tickrate ${server.tickrate}` : "-tickrate 128",
+      "+ip", "0.0.0.0",
       "+map", options.map || "de_dust2",
       "+game_type", (options.game_type ?? 0).toString(),
       "+game_mode", (options.game_mode ?? 1).toString(),
+      "-disable_crash_reporting", // Prevents some SIGSEGV during crash dump generation
+      "-nojoy", // No joystick, saves memory
     ];
 
-    if (options.vac_enabled) {
-      args.push("+sv_lan", "0");
-    } else {
-      args.push("-insecure", "+sv_lan", "1");
-    }
+    if (options.vac_enabled) args.push("+sv_lan", "0");
+    else args.push("-insecure", "+sv_lan", "1");
 
     if (server.rcon_password) args.push("+rcon_password", server.rcon_password);
     if (server.gslt_token) args.push("+sv_setsteamaccount", server.gslt_token);
     if (server.steam_api_key) args.push("-authkey", server.steam_api_key);
-    if (server.name) args.push("+hostname", server.name);
 
     console.log(`[STARTUP] ${id}: ${args.join(' ')}`);
 
-    // --- Advanced Linux Environment for Stability ---
+    // --- Dynamic Preload Discovery ---
+    const tcmallocPath = [
+        "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4",
+        "/usr/lib/libtcmalloc_minimal.so.4",
+        "libtcmalloc_minimal.so.4"
+    ].find(p => fs.existsSync(p)) || "libtcmalloc_minimal.so.4";
+
     const envVars: any = { 
         ...process.env,
-        HOME: "/root", // Ensure HOME is set for Steam API
+        HOME: "/root",
         USER: "root",
-        LD_LIBRARY_PATH: `${binDir}:${path.join(steamCmdDir, 'linux64')}:${process.env.LD_LIBRARY_PATH || ''}`,
-        // Preload tcmalloc for memory stability (Valve Recommendation)
-        LD_PRELOAD: "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4",
-        // CSS / .NET Stability
+        LD_LIBRARY_PATH: `${binDir}:${steamSubDir}:${path.dirname(steamClientSrc)}:${process.env.LD_LIBRARY_PATH || ''}`,
+        LD_PRELOAD: tcmallocPath,
         DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1",
         SDL_VIDEODRIVER: "offscreen",
         SteamAppId: "730",
-        MALLOC_CHECK_: "0" // Disable some memory checks that cause SIGSEGV on Linux
+        MALLOC_CHECK_: "0"
     };
 
     const proc = spawn(path.join(serverPath, "game/cs2.sh"), args, {
