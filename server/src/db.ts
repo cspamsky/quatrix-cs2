@@ -197,4 +197,11 @@ db.exec(`
   )
 `);
 
+// Add map_file column for matching by filename
+try {
+  db.exec(`ALTER TABLE workshop_maps ADD COLUMN map_file TEXT`);
+} catch (e) {
+  // Column already exists
+}
+
 export default db;

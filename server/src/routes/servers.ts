@@ -41,9 +41,13 @@ router.get("/", (req: any, res) => {
         wm.image_url as workshop_map_image
       FROM servers s
       LEFT JOIN workshop_maps wm ON (
+        s.map = wm.map_file OR
         s.map = wm.workshop_id OR 
         s.map LIKE 'workshop/%/' || wm.workshop_id || '/%' OR
-        s.map LIKE 'workshop/' || wm.workshop_id || '%'
+        s.map LIKE 'workshop/' || wm.workshop_id || '%' OR
+        s.map LIKE '%/' || wm.workshop_id || '/%' OR
+        LOWER(s.map) = LOWER(wm.name) OR
+        s.map LIKE '%' || wm.workshop_id
       )
       WHERE s.user_id = ?
     `).all(req.user.id);
