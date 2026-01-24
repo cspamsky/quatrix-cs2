@@ -326,23 +326,34 @@ class ServerManager {
     );
     await fs.promises.writeFile(serverCfgPath, cfgContent);
 
+    // Link steamclient.so if it exists to ensure stability
+    const steamCmdDir = path.dirname(this.steamCmdExe); // Re-using existing steamCmdDir logic
+    const steamClientSrc = path.join(steamCmdDir, 'linux64/steamclient.so');
+    const steamClientDest = path.join(serverPath, 'game/bin/linuxsteamrt64/steamclient.so'); // Using serverPath as instanceDir
+    if (process.platform === 'linux' && fs.existsSync(steamClientSrc)) {
+      try {
+        if (!fs.existsSync(path.dirname(steamClientDest))) {
+            fs.mkdirSync(path.dirname(steamClientDest), { recursive: true });
+        }
+        if (fs.existsSync(steamClientDest)) fs.unlinkSync(steamClientDest);
+        fs.symlinkSync(steamClientSrc, steamClientDest);
+        console.log(`[SYSTEM] Linked steamclient.so for instance ${instanceId}`);
+      } catch (e) {
+        console.warn(`[SYSTEM] Failed to link steamclient.so: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      }
+    }
+
     const args = [
       "-dedicated",
-      "+game_type",
-      (options.game_type ?? 0).toString(),
-      "+game_mode",
-      (options.game_mode ?? 0).toString(),
-      "+map",
-      options.map || "de_dust2",
-      "-port",
-      options.port.toString(),
-      "-maxplayers",
-      (options.max_players || 16).toString(),
-      "-nosteamclient",
-      "+ip",
-      "0.0.0.0",
-      "-tickrate",
-      (options.tickrate || 128).toString(),
+      options.game_type !== undefined ? `+game_type ${options.game_type}` : "+game_type 0",
+      options.game_mode !== undefined ? `+game_mode ${options.game_mode}` : "+game_mode 1",
+      `+map ${options.map || "de_dust2"}`,
+      `-port ${options.port}`,
+      `-maxplayers ${options.max_players || 16}`,
+      // Removed -nosteamclient as it causes crashes during Workshop map downloads
+      `+ip ${this.getSetting("server_ip") || "0.0.0.0"}`,
+      options.tickrate ? `-tickrate ${options.tickrate}` : "-tickrate 128",
+      `+sv_lan ${options.sv_lan || 0}`,
     ];
     if (options.vac_enabled) args.push("+sv_lan", "0");
     else args.push("-insecure", "+sv_lan", "1");
@@ -1167,7 +1178,8 @@ class ServerManager {
   private async _cleanCoreDumps(dir: string): Promise<number> {
     try {
       const files = await fs.promises.readdir(dir);
-      const coreFiles = files.filter(f => f.startsWith('core.'));
+      // Only match 'core.[numbers]' to avoid deleting config files like 'core.json' or 'core'
+      const coreFiles = files.filter(f => /^core\.\d+$/.test(f));
       let count = 0;
       for (const file of coreFiles) {
         await fs.promises.rm(path.join(dir, file), { force: true }).catch(() => {});
@@ -1188,10 +1200,13 @@ class ServerManager {
       try {
         const entries = await fs.promises.readdir(dir, { withFileTypes: true });
         for (const entry of entries) {
+          // Skip sensitive directories to avoid accidental deletions
+          if (entry.name === 'addons' || entry.name === 'configs' || entry.name === 'counterstrikesharp') continue;
+
           const fullPath = path.join(dir, entry.name);
           if (entry.isDirectory()) {
             await scanDir(fullPath);
-          } else if (entry.name.startsWith('core.')) {
+          } else if (/^core\.\d+$/.test(entry.name)) {
             const stats = await fs.promises.stat(fullPath);
             count++;
             size += stats.size;
@@ -1220,10 +1235,13 @@ class ServerManager {
       try {
         const entries = await fs.promises.readdir(dir, { withFileTypes: true });
         for (const entry of entries) {
+          // Skip sensitive directories
+          if (entry.name === 'addons' || entry.name === 'configs' || entry.name === 'counterstrikesharp') continue;
+
           const fullPath = path.join(dir, entry.name);
           if (entry.isDirectory()) {
             await cleanDir(fullPath);
-          } else if (entry.name.startsWith('core.')) {
+          } else if (/^core\.\d+$/.test(entry.name)) {
             const stats = await fs.promises.stat(fullPath);
             await fs.promises.rm(fullPath, { force: true }).catch(() => {});
             clearedFiles++;
