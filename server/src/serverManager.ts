@@ -177,6 +177,7 @@ class ServerManager {
     // Command line arguments (Minimalist for Linux Stability)
     const args = [
       "-dedicated",
+      "-nosteamclient",
       "-port", options.port.toString(),
       "-maxplayers", (options.max_players || 64).toString(),
       "+ip", "0.0.0.0",
