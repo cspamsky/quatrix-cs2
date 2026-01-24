@@ -153,30 +153,41 @@ class ServerManager {
     const cfgContent = `hostname "${options.name || 'CS2 Server'}"\nrcon_password "${server.rcon_password || ''}"\nsv_cheats 0\n`;
     await fs.promises.writeFile(serverCfgPath, cfgContent);
 
-    // Command line arguments (split for spawn)
+    // Command line arguments (standard SRCDS order)
     const args = [
       "-dedicated",
-      "+game_type", (options.game_type ?? 0).toString(),
-      "+game_mode", (options.game_mode ?? 1).toString(),
-      "+map", options.map || "de_dust2",
       "-port", options.port.toString(),
       "-maxplayers", (options.max_players || 64).toString(),
-      "+ip", "0.0.0.0",
-      "-tickrate", (options.tickrate || 128).toString(),
+      "+ip", (this.getSetting("server_ip") || "0.0.0.0"),
+      server.tickrate ? `-tickrate ${server.tickrate}` : "-tickrate 128",
+      "+map", options.map || "de_dust2",
+      "+game_type", (options.game_type ?? 0).toString(),
+      "+game_mode", (options.game_mode ?? 1).toString(),
     ];
 
-    if (options.vac_enabled) args.push("+sv_lan", "0");
-    else args.push("-insecure", "+sv_lan", "1");
+    if (options.vac_enabled) {
+      args.push("+sv_lan", "0");
+    } else {
+      args.push("-insecure", "+sv_lan", "1");
+    }
 
     if (server.rcon_password) args.push("+rcon_password", server.rcon_password);
     if (server.gslt_token) args.push("+sv_setsteamaccount", server.gslt_token);
     if (server.steam_api_key) args.push("-authkey", server.steam_api_key);
+    if (server.name) args.push("+hostname", server.name);
 
     console.log(`[STARTUP] ${id}: ${args.join(' ')}`);
 
+    // --- Advanced Linux Environment for Stability ---
     const envVars: any = { 
         ...process.env,
-        LD_LIBRARY_PATH: `${binDir}:${process.env.LD_LIBRARY_PATH || ''}`
+        LD_LIBRARY_PATH: `${binDir}:${process.env.LD_LIBRARY_PATH || ''}`,
+        // Preload tcmalloc for memory stability (Valve Recommendation)
+        LD_PRELOAD: "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4",
+        // CSS / .NET Stability
+        DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1",
+        SDL_VIDEODRIVER: "offscreen",
+        SteamAppId: "730"
     };
 
     const proc = spawn(path.join(serverPath, "game/cs2.sh"), args, {
