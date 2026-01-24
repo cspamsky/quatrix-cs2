@@ -203,8 +203,13 @@ class ServerManager {
         console.log(`[STARTUP] Instance ${id}: spawning process...`);
         const proc = spawn(cs2Bin, args, { cwd: serverPath, env: envVars });
 
-        // Initialize / Clear log buffer
+        // Initialize / Clear log buffer and physical log file
         this.logBuffers.set(id, []);
+        const logFilePath = path.join(serverPath, "game/csgo/console.log");
+        try {
+            if (!fs.existsSync(path.dirname(logFilePath))) fs.mkdirSync(path.dirname(logFilePath), { recursive: true });
+            fs.writeFileSync(logFilePath, `--- Server log started at ${new Date().toISOString()} ---\n`);
+        } catch (e) {}
 
         this.runningServers.set(id, proc);
         db.prepare("UPDATE servers SET pid = ?, status = 'ONLINE' WHERE id = ?").run(proc.pid, id);
@@ -236,12 +241,20 @@ class ServerManager {
     }
 
     private setupProcessHandlers(id: string, proc: any, onLog?: (data: string) => void) {
+        const serverPath = path.join(this.installDir, id);
+        const logFilePath = path.join(serverPath, "game/csgo/console.log");
+
+        const appendToLogFile = (line: string) => {
+            fs.appendFile(logFilePath, line + "\n", () => {});
+        };
+
         proc.stdout?.on("data", (data: any) => {
             const lines = data.toString().split("\n");
             lines.forEach((line: string) => {
                 const trimmedLine = line.trim();
                 if (trimmedLine && !LOG_NOISE_PATTERNS.some(p => p.test(trimmedLine))) {
                     if (onLog) onLog(trimmedLine);
+                    appendToLogFile(trimmedLine);
                     
                     // Buffer logs (keep last 500 lines)
                     let buffer = this.logBuffers.get(id) || [];
@@ -255,6 +268,7 @@ class ServerManager {
         proc.stderr?.on("data", (data: any) => {
             const line = `[STDERR] ${data.toString()}`;
             if (onLog) onLog(line);
+            appendToLogFile(line);
             
             let buffer = this.logBuffers.get(id) || [];
             buffer.push(line);
@@ -399,12 +413,12 @@ class ServerManager {
                 fs.copyFileSync(steamClientSrc, path.join(binDir, 'steamclient.so'));
                 fs.copyFileSync(steamClientSrc, path.join(steamSubDir, 'steamclient.so'));
                 
-                // Also copy to root steam dir for safety
-                const rootSteamSdk = path.join(process.env.HOME || '/root', '.steam/sdk64');
-                if (!fs.existsSync(rootSteamSdk)) fs.mkdirSync(rootSteamSdk, { recursive: true });
-                fs.copyFileSync(steamClientSrc, path.join(rootSteamSdk, 'steamclient.so'));
+                // CRITICAL: Point HOME to serverPath and setup local steam SDK dir
+                const localSteamSdk = path.join(serverPath, '.steam/sdk64');
+                if (!fs.existsSync(localSteamSdk)) fs.mkdirSync(localSteamSdk, { recursive: true });
+                fs.copyFileSync(steamClientSrc, path.join(localSteamSdk, 'steamclient.so'));
                 
-                console.log(`[SYSTEM] Aggressive Steam API deployment completed for instance ${id}`);
+                console.log(`[SYSTEM] Isolated Steam API deployment for instance ${id}`);
             } catch (e) {
                 console.warn(`[SYSTEM] Library deployment failed for ${id}:`, e);
             }
@@ -425,9 +439,7 @@ class ServerManager {
         const potentialDirs = [
             path.dirname(this.steamCmdExe),
             path.join(path.dirname(this.steamCmdExe), "linux64"),
-            path.join(__dirname, "../data/steamcmd/linux64"),
-            "/root/quatrix/server/data/steamcmd/linux64",
-            "/root/.steam/sdk64"
+            path.join(__dirname, "../data/steamcmd/linux64")
         ];
 
         for (const dir of potentialDirs) {
@@ -444,7 +456,7 @@ class ServerManager {
 
         const envVars: any = {
             ...process.env,
-            HOME: "/root",
+            HOME: serverPath, // Isolate Steam & .NET per instance
             USER: "root",
             // Priority: Server Binaries -> Steam API -> System
             LD_LIBRARY_PATH: `${binDir}:${path.join(binDir, 'steam')}:${steamLib64}:${steamLibDir}:${process.env.LD_LIBRARY_PATH || ''}`,
