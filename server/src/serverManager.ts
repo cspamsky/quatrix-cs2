@@ -242,11 +242,11 @@ sv_cheats 0
       }
     }
 
-    // CRITICAL FIX: Use direct binary instead of cs2.sh to avoid script issues
-    const cs2Binary = path.join(serverPath, "game/bin/linuxsteamrt64/cs2");
+    // Use cs2.sh wrapper script (required for proper environment setup)
+    const cs2Script = path.join(serverPath, "game/cs2.sh");
     
-    const proc = spawn(cs2Binary, args, {
-      cwd: path.join(serverPath, "game/csgo"),
+    const proc = spawn(cs2Script, args, {
+      cwd: serverPath,
       env: envVars,
     });
 
