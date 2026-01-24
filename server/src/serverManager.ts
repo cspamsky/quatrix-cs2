@@ -274,9 +274,14 @@ class ServerManager {
     }
 
     private async findSteamClientLib(): Promise<string> {
+        const baseDir = fs.existsSync(this.steamCmdExe) && fs.statSync(this.steamCmdExe).isDirectory() 
+            ? this.steamCmdExe 
+            : path.dirname(this.steamCmdExe);
+
         const paths = [
-            path.dirname(this.steamCmdExe),
-            path.join(path.dirname(this.steamCmdExe), "linux64"),
+            baseDir,
+            path.join(baseDir, "linux64"),
+            path.join(baseDir, "linux32"),
             path.join(__dirname, "../data/steamcmd/linux64"),
             "/usr/games/steamcmd/linux64"
         ];
@@ -288,7 +293,10 @@ class ServerManager {
     }
 
     private getEnvironmentVariables(serverPath: string, binDir: string): any {
-        const steamLib64 = path.join(path.dirname(this.getSteamCmdDir()), "linux64");
+        const baseDir = fs.existsSync(this.steamCmdExe) && fs.statSync(this.steamCmdExe).isDirectory() 
+            ? this.steamCmdExe 
+            : path.dirname(this.steamCmdExe);
+        const steamLib64 = path.join(baseDir, "linux64");
         const env: any = {
             ...process.env,
             HOME: serverPath,
