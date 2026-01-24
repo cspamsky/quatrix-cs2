@@ -128,13 +128,14 @@ class ServerManager {
 
         const serverPath = path.join(this.installDir, id);
         const binDir = path.join(serverPath, "game/bin/linuxsteamrt64");
-        const cs2Script = path.join(serverPath, "game/cs2.sh");
+        // Use direct binary instead of cs2.sh wrapper because the wrapper can overwrite our LD_LIBRARY_PATH
+        const cs2Bin = path.join(binDir, "cs2");
 
-        if (process.platform === 'linux' && !fs.existsSync(cs2Script)) {
-            throw new Error(`Starter script not found at ${cs2Script}. Ensure server is installed.`);
+        if (process.platform === 'linux' && !fs.existsSync(cs2Bin)) {
+            throw new Error(`CS2 binary not found at ${cs2Bin}. Ensure server is installed.`);
         }
 
-        // Automated Environment Fixes (Steam API, Metamod, etc.)
+        // Automated Environment Fixes (Aggressive Library Deployment)
         await this.prepareEnvironment(id, serverPath, binDir);
 
         // Build command line arguments
@@ -200,7 +201,7 @@ class ServerManager {
         } catch (e) {}
 
         console.log(`[STARTUP] Instance ${id}: spawning process...`);
-        const proc = spawn(cs2Script, args, { cwd: serverPath, env: envVars });
+        const proc = spawn(cs2Bin, args, { cwd: serverPath, env: envVars });
 
         // Initialize / Clear log buffer
         this.logBuffers.set(id, []);
@@ -394,9 +395,16 @@ class ServerManager {
                 if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
                 if (!fs.existsSync(steamSubDir)) fs.mkdirSync(steamSubDir, { recursive: true });
 
+                // Copy to game binary dir AND internal steam dir (required by CSS)
                 fs.copyFileSync(steamClientSrc, path.join(binDir, 'steamclient.so'));
                 fs.copyFileSync(steamClientSrc, path.join(steamSubDir, 'steamclient.so'));
-                console.log(`[SYSTEM] Steam API libraries deployed for instance ${id}`);
+                
+                // Also copy to root steam dir for safety
+                const rootSteamSdk = path.join(process.env.HOME || '/root', '.steam/sdk64');
+                if (!fs.existsSync(rootSteamSdk)) fs.mkdirSync(rootSteamSdk, { recursive: true });
+                fs.copyFileSync(steamClientSrc, path.join(rootSteamSdk, 'steamclient.so'));
+                
+                console.log(`[SYSTEM] Aggressive Steam API deployment completed for instance ${id}`);
             } catch (e) {
                 console.warn(`[SYSTEM] Library deployment failed for ${id}:`, e);
             }
