@@ -552,19 +552,25 @@ class ServerManager {
 
         onLog(`[INSTALL] Commencing update for instance ${id}...\n`);
         
-        // Ensure SteamCMD is ready
-        const ready = await this.ensureSteamCMD(onLog);
-        if (!ready) {
-            onLog("[ERR] SteamCMD is not ready and could not be downloaded.\n");
-            throw new Error("SteamCMD not ready");
+        // SCAN DIRECTORY FOR EXECUTABLE
+        let exe = this.steamCmdExe;
+        if (fs.existsSync(exe) && fs.statSync(exe).isDirectory()) {
+            onLog(`[INSTALL] Scanning directory for SteamCMD binary: ${exe}\n`);
+            const possibleNames = ['steamcmd.sh', 'steamcmd', 'linux32/steamcmd'];
+            const found = possibleNames.map(name => path.join(exe, name)).find(p => fs.existsSync(p));
+            
+            if (found) {
+                exe = found;
+                onLog(`[INSTALL] Resolved executable to: ${exe}\n`);
+            } else {
+                onLog(`[ERR] Could not find steamcmd.sh or steamcmd inside ${exe}\n`);
+                throw new Error("SteamCMD binary not found in directory");
+            }
         }
 
-        // Determine actual executable path
-        let exe = this.steamCmdExe;
-        if (fs.statSync(exe).isDirectory()) {
-            const possible = [path.join(exe, 'steamcmd.sh'), path.join(exe, 'steamcmd')];
-            const found = possible.find(p => fs.existsSync(p));
-            if (found) exe = found;
+        // Apply execution permission
+        if (process.platform === 'linux' && fs.existsSync(exe)) {
+            try { execSync(`chmod +x "${exe}"`); } catch {}
         }
 
         const args = [
@@ -573,8 +579,6 @@ class ServerManager {
             "+app_update", "730", "validate",
             "+quit"
         ];
-
-        onLog(`[INSTALL] Executing: ${exe} ${args.join(' ')}\n`);
 
         return new Promise<void>((resolve, reject) => {
             const proc = spawn(exe, args);
