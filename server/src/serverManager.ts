@@ -130,19 +130,32 @@ class ServerManager {
         throw new Error(`CS2 binary not found at ${cs2Exe}`);
     }
 
-    // --- Linux Stability Fixes ---
+    // --- Linux Stability Fixes (Automated Symlinking) ---
     const binDir = path.join(serverPath, 'game/bin/linuxsteamrt64');
+    const steamSubDir = path.join(binDir, 'steam'); // Some versions look here
     const steamCmdDir = path.dirname(this.getSteamCmdDir());
     const steamClientSrc = path.join(steamCmdDir, 'linux64/steamclient.so');
-    const steamClientDest = path.join(binDir, 'steamclient.so');
 
     if (process.platform === 'linux' && fs.existsSync(steamClientSrc)) {
       try {
+        // Ensure directories exist
         if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
-        if (fs.existsSync(steamClientDest)) fs.unlinkSync(steamClientDest);
-        fs.symlinkSync(steamClientSrc, steamClientDest);
-        console.log(`[SYSTEM] Linked steamclient.so for ${id}`);
-      } catch (e) { console.warn(`[SYSTEM] Link failed: ${e}`); }
+        if (!fs.existsSync(steamSubDir)) fs.mkdirSync(steamSubDir, { recursive: true });
+
+        // Link 1: bin/linuxsteamrt64/steamclient.so
+        const dest1 = path.join(binDir, 'steamclient.so');
+        if (fs.existsSync(dest1)) fs.unlinkSync(dest1);
+        fs.symlinkSync(steamClientSrc, dest1);
+
+        // Link 2: bin/linuxsteamrt64/steam/steamclient.so
+        const dest2 = path.join(steamSubDir, 'steamclient.so');
+        if (fs.existsSync(dest2)) fs.unlinkSync(dest2);
+        fs.symlinkSync(steamClientSrc, dest2);
+
+        console.log(`[SYSTEM] Automatically linked Steam API for instance ${id}`);
+      } catch (e) { 
+        console.warn(`[SYSTEM] Steam API linking failed: ${e instanceof Error ? e.message : String(e)}`); 
+      }
     }
 
     // Config Generation
@@ -181,13 +194,16 @@ class ServerManager {
     // --- Advanced Linux Environment for Stability ---
     const envVars: any = { 
         ...process.env,
-        LD_LIBRARY_PATH: `${binDir}:${process.env.LD_LIBRARY_PATH || ''}`,
+        HOME: "/root", // Ensure HOME is set for Steam API
+        USER: "root",
+        LD_LIBRARY_PATH: `${binDir}:${path.join(steamCmdDir, 'linux64')}:${process.env.LD_LIBRARY_PATH || ''}`,
         // Preload tcmalloc for memory stability (Valve Recommendation)
         LD_PRELOAD: "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4",
         // CSS / .NET Stability
         DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1",
         SDL_VIDEODRIVER: "offscreen",
-        SteamAppId: "730"
+        SteamAppId: "730",
+        MALLOC_CHECK_: "0" // Disable some memory checks that cause SIGSEGV on Linux
     };
 
     const proc = spawn(path.join(serverPath, "game/cs2.sh"), args, {
