@@ -100,6 +100,22 @@ router.post("/:id/install", async (req: any, res) => {
     }
 });
 
+// POST /api/servers/:id/abort-install
+router.post("/:id/abort-install", async (req: any, res) => {
+    try {
+        const id = req.params.id;
+        await serverManager.stopInstallation(id);
+        
+        db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
+        const io = req.app.get('io');
+        if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
+        
+        res.json({ message: "Installation aborted" });
+    } catch (error) {
+        res.status(500).json({ message: "Failed to abort installation" });
+    }
+});
+
 // POST /api/servers/:id/rcon
 router.post("/:id/rcon", async (req: any, res) => {
     try {

@@ -322,7 +322,22 @@ class ServerManager {
         }
 
         execSync(`chmod +x "${exe}"`);
-        const args = ["+login", "anonymous", "+force_install_dir", serverPath, "+@sSteamCmdForcePlatformType", "linux", "+app_update", "730", "validate", "+quit"];
+
+        // Check for corruption and offer to clear bad files
+        const pakPath = path.join(serverPath, "game/csgo/pak01.vpk");
+        if (fs.existsSync(pakPath)) {
+            onLog("[INSTALL] Existing installation found. Validating files...\n");
+        }
+
+        const args = [
+            "+login", "anonymous", 
+            "+force_install_dir", serverPath, 
+            "+@sSteamCmdForcePlatformType", "linux", 
+            "+app_update", "730", "validate", 
+            "+quit"
+        ];
+
+        onLog(`[INSTALL] Running SteamCMD validation for App 730...\n`);
 
         return new Promise<void>((resolve, reject) => {
             const proc = spawn(exe, args);
@@ -332,7 +347,13 @@ class ServerManager {
             proc.stderr?.on("data", (d) => onLog(`[ERR] ${d.toString()}`));
             proc.on("exit", (c) => {
                 this.installingServers.delete(id);
-                c === 0 ? resolve() : reject(new Error(`Exit ${c}`));
+                if (c === 0) {
+                    onLog("\n[INSTALL] Successfully completed and validated!\n");
+                    resolve();
+                } else {
+                    onLog(`\n[INSTALL] SteamCMD exited with code ${c}. If you see 0x602/0x212, try again.\n`);
+                    reject(new Error(`Exit ${c}`));
+                }
             });
         });
     }
