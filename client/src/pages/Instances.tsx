@@ -21,7 +21,8 @@ interface Instance {
   current_players: number
   max_players: number
   port: number
-  image?: string
+  workshop_map_name?: string
+  workshop_map_image?: string
   isInstalled?: boolean
 }
 

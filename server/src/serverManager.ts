@@ -286,8 +286,18 @@ class ServerManager {
             
             let currentMap = null;
             if (mapMatch && mapMatch[1]) {
-                const parts = mapMatch[1].trim().split('/');
-                currentMap = parts[parts.length - 1]; // Extracts filename
+                const fullPath = mapMatch[1].trim();
+                const parts = fullPath.split('/');
+                currentMap = parts[parts.length - 1]; // Extracts filename (e.g., 'awp_lego_2')
+
+                // AUTO-LINK WORKSHOP MAPS: If path contains 'workshop/ID', update the DB mapping
+                if (fullPath.includes('workshop/')) {
+                    const workshopId = parts[parts.length - 2];
+                    if (workshopId && /^\d+$/.test(workshopId)) {
+                        db.prepare("UPDATE workshop_maps SET map_file = ? WHERE workshop_id = ? AND (map_file IS NULL OR map_file = '')")
+                          .run(currentMap, workshopId);
+                    }
+                }
             }
 
             if (!currentMap) {
