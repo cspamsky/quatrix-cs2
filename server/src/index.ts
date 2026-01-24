@@ -41,10 +41,10 @@ app.use('/api', apiLimiter);
 // --- Register Routes ---
 app.use('/api', authRouter);
 app.use('/api', configRouter); // /api/settings, /api/system-info, etc.
+app.use('/api/servers/:id/files', filesRouter); 
 app.use('/api/servers', pluginsRouter); // /api/servers/plugins/...
 app.use('/api/servers', serversRouter); // /api/servers (base)
 app.use('/api/servers', commandsRouter); // /api/servers/:id/start, etc.
-app.use('/api/servers', filesRouter); // /api/servers/:id/files
 app.use('/api/servers', playersRouter); // /api/servers/:id/players
 
 // --- Serve Frontend in Production ---

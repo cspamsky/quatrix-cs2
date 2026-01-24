@@ -6,7 +6,7 @@ import { strictLimiter } from "../middleware/rateLimiter.js";
 import multer from "multer";
 import path from "path";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
 // Configure Multer for file uploads
 const storage = multer.diskStorage({
@@ -30,7 +30,7 @@ const upload = multer({ storage });
 router.use(authenticateToken);
 
 // GET /api/servers/:id/files - List files
-router.get("/:id/files", async (req: any, res) => {
+router.get("/", async (req: any, res) => {
     const { id } = req.params;
     const { path: subDir } = req.query;
     try {
@@ -45,7 +45,7 @@ router.get("/:id/files", async (req: any, res) => {
 });
 
 // GET /api/servers/:id/files/read - Read file content
-router.get("/:id/files/read", async (req: any, res) => {
+router.get("/read", async (req: any, res) => {
     const { id } = req.params;
     const { path: filePath } = req.query;
     try {
@@ -60,7 +60,7 @@ router.get("/:id/files/read", async (req: any, res) => {
 });
 
 // POST /api/servers/:id/files/write - Write file content
-router.post("/:id/files/write", strictLimiter, async (req: any, res) => {
+router.post("/write", strictLimiter, async (req: any, res) => {
     const { id } = req.params;
     const { path: filePath, content } = req.body;
     try {
@@ -75,7 +75,7 @@ router.post("/:id/files/write", strictLimiter, async (req: any, res) => {
 });
 
 // DELETE /api/servers/:id/files - Delete file or directory
-router.delete("/:id/files", strictLimiter, async (req: any, res) => {
+router.delete("/", strictLimiter, async (req: any, res) => {
     const { id } = req.params;
     const { path: filePath } = req.query;
     try {
@@ -90,7 +90,7 @@ router.delete("/:id/files", strictLimiter, async (req: any, res) => {
 });
 
 // POST /api/servers/:id/files/mkdir - Create directory
-router.post("/:id/files/mkdir", strictLimiter, async (req: any, res) => {
+router.post("/mkdir", strictLimiter, async (req: any, res) => {
     const { id } = req.params;
     const { path: dirPath } = req.body;
     try {
@@ -105,7 +105,7 @@ router.post("/:id/files/mkdir", strictLimiter, async (req: any, res) => {
 });
 
 // POST /api/servers/:id/files/rename - Rename file or directory
-router.post("/:id/files/rename", strictLimiter, async (req: any, res) => {
+router.post("/rename", strictLimiter, async (req: any, res) => {
     const { id } = req.params;
     const { oldPath, newPath } = req.body;
     try {
@@ -120,7 +120,7 @@ router.post("/:id/files/rename", strictLimiter, async (req: any, res) => {
 });
 
 // POST /api/servers/:id/files/upload - Upload file
-router.post("/:id/files/upload", strictLimiter, upload.single("file"), async (req: any, res) => {
+router.post("/upload", strictLimiter, upload.single("file"), async (req: any, res) => {
     res.json({ success: true });
 });
 
