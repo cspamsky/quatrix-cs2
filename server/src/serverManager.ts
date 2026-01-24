@@ -207,8 +207,25 @@ class ServerManager {
     const tcmalloc = "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4";
     if (fs.existsSync(tcmalloc)) envVars.LD_PRELOAD = tcmalloc;
 
-    const proc = spawn(path.join(serverPath, "game/cs2.sh"), args, {
-      cwd: serverPath,
+    // Ensure metamod.vdf exists for plugin loading
+    const gameInfoPath = path.join(serverPath, "game/csgo/gameinfo.gi");
+    const metamodVdfPath = path.join(serverPath, "game/csgo/addons/metamod.vdf");
+    
+    if (fs.existsSync(path.join(serverPath, "game/csgo/addons/metamod")) && !fs.existsSync(metamodVdfPath)) {
+      const vdfContent = `"Plugin"\n{\n\t"file"\t"../csgo/addons/metamod/bin/linuxsteamrt64/metamod"\n}\n`;
+      try {
+        fs.writeFileSync(metamodVdfPath, vdfContent);
+        console.log(`[SYSTEM] Created metamod.vdf for instance ${id}`);
+      } catch (e) {
+        console.warn(`[SYSTEM] Failed to create metamod.vdf: ${e}`);
+      }
+    }
+
+    // CRITICAL FIX: Use direct binary instead of cs2.sh to avoid script issues
+    const cs2Binary = path.join(serverPath, "game/bin/linuxsteamrt64/cs2");
+    
+    const proc = spawn(cs2Binary, args, {
+      cwd: path.join(serverPath, "game/csgo"),
       env: envVars,
     });
 
