@@ -259,17 +259,27 @@ class ServerManager {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         if (!rcon) {
-          rcon = await Rcon.connect({
+          const newRcon = new Rcon({
             host: "127.0.0.1",
             port: rconPort,
             password: server.rcon_password,
             timeout: 3000,
           });
-          rcon.on("error", () => this.rconConnections.delete(idStr));
-          rcon.on("end", () => this.rconConnections.delete(idStr));
+
+          // CRITICAL: Attach error listener BEFORE connecting to catch early resets
+          newRcon.on("error", (err: any) => {
+            console.warn(`[RCON] Socket error for server ${idStr}: ${err.message}`);
+            this.rconConnections.delete(idStr);
+          });
+
+          await newRcon.connect();
+          rcon = newRcon;
           this.rconConnections.set(idStr, rcon);
         }
-        return await rcon.send(command);
+        return await rcon.send(command).catch((err: any) => {
+            this.rconConnections.delete(idStr);
+            throw err;
+        });
       } catch (error) {
         this.rconConnections.delete(idStr);
         rcon = undefined;

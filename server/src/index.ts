@@ -162,6 +162,21 @@ serverManager.ensureSteamCMD().then(success => {
     }
 });
 
+// --- Global Error Handlers to Prevent Unhandled Crashes ---
+process.on('uncaughtException', (err) => {
+    console.error('\x1b[31m[CRITICAL]\x1b[0m Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.warn('\x1b[33m[WARNING]\x1b[0m Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+async function shutdown() {
+  console.log('\x1b[33m[SYSTEM]\x1b[0m Shutting down...');
+  await serverManager.flushPlayerIdentities();
+  process.exit(0);
+}
+
 // --- Server Lifecycle ---
 httpServer.on('error', (err: any) => {
   if (err.code === 'EADDRINUSE') console.error(`\x1b[31m[ERROR]\x1b[0m Port ${PORT} is already in use.`);
