@@ -39,6 +39,7 @@ const LOG_NOISE_PATTERNS = [
 
 class ServerManager {
     private runningServers: Map<string, any> = new Map();
+    private installingServers: Map<string, any> = new Map(); // Track active installations
     private logBuffers: Map<string, string[]> = new Map();
     private rconConnections: Map<string, any> = new Map();
     private steamCmdExe: string = "";
@@ -306,9 +307,13 @@ class ServerManager {
 
     // --- API Methods ---
 
-    async installOrUpdateServer(id: string | number, onLog: (data: string) => void) {
-        const serverPath = path.join(this.installDir, id.toString());
+    async installOrUpdateServer(idStr: string | number, onLog: (data: string) => void) {
+        const id = idStr.toString();
+        const serverPath = path.join(this.installDir, id);
         if (!fs.existsSync(serverPath)) fs.mkdirSync(serverPath, { recursive: true });
+
+        // Kill existing installation for this instance if any
+        await this.stopInstallation(id);
 
         let exe = this.steamCmdExe;
         if (fs.existsSync(exe) && fs.statSync(exe).isDirectory()) {
@@ -321,10 +326,27 @@ class ServerManager {
 
         return new Promise<void>((resolve, reject) => {
             const proc = spawn(exe, args);
+            this.installingServers.set(id, proc);
+            
             proc.stdout?.on("data", (d) => onLog(d.toString()));
             proc.stderr?.on("data", (d) => onLog(`[ERR] ${d.toString()}`));
-            proc.on("exit", (c) => c === 0 ? resolve() : reject(new Error(`Exit ${c}`)));
+            proc.on("exit", (c) => {
+                this.installingServers.delete(id);
+                c === 0 ? resolve() : reject(new Error(`Exit ${c}`));
+            });
         });
+    }
+
+    async stopInstallation(idStr: string | number) {
+        const id = idStr.toString();
+        const proc = this.installingServers.get(id);
+        if (proc) {
+            try {
+                proc.kill("SIGKILL");
+                console.log(`[INSTALL] Force stopped installation for instance ${id}`);
+            } catch (e) {}
+            this.installingServers.delete(id);
+        }
     }
 
     async getSystemHealth() {
