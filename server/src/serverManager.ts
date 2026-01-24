@@ -297,6 +297,17 @@ class ServerManager {
                         db.prepare("UPDATE workshop_maps SET map_file = ? WHERE workshop_id = ? AND (map_file IS NULL OR map_file = '')")
                           .run(currentMap, workshopId);
                     }
+                } else if (currentMap && !fullPath.includes('/')) {
+                    // FUZZY LINKING: If it's a simple name like 'awp_lego_2', try to find a workshop ID that matches the title
+                    try {
+                        const similarMap = db.prepare("SELECT workshop_id FROM workshop_maps WHERE (LOWER(name) LIKE ? OR LOWER(map_file) = ?) LIMIT 1")
+                            .get(`%${currentMap.replace(/_/g, ' ')}%`, currentMap.toLowerCase()) as any;
+                        
+                        if (similarMap) {
+                            db.prepare("UPDATE workshop_maps SET map_file = ? WHERE workshop_id = ? AND (map_file IS NULL OR map_file = '')")
+                                .run(currentMap, similarMap.workshop_id);
+                        }
+                    } catch {}
                 }
             }
 
