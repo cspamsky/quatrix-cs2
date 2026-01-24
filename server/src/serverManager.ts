@@ -183,6 +183,7 @@ class ServerManager {
 
     if (server.rcon_password) args.push("+rcon_password", server.rcon_password);
     if (server.gslt_token) args.push("+sv_setsteamaccount", server.gslt_token);
+    if (server.steam_api_key) args.push("-authkey", server.steam_api_key);
 
     console.log(`[STARTUP] ${id}: ${args.join(' ')}`);
 
