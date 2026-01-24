@@ -298,16 +298,18 @@ class ServerManager {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         if (!rcon || !rcon.authenticated) {
-          // Use 0.0.0.0 for better local binding consistency on some Linux distros
+          // Try 127.0.0.1 first, then public IP if available
+          const host = "127.0.0.1";
+          
           rcon = new Rcon({
-            host: "0.0.0.0",
+            host,
             port: server.port,
             password: server.rcon_password,
-            timeout: 10000, // Increase timeout for CS2
+            timeout: 15000, // CS2 can be slow
           });
 
           rcon.on("error", (err: any) => {
-            console.warn(`[RCON] Error for server ${idStr}:`, err.message);
+            if (attempt === retries) console.warn(`[RCON] Error for server ${idStr}:`, err.message);
             this.rconConnections.delete(idStr);
           });
 
@@ -320,8 +322,8 @@ class ServerManager {
         this.rconConnections.delete(idStr);
         rcon = undefined;
         if (attempt === retries) {
-            console.error(`[RCON] Failed to reach server ${idStr} at 0.0.0.0:${server.port}:`, error.message);
-            throw new Error(`RCON Failed: ${error.message}`);
+            console.error(`[RCON] Failed to reach server ${idStr} on port ${server.port}:`, error.message);
+            throw new Error(`RCON Connection Refused`);
         }
         await new Promise(r => setTimeout(r, 2000));
       }
@@ -333,13 +335,17 @@ class ServerManager {
     try {
       const res = await this.sendCommand(id, "status");
       
-      // Try to extract map from spawngroup line (more reliable for workshop maps)
-      // Example: "loaded spawngroup(  1)  : SV:  [1: awp_lego_2 | main lump | mapload]"
-      const spawnGroupMatch = res.match(/loaded spawngroup\(\s*1\)\s*:\s*SV:\s*\[1:\s*([^\s|]+)/i);
+      // Improved regex to catch map names even in paths
+      // Matches: "loaded spawngroup(  1)  : SV:  [1: awp_lego_2 | main lump]" 
+      // OR: "loaded spawngroup(  1)  : SV:  [1: workshop/123/awp_lego_2 | main lump]"
+      const spawnGroupMatch = res.match(/loaded spawngroup.*SV:.*\[\d+:\s*([^\s|\]]+)/i);
       
-      // Fallback to hostname line if spawngroup not found
-      // Example: "hostname : Demo Server"
-      let currentMap = (spawnGroupMatch && spawnGroupMatch[1]) ? spawnGroupMatch[1].trim() : null;
+      let currentMap = null;
+      if (spawnGroupMatch && spawnGroupMatch[1]) {
+          const fullPath = spawnGroupMatch[1].trim();
+          const parts = fullPath.split('/');
+          currentMap = parts[parts.length - 1]; // Get 'awp_lego_2' from 'workshop/id/awp_lego_2'
+      }
       
       if (!currentMap) {
         // Try old method as final fallback
