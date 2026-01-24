@@ -40,6 +40,9 @@ const FileManager = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
+  const [renamingFile, setRenamingFile] = useState<FileStat | null>(null)
+  const [newFileName, setNewFileName] = useState('')
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, file: FileStat } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -143,13 +146,21 @@ const FileManager = () => {
     }
   }
 
-  const handleRename = async (file: FileStat) => {
-    const newName = prompt(`Enter new name for ${file.name}:`, file.name)
-    if (!newName || newName === file.name) return
+  const openRenameModal = (file: FileStat) => {
+    setRenamingFile(file)
+    setNewFileName(file.name)
+    setIsRenameModalOpen(true)
+  }
+
+  const handleRenameSubmit = async () => {
+    if (!renamingFile || !newFileName || newFileName === renamingFile.name) {
+      setIsRenameModalOpen(false)
+      return
+    }
 
     try {
-      const oldPath = currentPath ? `${currentPath}/${file.name}` : file.name
-      const newPath = currentPath ? `${currentPath}/${newName}` : newName
+      const oldPath = currentPath ? `${currentPath}/${renamingFile.name}` : renamingFile.name
+      const newPath = currentPath ? `${currentPath}/${newFileName}` : newFileName
       const response = await apiFetch(`/api/servers/${id}/files/rename`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -157,6 +168,7 @@ const FileManager = () => {
       })
       if (response.ok) {
         toast.success('Renamed successfully')
+        setIsRenameModalOpen(false)
         fetchFiles(currentPath)
       } else {
         toast.error('Failed to rename')
@@ -457,7 +469,7 @@ const FileManager = () => {
                           className="p-2 text-gray-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                           onClick={(e) => {
                             e.stopPropagation()
-                            handleRename(file)
+                            openRenameModal(file)
                           }}
                           title="Rename"
                         >
@@ -525,6 +537,43 @@ const FileManager = () => {
             </div>
           </div>
         )}
+
+        {/* Rename Modal */}
+        {isRenameModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsRenameModalOpen(false)}></div>
+            <div className="relative bg-[#111827] border border-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+              <h3 className="text-xl font-black text-white mb-6 tracking-tighter uppercase text-center">RENAME ITEM</h3>
+              <div className="space-y-4">
+                <div className="p-4 bg-gray-900/50 rounded-2xl border border-gray-800 mb-2">
+                  <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Old Name</p>
+                  <p className="text-sm text-gray-400 font-mono truncate">{renamingFile?.name}</p>
+                </div>
+                <input 
+                  type="text" 
+                  autoFocus
+                  placeholder="New Name"
+                  className="w-full bg-black/40 border border-gray-700 rounded-2xl px-6 py-4 text-white focus:border-primary outline-none transition-all font-bold"
+                  value={newFileName}
+                  onChange={(e) => setNewFileName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleRenameSubmit()}
+                />
+                <button 
+                  onClick={handleRenameSubmit}
+                  className="w-full py-4 bg-primary hover:bg-blue-600 text-white rounded-2xl font-black tracking-widest text-xs transition-all shadow-lg shadow-primary/20"
+                >
+                  RENAME ITEM
+                </button>
+                <button 
+                  onClick={() => setIsRenameModalOpen(false)}
+                  className="w-full py-4 bg-transparent text-gray-500 hover:text-white font-bold text-xs"
+                >
+                  CANCEL
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
       
       <footer className="mt-4 flex justify-between items-center text-[10px] font-black text-gray-600 tracking-[0.3em] uppercase">
@@ -557,7 +606,7 @@ const FileManager = () => {
           </button>
 
           <button 
-            onClick={() => { handleRename(contextMenu.file); setContextMenu(null); }}
+            onClick={() => { openRenameModal(contextMenu.file); setContextMenu(null); }}
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
           >
             <RefreshCw size={14} /> RENAME
