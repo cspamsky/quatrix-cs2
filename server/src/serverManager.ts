@@ -552,18 +552,43 @@ class ServerManager {
 
         onLog(`[INSTALL] Commencing update for instance ${id}...\n`);
         
-        // Fix permission denied for steamcmd - Use shell chmod for better reliability
-        if (process.platform === 'linux' && fs.existsSync(this.steamCmdExe)) {
-            try { execSync(`chmod +x "${this.steamCmdExe}"`); } catch {}
+        // Ensure SteamCMD is ready
+        const ready = await this.ensureSteamCMD(onLog);
+        if (!ready) {
+            onLog("[ERR] SteamCMD is not ready and could not be downloaded.\n");
+            throw new Error("SteamCMD not ready");
         }
 
-        const cmd = `${this.steamCmdExe} +force_install_dir ${serverPath} +login anonymous +app_update 730 validate +quit`;
-        
+        // Determine actual executable path
+        let exe = this.steamCmdExe;
+        if (fs.statSync(exe).isDirectory()) {
+            const possible = [path.join(exe, 'steamcmd.sh'), path.join(exe, 'steamcmd')];
+            const found = possible.find(p => fs.existsSync(p));
+            if (found) exe = found;
+        }
+
+        const args = [
+            "+force_install_dir", serverPath,
+            "+login", "anonymous",
+            "+app_update", "730", "validate",
+            "+quit"
+        ];
+
+        onLog(`[INSTALL] Executing: ${exe} ${args.join(' ')}\n`);
+
         return new Promise<void>((resolve, reject) => {
-            const proc = exec(cmd);
+            const proc = spawn(exe, args);
             proc.stdout?.on("data", (d) => onLog(d.toString()));
             proc.stderr?.on("data", (d) => onLog(`[ERR] ${d.toString()}`));
-            proc.on("exit", (code) => code === 0 ? resolve() : reject(new Error(`Exit code ${code}`)));
+            proc.on("exit", (code) => {
+                if (code === 0) {
+                    onLog("\n[INSTALL] Successfully completed!\n");
+                    resolve();
+                } else {
+                    onLog(`\n[INSTALL] Failed with exit code ${code}\n`);
+                    reject(new Error(`Exit code ${code}`));
+                }
+            });
         });
     }
 
@@ -616,17 +641,47 @@ class ServerManager {
     isServerRunning(id: string | number) { return this.runningServers.has(id.toString()); }
     getLogs(id: string | number) { return this.logBuffers.get(id.toString()) || []; }
 
-    async ensureSteamCMD(): Promise<boolean> {
-        const steamcmdDir = path.dirname(this.steamCmdExe);
-        if (!fs.existsSync(steamcmdDir)) {
-            try {
-                fs.mkdirSync(steamcmdDir, { recursive: true });
-            } catch { return false; }
+    async ensureSteamCMD(onLog?: (msg: string) => void): Promise<boolean> {
+        let exePath = this.steamCmdExe;
+        const log = onLog || console.log;
+
+        // If it's a directory, check inside
+        if (fs.existsSync(exePath) && fs.statSync(exePath).isDirectory()) {
+            const p1 = path.join(exePath, 'steamcmd.sh');
+            const p2 = path.join(exePath, 'steamcmd');
+            if (fs.existsSync(p1)) exePath = p1;
+            else if (fs.existsSync(p2)) exePath = p2;
         }
-        if (fs.existsSync(this.steamCmdExe)) {
-            try { fs.chmodSync(this.steamCmdExe, 0o755); } catch {}
+
+        if (fs.existsSync(exePath) && !fs.statSync(exePath).isDirectory()) {
+            if (process.platform === 'linux') {
+                try { execSync(`chmod +x "${exePath}"`); } catch {}
+            }
             return true;
         }
+
+        // If not found, download it
+        log("[SYSTEM] SteamCMD not found. Attempting auto-download...\n");
+        const steamcmdDir = fs.existsSync(this.steamCmdExe) && fs.statSync(this.steamCmdExe).isDirectory() 
+            ? this.steamCmdExe 
+            : path.dirname(this.steamCmdExe);
+        
+        if (!fs.existsSync(steamcmdDir)) fs.mkdirSync(steamcmdDir, { recursive: true });
+
+        try {
+            if (process.platform === 'linux') {
+                log("[SYSTEM] Downloading SteamCMD for Linux...\n");
+                execSync(`cd "${steamcmdDir}" && curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -`, { stdio: 'inherit' });
+                const downloadedExe = path.join(steamcmdDir, 'steamcmd.sh');
+                if (fs.existsSync(downloadedExe)) {
+                    execSync(`chmod +x "${downloadedExe}"`);
+                    return true;
+                }
+            }
+        } catch (e: any) {
+            log(`[ERR] Failed to download SteamCMD: ${e.message}\n`);
+        }
+
         return false;
     }
 }
