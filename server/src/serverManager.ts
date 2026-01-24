@@ -574,9 +574,9 @@ class ServerManager {
         }
 
         const args = [
-            "+@sSteamCmdForcePlatformType linux", // Force Linux manifest
-            "+force_install_dir", serverPath,
             "+login", "anonymous",
+            "+force_install_dir", serverPath,
+            "+@sSteamCmdForcePlatformType", "linux", // Split into two parts
             "+app_update", "730", "validate",
             "+quit"
         ];
