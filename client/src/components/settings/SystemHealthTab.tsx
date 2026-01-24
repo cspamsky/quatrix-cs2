@@ -31,7 +31,10 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
     }
   };
 
-  const hasIssues = healthData?.runtimes?.dotnet?.status !== 'good';
+  const hasIssues = 
+    healthData?.runtimes?.dotnet?.status !== 'good' || 
+    healthData?.runtimes?.steam_sdk?.status !== 'good' ||
+    (healthData?.disk?.garbage?.count > 0);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -44,14 +47,14 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {hasIssues && (
+          {(hasIssues) && (
             <button 
               onClick={handleRepair}
               disabled={repairLoading || healthLoading}
               className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-primary/20"
             >
               <Wrench size={14} className={repairLoading ? 'animate-spin' : ''} />
-              {repairLoading ? 'Repairing...' : 'Repair System'}
+              {repairLoading ? 'Repairing & Cleaning...' : 'Repair System'}
             </button>
           )}
           <button 
@@ -146,6 +149,7 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
             </h4>
 
             <div className="space-y-4">
+              {/* .NET Runtime Card */}
               <div className={`p-4 rounded-xl border ${healthData?.runtimes?.dotnet?.status === 'good' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -182,6 +186,7 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
                 )}
               </div>
 
+              {/* Steam SDK Card */}
               <div className={`p-4 rounded-xl border ${healthData?.runtimes?.steam_sdk?.status === 'good' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -199,12 +204,32 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
                 </div>
               </div>
 
+              {/* Garbage Cleanup Card */}
+              <div className={`p-4 rounded-xl border ${healthData?.disk?.garbage?.count === 0 ? 'bg-green-500/5 border-green-500/20' : 'bg-orange-500/5 border-orange-500/20'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${healthData?.disk?.garbage?.count === 0 ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                      <AlertTriangle size={16} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">Disk Garbage (Core Dumps)</p>
+                      <p className="text-[10px] text-gray-500">
+                        {healthData?.disk?.garbage?.count || 0} files found 
+                        ({((healthData?.disk?.garbage?.size || 0) / 1024 / 1024).toFixed(2)} MB)
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${healthData?.disk?.garbage?.count === 0 ? 'text-green-500' : 'text-orange-500'}`}>
+                    {healthData?.disk?.garbage?.count === 0 ? 'Clean' : 'Needs Cleanup'}
+                  </span>
+                </div>
+              </div>
 
               <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
                 <div className="flex gap-3">
                   <AlertTriangle className="text-primary shrink-0" size={16} />
                   <p className="text-[10px] text-gray-400 leading-relaxed">
-                    If any items are <span className="text-red-500">Missing</span>, the CS2 server or certain plugins may fail to load. Please ensure the required runtimes (.NET 8.0/32-bit libs) are installed on your Linux system.
+                    If any items are <span className="text-red-500">Missing</span> or <span className="text-orange-500">Needs Cleanup</span>, the panle performance may degrade. Use the <b>Repair System</b> button to automate the resolution.
                   </p>
                 </div>
               </div>
