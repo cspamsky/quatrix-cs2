@@ -186,17 +186,24 @@ class ServerManager {
 
     console.log(`[STARTUP] ${id}: ${args.join(' ')}`);
 
+    const cssDotnetDir = path.join(serverPath, "game/csgo/addons/counterstrikesharp/dotnet");
+
     const envVars: any = { 
         ...process.env,
         HOME: "/root",
         USER: "root",
-        LD_LIBRARY_PATH: `${binDir}:${steamSubDir}:${path.join(path.dirname(steamClientSrc), 'linux64')}:${process.env.LD_LIBRARY_PATH || ''}`,
+        // Precise library path: prioritize game binaries and Steam API
+        LD_LIBRARY_PATH: `${binDir}:${steamSubDir}:${path.dirname(steamClientSrc)}:${process.env.LD_LIBRARY_PATH || ''}`,
+        // CSS / .NET Stability settings
+        DOTNET_ROOT: cssDotnetDir,
         DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1",
+        DOTNET_BUNDLE_EXTRACT_BASE_DIR: path.join(serverPath, ".net_cache"),
+        DOTNET_GENERATE_ASPNET_ROOT: "0",
         SDL_VIDEODRIVER: "offscreen",
         SteamAppId: "730"
     };
 
-    // Only preload if it exists to avoid linker errors
+    // Preload tcmalloc if available (Fixes most SIGSEGV on Linux)
     const tcmalloc = "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4";
     if (fs.existsSync(tcmalloc)) envVars.LD_PRELOAD = tcmalloc;
 
