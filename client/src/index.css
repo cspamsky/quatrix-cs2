@@ -8,7 +8,7 @@
     text-size-adjust: 100%;
   }
   body {
-    @apply bg-[#0F172A] text-gray-100 font-display;
+    @apply bg-[#0F172A] text-gray-100 font-display scrollbar-hide;
   }
 
   /* Hide default password toggle in Edge/IE */
