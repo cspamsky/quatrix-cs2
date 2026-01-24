@@ -155,26 +155,20 @@ class ServerManager {
         if (!fs.existsSync(binDir)) fs.mkdirSync(binDir, { recursive: true });
         if (!fs.existsSync(steamSubDir)) fs.mkdirSync(steamSubDir, { recursive: true });
 
-        [binDir, steamSubDir].forEach(destDir => {
-            const dest = path.join(destDir, 'steamclient.so');
-            if (fs.existsSync(dest)) fs.unlinkSync(dest);
-            fs.symlinkSync(steamClientSrc, dest);
-        });
-        console.log(`[SYSTEM] Dynamically linked Steam API from ${steamClientSrc}`);
+        // Copy instead of Symlink (Safer for some Linux distros)
+        const dest1 = path.join(binDir, 'steamclient.so');
+        const dest2 = path.join(steamSubDir, 'steamclient.so');
+        
+        fs.copyFileSync(steamClientSrc, dest1);
+        fs.copyFileSync(steamClientSrc, dest2);
+        
+        console.log(`[SYSTEM] Steam API files updated for instance ${id}`);
       } catch (e) { 
-        console.warn(`[SYSTEM] Steam API linking failed: ${e}`); 
+        console.warn(`[SYSTEM] Steam API update failed: ${e}`); 
       }
     }
 
-    // Config Generation
-    const cfgDir = path.join(serverPath, "game/csgo/cfg");
-    if (!fs.existsSync(cfgDir)) fs.mkdirSync(cfgDir, { recursive: true });
-    
-    const serverCfgPath = path.join(cfgDir, "server.cfg");
-    const cfgContent = `hostname "${options.name || 'CS2 Server'}"\nrcon_password "${server.rcon_password || ''}"\nsv_cheats 0\n`;
-    await fs.promises.writeFile(serverCfgPath, cfgContent);
-
-    // Command line arguments (Cleaned for CS2 Linux)
+    // Command line arguments (Minimalist for Linux Stability)
     const args = [
       "-dedicated",
       "-port", options.port.toString(),
@@ -183,37 +177,28 @@ class ServerManager {
       "+map", options.map || "de_dust2",
       "+game_type", (options.game_type ?? 0).toString(),
       "+game_mode", (options.game_mode ?? 1).toString(),
-      "-disable_crash_reporting", // Prevents some SIGSEGV during crash dump generation
-      "-nojoy", // No joystick, saves memory
+      "-nojoy",
+      "+sv_lan", "0"
     ];
-
-    if (options.vac_enabled) args.push("+sv_lan", "0");
-    else args.push("-insecure", "+sv_lan", "1");
 
     if (server.rcon_password) args.push("+rcon_password", server.rcon_password);
     if (server.gslt_token) args.push("+sv_setsteamaccount", server.gslt_token);
-    if (server.steam_api_key) args.push("-authkey", server.steam_api_key);
 
     console.log(`[STARTUP] ${id}: ${args.join(' ')}`);
-
-    // --- Dynamic Preload Discovery ---
-    const tcmallocPath = [
-        "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4",
-        "/usr/lib/libtcmalloc_minimal.so.4",
-        "libtcmalloc_minimal.so.4"
-    ].find(p => fs.existsSync(p)) || "libtcmalloc_minimal.so.4";
 
     const envVars: any = { 
         ...process.env,
         HOME: "/root",
         USER: "root",
-        LD_LIBRARY_PATH: `${binDir}:${steamSubDir}:${path.dirname(steamClientSrc)}:${process.env.LD_LIBRARY_PATH || ''}`,
-        LD_PRELOAD: tcmallocPath,
+        LD_LIBRARY_PATH: `${binDir}:${steamSubDir}:${path.join(path.dirname(steamClientSrc), 'linux64')}:${process.env.LD_LIBRARY_PATH || ''}`,
         DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1",
         SDL_VIDEODRIVER: "offscreen",
-        SteamAppId: "730",
-        MALLOC_CHECK_: "0"
+        SteamAppId: "730"
     };
+
+    // Only preload if it exists to avoid linker errors
+    const tcmalloc = "/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4";
+    if (fs.existsSync(tcmalloc)) envVars.LD_PRELOAD = tcmalloc;
 
     const proc = spawn(path.join(serverPath, "game/cs2.sh"), args, {
       cwd: serverPath,
