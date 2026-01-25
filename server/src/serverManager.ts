@@ -476,10 +476,23 @@ class ServerManager {
         await fs.promises.rename(oldFullPath, newFullPath);
     }
     
+    
     async deleteServerFiles(id: string | number) {
         const serverPath = path.join(this.installDir, id.toString());
-        if (fs.existsSync(serverPath)) {
+        if (!fs.existsSync(serverPath)) {
+            console.log(`[DELETE] Server path does not exist: ${serverPath}`);
+            return; // Nothing to delete
+        }
+        
+        try {
+            console.log(`[DELETE] Attempting to delete server files at: ${serverPath}`);
             await fs.promises.rm(serverPath, { recursive: true, force: true });
+            console.log(`[DELETE] Successfully deleted server files for instance ${id}`);
+        } catch (error: any) {
+            console.error(`[DELETE] Failed to delete server files for instance ${id}:`, error);
+            // On Windows, sometimes we need to use rimraf or handle locked files
+            // For now, we'll try to continue even if deletion fails
+            throw new Error(`Failed to delete server files: ${error.message}`);
         }
     }
     

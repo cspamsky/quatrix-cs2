@@ -94,8 +94,9 @@ router.delete("/:id", async (req: any, res) => {
 
     db.prepare("DELETE FROM servers WHERE id = ?").run(req.params.id);
     res.json({ message: "Server deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to delete server" });
+  } catch (error: any) {
+    console.error("Delete server error:", error);
+    res.status(500).json({ message: "Failed to delete server", error: error.message });
   }
 });
 
