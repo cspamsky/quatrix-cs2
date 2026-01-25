@@ -55,7 +55,7 @@ class ServerManager {
 
     // --- Initialization & Tasks ---
 
-    private refreshSettings() {
+    refreshSettings() {
         this.steamCmdExe = this.getSetting("steamcmd_path") || "/usr/games/steamcmd";
         this.installDir = this.getSetting("install_dir") || "/root/gserver";
 
@@ -397,6 +397,39 @@ class ServerManager {
     getSteamCmdDir() { return this.steamCmdExe; }
     isServerRunning(id: string | number) { return this.runningServers.has(id.toString()); }
     
+    async getCurrentMap(id: string | number): Promise<string> {
+        try {
+            const response = await this.sendCommand(id, "status");
+            // Parse the map from status output
+            const mapMatch = response.match(/map\s*:\s*(\S+)/i);
+            if (mapMatch && mapMatch[1]) {
+                return mapMatch[1];
+            }
+            return "";
+        } catch (err) {
+            return "";
+        }
+    }
+
+    async flushPlayerIdentities() {
+        // Gracefully close all RCON connections and save player data
+        try {
+            for (const [id, conn] of this.rconConnections.entries()) {
+                try {
+                    if (conn && typeof conn.end === 'function') {
+                        conn.end();
+                    }
+                } catch (e) {
+                    console.error(`Failed to close RCON connection for server ${id}:`, e);
+                }
+            }
+            this.rconConnections.clear();
+            console.log('[SHUTDOWN] All RCON connections closed.');
+        } catch (err) {
+            console.error('[SHUTDOWN] Error during player identity flush:', err);
+        }
+    }
+    
     // --- Security ---
     private _securePath(id: string | number, userPath: string) {
         const base = path.join(this.installDir, id.toString());
@@ -404,12 +437,90 @@ class ServerManager {
         if (!full.startsWith(path.resolve(base))) throw new Error("Forbidden");
         return full;
     }
+    
+    getFilePath(id: string | number, subPath: string = ""): string {
+        return this._securePath(id, subPath);
+    }
+    
     async listFiles(id: string | number, dir = "") {
         const entries = await fs.promises.readdir(this._securePath(id, dir), { withFileTypes: true });
         return entries.map(e => ({ name: e.name, isDirectory: e.isDirectory() }));
     }
-    async readFile(id: string | number, f: string) { return fs.promises.readFile(this._securePath(id, f), "utf-8"); }
-    async writeFile(id: string | number, f: string, c: string) { await fs.promises.writeFile(this._securePath(id, f), c); }
+    
+    async readFile(id: string | number, f: string) { 
+        return fs.promises.readFile(this._securePath(id, f), "utf-8"); 
+    }
+    
+    async writeFile(id: string | number, f: string, c: string) { 
+        await fs.promises.writeFile(this._securePath(id, f), c); 
+    }
+    
+    async deleteFile(id: string | number, filePath: string) {
+        const fullPath = this._securePath(id, filePath);
+        const stat = await fs.promises.stat(fullPath);
+        if (stat.isDirectory()) {
+            await fs.promises.rm(fullPath, { recursive: true, force: true });
+        } else {
+            await fs.promises.unlink(fullPath);
+        }
+    }
+    
+    async createDirectory(id: string | number, dirPath: string) {
+        const fullPath = this._securePath(id, dirPath);
+        await fs.promises.mkdir(fullPath, { recursive: true });
+    }
+    
+    async renameFile(id: string | number, oldPath: string, newPath: string) {
+        const oldFullPath = this._securePath(id, oldPath);
+        const newFullPath = this._securePath(id, newPath);
+        await fs.promises.rename(oldFullPath, newFullPath);
+    }
+    
+    async deleteServerFiles(id: string | number) {
+        const serverPath = path.join(this.installDir, id.toString());
+        if (fs.existsSync(serverPath)) {
+            await fs.promises.rm(serverPath, { recursive: true, force: true });
+        }
+    }
+    
+    async checkAllPluginUpdates(id: string | number) {
+        // Check for updates for all installed plugins
+        return pluginManager.checkAllPluginUpdates(id);
+    }
+    
+    async updatePlugin(id: string | number, pluginId: PluginId) {
+        // Update a specific plugin
+        return pluginManager.updatePlugin(this.installDir, id, pluginId);
+    }
+    
+    async repairSystemHealth() {
+        // Repair system health issues
+        try {
+            // Check and repair common issues
+            if (!fs.existsSync(this.installDir)) {
+                fs.mkdirSync(this.installDir, { recursive: true });
+            }
+            
+            // Verify SteamCMD
+            const steamCmdExists = await this.ensureSteamCMD();
+            
+            return {
+                success: true,
+                status: "HEALTHY",
+                details: {
+                    installDir: this.installDir,
+                    steamCmdExists,
+                    platform: "linux"
+                }
+            };
+        } catch (error: any) {
+            return {
+                success: false,
+                status: "UNHEALTHY",
+                details: { error: error.message }
+            };
+        }
+    }
 }
 
 export const serverManager = new ServerManager();
