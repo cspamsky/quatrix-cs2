@@ -677,7 +677,14 @@ class ServerManager {
     id: string | number,
   ): Promise<{ players: any[]; averagePing: number }> {
     try {
-      const combinedOutput = await this.sendCommand(id, "status");
+      // Try css_players first (CounterStrikeSharp - includes Steam IDs), fallback to status
+      let combinedOutput = "";
+      try {
+        combinedOutput = await this.sendCommand(id, "css_players");
+      } catch (e) {
+        console.log("[PLAYERS] css_players failed, falling back to status");
+        combinedOutput = await this.sendCommand(id, "status");
+      }
       console.log("[DEBUG] Raw status output:", combinedOutput);
       const lines = combinedOutput.split("\n");
       const idStr = id.toString();
@@ -713,19 +720,20 @@ class ServerManager {
         let idPart = "";
 
         if (isStandard) {
-          // Standard: # 2 1 "Name" STEAM_1:0:1234 05:20 50 0 active
+          // CS2 Standard Format: 2    02:59   25    0     active 786432 159.146.35.163:14887 'Pamsky'
+          // Pattern: id time ping loss state rate ip:port 'name'
           const match = trimmed.match(
-            /#\s+(\d+)\s+(\d+)\s+["'](.+?)["']\s+(?:STEAM_|\[U:)(?:\d+:\d+:\d+|.+?)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+(\d+)/,
+            /^\s*(\d+)\s+(\d{1,2}:\d{2}(?::\d{2})?)\s+(\d+)\s+\d+\s+\w+\s+\d+\s+[\d.:]+\s+['"](.+?)['"]/,
           );
           if (match) {
             idPart = match[1] || "";
-            name = match[3] || "";
-            const rawTime = match[4] || "00:00";
+            const rawTime = match[2] || "00:00";
             connectedTime =
               rawTime.split(":").length === 2
                 ? `00:${rawTime.padStart(5, "0")}`
                 : rawTime;
-            ping = parseInt(match[5] || "0") || 0;
+            ping = parseInt(match[3] || "0") || 0;
+            name = match[4] || "";
           }
         } else if (isPlugin) {
           // Plugin: [Client] 2 05:20 50 "Name"
