@@ -38,7 +38,7 @@ const BanHistory = () => {
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
-  const [showActiveOnly, setShowActiveOnly] = useState(true)
+  const [showActiveOnly, setShowActiveOnly] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
 
   // Fetch Servers
