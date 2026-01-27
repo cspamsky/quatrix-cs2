@@ -33,9 +33,28 @@ router.get("/:id/bans", async (req: any, res) => {
 // POST /api/servers/:id/bans/:banId/unban - Unban a player
 router.post("/:id/bans/:banId/unban", async (req: any, res) => {
     try {
-        const { banId } = req.params;
+        const { id, banId } = req.params;
         const { unbanned_by } = req.body;
 
+        // Get ban info first
+        const ban = db.prepare('SELECT * FROM ban_history WHERE id = ?').get(banId) as any;
+        
+        if (!ban) {
+            return res.status(404).json({ message: 'Ban not found' });
+        }
+
+        // Execute css_unban command if Steam ID is available
+        if (ban.steam_id) {
+            try {
+                const { serverManager } = await import('../serverManager.js');
+                await serverManager.sendCommand(id, `css_unban ${ban.steam_id}`);
+            } catch (error) {
+                console.error('[UNBAN] Failed to execute css_unban:', error);
+                // Continue anyway to update database
+            }
+        }
+
+        // Update database
         db.prepare(`
             UPDATE ban_history 
             SET is_active = 0, unbanned_at = CURRENT_TIMESTAMP, unbanned_by = ?

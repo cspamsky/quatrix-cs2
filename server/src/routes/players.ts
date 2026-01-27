@@ -37,11 +37,23 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         const { id, userId } = req.params;
         const { duration, reason, playerName, steamId, ipAddress } = req.body; // duration in minutes, 0 for permanent
         
-        const cmd = `banid ${duration || 0} ${userId} kick`;
+        // Use CSS ban for persistent bans (requires CounterStrikeSharp)
+        // Format: css_ban <steamid|name|userid> <duration> <reason>
+        const durationMinutes = parseInt(duration) || 0;
+        const banReason = reason || 'Banned by admin';
+        
+        let cmd = '';
+        if (steamId && steamId !== 'Hidden/Pending') {
+            // Prefer Steam ID for accuracy
+            cmd = `css_ban ${steamId} ${durationMinutes} "${banReason}"`;
+        } else {
+            // Fallback to user ID
+            cmd = `css_ban #${userId} ${durationMinutes} "${banReason}"`;
+        }
+        
         await serverManager.sendCommand(id, cmd);
         
         // Record ban in database
-        const durationMinutes = parseInt(duration) || 0;
         const expiresAt = durationMinutes > 0 
             ? new Date(Date.now() + durationMinutes * 60 * 1000).toISOString()
             : null;
@@ -56,7 +68,7 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
             playerName || `User #${userId}`,
             steamId || null,
             ipAddress || null,
-            reason || 'No reason provided',
+            banReason,
             durationMinutes,
             req.user?.username || 'Admin',
             expiresAt

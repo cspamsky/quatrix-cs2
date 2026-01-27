@@ -36,6 +36,9 @@ const Players = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [banDialog, setBanDialog] = useState<{ show: boolean; player: Player | null }>({ show: false, player: null })
+  const [banReason, setBanReason] = useState('')
+  const [banDuration, setBanDuration] = useState('0')
 
   // 1. Fetch Servers
   const { data: servers = [] } = useQuery<ServerInfo[]>({
@@ -73,15 +76,26 @@ const Players = () => {
     toast.success('Player list updated')
   }
 
-  const handleAction = async (action: 'kick' | 'ban', userId: string) => {
+  const handleAction = async (action: 'kick' | 'ban', userId: string, player?: Player) => {
     if (!selectedServerId) return
     
-    const reason = action === 'kick' ? 'Kicked by admin' : 'Banned by admin'
+    // Show ban dialog for ban action
+    if (action === 'ban' && player) {
+      setBanDialog({ show: true, player })
+      setBanReason('')
+      setBanDuration('0')
+      return
+    }
+    
+    // Kick action
+    const reason = 'Kicked by admin'
+    const body: any = { reason }
+    
     try {
       const response = await apiFetch(`/api/servers/${selectedServerId}/players/${userId}/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason })
+        body: JSON.stringify(body)
       })
       if (response.ok) {
         toast.success(`Player ${action}ed successfully`)
@@ -89,6 +103,34 @@ const Players = () => {
       }
     } catch (error) {
       toast.error(`Failed to ${action} player`)
+    }
+  }
+
+  const confirmBan = async () => {
+    if (!banDialog.player || !selectedServerId) return
+    
+    const body = {
+      reason: banReason || 'No reason provided',
+      playerName: banDialog.player.name,
+      steamId: banDialog.player.steamId,
+      duration: parseInt(banDuration) || 0
+    }
+    
+    try {
+      const response = await apiFetch(`/api/servers/${selectedServerId}/players/${banDialog.player.userId}/ban`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      if (response.ok) {
+        toast.success('Player banned successfully')
+        queryClient.invalidateQueries({ queryKey: ['players', selectedServerId] })
+        setBanDialog({ show: false, player: null })
+      } else {
+        toast.error('Failed to ban player')
+      }
+    } catch (error) {
+      toast.error('Failed to ban player')
     }
   }
 
@@ -234,7 +276,7 @@ const Players = () => {
                           <UserMinus size={14} />
                         </button>
                         <button 
-                          onClick={() => handleAction('ban', player.userId)}
+                          onClick={() => handleAction('ban', player.userId, player)}
                           className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all" title="Ban Player">
                           <ShieldAlert size={14} />
                         </button>
@@ -265,6 +307,81 @@ const Players = () => {
           </div>
         </div>
       </div>
+
+      {/* Ban Confirmation Dialog */}
+      {banDialog.show && banDialog.player && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-xl bg-red-500/10 text-red-500">
+                <ShieldAlert size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Ban Player</h3>
+                <p className="text-sm text-gray-400">Permanently restrict access</p>
+              </div>
+            </div>
+
+            <div className="mb-4 p-4 bg-white/5 rounded-xl border border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-red-500 font-bold border border-gray-700">
+                  {banDialog.player.name[0].toUpperCase()}
+                </div>
+                <div>
+                  <p className="font-bold text-white">{banDialog.player.name}</p>
+                  <p className="text-xs text-gray-500 font-mono">{banDialog.player.steamId}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-400 mb-2">Ban Reason</label>
+                <input
+                  type="text"
+                  value={banReason}
+                  onChange={(e) => setBanReason(e.target.value)}
+                  placeholder="e.g., Cheating, Toxic behavior..."
+                  className="w-full px-4 py-2 bg-[#0F172A] border border-gray-800 rounded-xl text-white placeholder-gray-600 focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-400 mb-2">Ban Duration</label>
+                <select
+                  value={banDuration}
+                  onChange={(e) => setBanDuration(e.target.value)}
+                  className="w-full px-4 py-2 bg-[#0F172A] border border-gray-800 rounded-xl text-white focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none"
+                >
+                  <option value="0">Permanent</option>
+                  <option value="60">1 Hour</option>
+                  <option value="360">6 Hours</option>
+                  <option value="720">12 Hours</option>
+                  <option value="1440">1 Day</option>
+                  <option value="10080">1 Week</option>
+                  <option value="43200">1 Month</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBanDialog({ show: false, player: null })}
+                className="flex-1 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmBan}
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-all shadow-lg shadow-red-500/20"
+              >
+                Confirm Ban
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
