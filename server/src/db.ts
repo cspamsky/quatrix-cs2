@@ -134,6 +134,12 @@ try {
   // Column already exists
 }
 
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN auto_start INTEGER DEFAULT 0`);
+} catch (error) {
+  // Column already exists
+}
+
 // Create settings table
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
@@ -170,7 +176,8 @@ const initializeSetting = (key: string, defaultValue: string) => {
 };
 
 const defaultDataDir = path.join(__dirname, '../data');
-initializeSetting('steamcmd_path', path.join(defaultDataDir, 'steamcmd/steamcmd.sh'));
+const steamCmdExe = process.platform === 'win32' ? 'steamcmd.exe' : 'steamcmd.sh';
+initializeSetting('steamcmd_path', path.join(defaultDataDir, 'steamcmd', steamCmdExe));
 initializeSetting('install_dir', path.join(defaultDataDir, 'instances'));
 initializeSetting('auto_plugin_updates', 'false');
 

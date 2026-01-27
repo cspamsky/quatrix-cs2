@@ -4,7 +4,7 @@ import { Server, type Socket } from "socket.io";
 import cors from "cors";
 import si from "systeminformation";
 import db from "./db.js";
-import { serverManager } from "./serverManager.js";
+import serverManager from "./serverManager.js";
 import { apiLimiter } from "./middleware/rateLimiter.js";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -157,7 +157,7 @@ setInterval(async () => {
 }, 10000); // Check every 10 seconds for UI updates
 
 // 3. System Initialization
-serverManager.ensureSteamCMD().then(success => {
+serverManager.ensureSteamCMD().then((success: boolean) => {
     if (success) {
         console.log("\x1b[32m[SYSTEM]\x1b[0m SteamCMD is \x1b[1mactive\x1b[0m");
     } else {

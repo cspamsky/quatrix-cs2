@@ -25,6 +25,12 @@ class ServerManager {
   private lastSteamCmdPath: string = "";
   private steamCmdExe!: string;
   private logStreams: Map<string, fs.WriteStream> = new Map();
+  private io: any = null;
+
+  public setSocketIO(io: any) {
+    this.io = io;
+  }
+
 
   private isNoise(line: string): boolean {
     const noisePatterns = [
@@ -134,12 +140,12 @@ class ServerManager {
     }
   }
 
-  async init() {
+  public async init() {
     await this.refreshSettings();
     this.recoverOrphanedServers();
   }
 
-  async refreshSettings() {
+  public async refreshSettings() {
     const newInstallDir =
       this.getSetting("install_dir") ||
       path.join(__dirname, "../data/instances");
@@ -247,7 +253,7 @@ class ServerManager {
     }
   }
 
-  private flushPlayerIdentities() {
+  public async flushPlayerIdentities() {
     if (this.playerIdentityBuffer.size === 0) return;
 
     const identities = Array.from(this.playerIdentityBuffer.entries());
@@ -274,15 +280,19 @@ class ServerManager {
     }
   }
 
-  async startServer(
+  public async startServer(
     instanceId: string | number,
     options: any,
     onLog?: (data: string) => void,
   ) {
     const id = instanceId.toString();
     const serverPath = path.join(this.installDir, id);
-    // CS2 Linux uses linuxsteamrt64 directory
-    const relativeBinPath = path.join("game", "bin", "linuxsteamrt64", "cs2");
+    const isWin = process.platform === "win32";
+
+    // Detect binary path based on platform
+    const relativeBinPath = isWin
+      ? path.join("game", "bin", "win64", "cs2.exe")
+      : path.join("game", "bin", "linuxsteamrt64", "cs2");
     const cs2Exe = path.join(serverPath, relativeBinPath);
     const binDir = path.dirname(cs2Exe);
 
@@ -349,57 +359,58 @@ class ServerManager {
     if (options.steam_api_key) args.push("-authkey", options.steam_api_key);
     if (options.name) args.push("+hostname", options.name);
 
-    // Linux Environment Setup
+    // Environment Setup (Platform Specific)
     const env: Record<string, string | undefined> = {
       ...process.env,
       SteamAppId: "730",
       STEAM_APP_ID: "730",
-      // Dedicated server requires LD_LIBRARY_PATH on Linux to find steamclient.so
-      LD_LIBRARY_PATH: `${binDir}:${path.join(binDir, "steam")}:.`,
-      // Stabilization for .NET on Linux if needed (rarely an issue compared to Windows)
-      DOTNET_BUNDLE_EXTRACT_BASE_DIR: path.join(serverPath, ".net_cache"),
     };
 
-    // Ensure Steam SDK directory exists for initialization (ASYNC)
-    // CS2 Linux often requires steamclient.so in ~/.steam/sdk64/
-    try {
-      const homeDir = process.env.HOME || "/root";
-      const sdkDir = path.join(homeDir, ".steam/sdk64");
-      const targetLink = path.join(sdkDir, "steamclient.so");
-      const steamCmdDir = path.dirname(this.steamCmdExe);
-      const sourceSo = path.join(steamCmdDir, "linux64/steamclient.so");
-
-      // Async mkdir
-      await fs.promises.mkdir(sdkDir, { recursive: true });
-
-      // Check if target link and source exist (async)
-      const [targetExists, sourceExists] = await Promise.all([
-        fs.promises
-          .access(targetLink)
-          .then(() => true)
-          .catch(() => false),
-        fs.promises
-          .access(sourceSo)
-          .then(() => true)
-          .catch(() => false),
-      ]);
-
-      if (!targetExists && sourceExists) {
-        console.log(
-          `[SYSTEM] Creating Steam SDK symlink: ${sourceSo} -> ${targetLink}`,
-        );
-        // Use symlink if possible, or copy if not
-        try {
-          await fs.promises.symlink(sourceSo, targetLink);
-        } catch (e) {
-          await fs.promises.copyFile(sourceSo, targetLink);
-        }
-      }
-    } catch (err) {
-      console.warn(`[SYSTEM] Potential non-fatal SDK setup issue:`, err);
+    if (isWin) {
+      // Windows specific stabilization
+      env.PATH = `${binDir};${process.env.PATH}`;
+    } else {
+      // Linux specific stabilization
+      env.LD_LIBRARY_PATH = `${binDir}:${path.join(binDir, "steam")}:.`;
+      env.DOTNET_BUNDLE_EXTRACT_BASE_DIR = path.join(serverPath, ".net_cache");
     }
 
-    console.log(`[SERVER] Starting Linux CS2 instance: ${id}`);
+    // Ensure Steam SDK directory exists for initialization (Linux Only ASYNC)
+    if (!isWin) {
+      try {
+        const homeDir = process.env.HOME || "/root";
+        const sdkDir = path.join(homeDir, ".steam/sdk64");
+        const targetLink = path.join(sdkDir, "steamclient.so");
+        const steamCmdDir = path.dirname(this.steamCmdExe);
+        const sourceSo = path.join(steamCmdDir, "linux64/steamclient.so");
+
+        await fs.promises.mkdir(sdkDir, { recursive: true });
+
+        const [targetExists, sourceExists] = await Promise.all([
+          fs.promises
+            .access(targetLink)
+            .then(() => true)
+            .catch(() => false),
+          fs.promises
+            .access(sourceSo)
+            .then(() => true)
+            .catch(() => false),
+        ]);
+
+        if (!targetExists && sourceExists) {
+          console.log(`[SYSTEM] Creating Steam SDK symlink: ${sourceSo} -> ${targetLink}`);
+          try {
+            await fs.promises.symlink(sourceSo, targetLink);
+          } catch (e) {
+            await fs.promises.copyFile(sourceSo, targetLink);
+          }
+        }
+      } catch (err) {
+        console.warn(`[SYSTEM] Potential non-fatal SDK setup issue:`, err);
+      }
+    }
+
+    console.log(`[SERVER] Starting ${isWin ? "Windows" : "Linux"} CS2 instance: ${id}`);
     const serverProcess = spawn(cs2Exe, args, {
       cwd: serverPath,
       env,
@@ -509,7 +520,7 @@ class ServerManager {
       this.updateStatusStmt.run("ONLINE", serverProcess.pid, id);
   }
 
-  async stopServer(id: string | number) {
+  public async stopServer(id: string | number) {
     const idStr = id.toString();
     console.log(`[SERVER] Stopping instance ${idStr}...`);
 
@@ -552,18 +563,21 @@ class ServerManager {
     this.updatePlayerCountStmt.run(0, idStr);
     this.runningServers.delete(idStr);
     
-    // Also clean up any potential stale processes on Linux if they have same port (advanced)
-    if (process.platform === "linux" && server?.port) {
+    // Also clean up any potential stale processes (advanced)
+    if (server?.port) {
       try {
-          // kill -9 $(lsof -t -i:PORT)
+        if (process.platform === "linux") {
           await execAsync(`fuser -k ${server.port}/udp`).catch(() => {});
+        } else if (process.platform === "win32") {
+          // Alternative approach for Windows if needed
+        }
       } catch {}
     }
 
     return true;
   }
 
-  async sendCommand(
+  public async sendCommand(
     id: string | number,
     command: string,
     retries = 3,
@@ -621,7 +635,7 @@ class ServerManager {
     throw new Error("RCON connection failed after all retries");
   }
 
-  async getCurrentMap(id: string | number): Promise<string | null> {
+  public async getCurrentMap(id: string | number): Promise<string | null> {
     try {
       const res = await this.sendCommand(id, "status");
       const match = res.match(
@@ -633,7 +647,7 @@ class ServerManager {
     }
   }
 
-  async getPlayers(
+  public async getPlayers(
     id: string | number,
   ): Promise<{ players: any[]; averagePing: number }> {
     try {
@@ -843,7 +857,7 @@ class ServerManager {
     return resolved;
   }
 
-  async listFiles(id: string | number, subDir: string = "") {
+  public async listFiles(id: string | number, subDir: string = "") {
     // SECURITY: Validate path before use
     const target = this._resolveSecurePath(id, subDir);
 
@@ -864,16 +878,36 @@ class ServerManager {
     }
   }
 
-  async readFile(id: string | number, filePath: string) {
+  public async readFile(id: string | number, filePath: string) {
     // SECURITY: Validate path to prevent directory traversal (CWE-22)
     const safePath = this._resolveSecurePath(id, filePath);
     return fs.promises.readFile(safePath, "utf8");
   }
 
-  async writeFile(id: string | number, filePath: string, content: string) {
+  public getFilePath(id: string | number, subDir: string) {
+    return this._resolveSecurePath(id, subDir);
+  }
+
+  public async writeFile(id: string | number, filePath: string, content: string) {
     // SECURITY: Validate path to prevent directory traversal (CWE-22)
     const safePath = this._resolveSecurePath(id, filePath);
     return fs.promises.writeFile(safePath, content);
+  }
+
+  public async deleteFile(id: string | number, filePath: string) {
+    const safePath = this._resolveSecurePath(id, filePath);
+    return fs.promises.rm(safePath, { recursive: true, force: true });
+  }
+
+  public async createDirectory(id: string | number, dirPath: string) {
+    const safePath = this._resolveSecurePath(id, dirPath);
+    return fs.promises.mkdir(safePath, { recursive: true });
+  }
+
+  public async renameFile(id: string | number, oldPath: string, newPath: string) {
+    const safeOldPath = this._resolveSecurePath(id, oldPath);
+    const safeNewPath = this._resolveSecurePath(id, newPath);
+    return fs.promises.rename(safeOldPath, safeNewPath);
   }
 
   async deleteServerFiles(id: string | number) {
@@ -942,7 +976,7 @@ class ServerManager {
 
   // --- Steam/Server Installation ---
   // --- Steam/Server Installation ---
-  async ensureSteamCMD() {
+  public async ensureSteamCMD() {
     const exists = await steamManager.ensureSteamCMD(this.steamCmdExe);
     if (exists) return true;
 
@@ -954,20 +988,45 @@ class ServerManager {
       return true;
     } catch (err) {
       console.error(`[SYSTEM] Failed to download SteamCMD:`, err);
+      // Log more context
+      if (err instanceof Error) {
+        console.error(`[SYSTEM] Error Name: ${err.name}, Stack: ${err.stack}`);
+      }
       return false;
     }
   }
 
-  async installOrUpdateServer(id: string | number, onLog?: any) {
-    return steamManager.installOrUpdateServer(
-      id,
-      this.steamCmdExe,
-      this.installDir,
-      onLog,
-    );
+  public async installOrUpdateServer(id: string | number, onLog?: any) {
+    const serverId = id.toString();
+    try {
+      await steamManager.installOrUpdateServer(
+        id,
+        this.steamCmdExe,
+        this.installDir,
+        onLog,
+      );
+    } catch (err) {
+      // SteamCMD sometimes returns errors (like 0x602) even if the installation is actually complete or in a usable state.
+      // We perform a manual check for the CS2 executable to verify.
+      const serverPath = path.join(this.installDir, serverId);
+      const isWin = process.platform === "win32";
+      const relativeBinPath = isWin
+        ? path.join("game", "bin", "win64", "cs2.exe")
+        : path.join("game", "bin", "linuxsteamrt64", "cs2");
+      const cs2Exe = path.join(serverPath, relativeBinPath);
+
+      try {
+        await fs.promises.access(cs2Exe);
+        console.log(`[SYSTEM] SteamCMD reported error but CS2 binary found at ${cs2Exe}. Marking as success.`);
+        return; 
+      } catch (fsErr) {
+        console.error(`[SYSTEM] Installation failed and binary not found:`, err);
+        throw err;
+      }
+    }
   }
 
-  async getSystemHealth(): Promise<any> {
+  public async getSystemHealth(): Promise<any> {
     const result: any = {
       os: { platform: process.platform, arch: process.arch },
       cpu: { avx: false, model: "", cores: 0 },
@@ -1023,14 +1082,19 @@ class ServerManager {
 
       // Steam SDK check (async)
       const homeDir = process.env.HOME || "/root";
-      const sdkSo = path.join(homeDir, ".steam/sdk64/steamclient.so");
+      const sdkSo = process.platform === 'win32' 
+        ? path.join(path.dirname(this.steamCmdExe), "steamclient.dll")
+        : path.join(homeDir, ".steam/sdk64/steamclient.so");
+        
       try {
         await fs.promises.access(sdkSo);
         result.runtimes.steam_sdk.status = "good";
       } catch {
         result.runtimes.steam_sdk.status = "missing";
       }
-    } catch (e) {}
+    } catch (e: any) {
+      console.error("[SYSTEM] getSystemHealth top-level error:", e);
+    }
     return result;
   }
 
@@ -1117,7 +1181,19 @@ class ServerManager {
       };
     }
   }
+
+  async stopInstallation(id: string | number) {
+    console.warn(`[SYSTEM] stopInstallation requested for ${id}, but not fully implemented yet.`);
+    // In the future, we would track steamCmd processes in a Map and kill them here.
+    return true;
+  }
+
+  async cleanupGarbage() {
+    console.warn(`[SYSTEM] cleanupGarbage requested, but not fully implemented yet.`);
+    return { success: true, message: "Garbage cleanup not implemented, but call succeeded." };
+  }
 }
+
 
 // Async initialization pattern
 const serverManager = new ServerManager();
@@ -1132,4 +1208,4 @@ const serverManager = new ServerManager();
   }
 })();
 
-export { serverManager };
+export default serverManager;

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import db from "../db.js";
-import { serverManager } from "../serverManager.js";
+import serverManager from "../serverManager.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { createServerLimiter } from "../middleware/rateLimiter.js";
 
@@ -20,7 +20,8 @@ export const createServerSchema = z.object({
   vac_enabled: z.number().min(0).max(1).default(1),
   game_type: z.number().int().min(0).default(0),
   game_mode: z.number().int().min(0).default(0),
-  tickrate: z.number().int().min(1).max(128).default(128)
+  tickrate: z.number().int().min(1).max(128).default(128),
+  auto_start: z.boolean().optional().default(false)
 });
 
 // Middleware for this router
@@ -136,7 +137,7 @@ router.post("/", createServerLimiter, (req: any, res) => {
       return res.status(400).json({ message: result.error.issues[0]?.message || "Validation failed" });
     }
 
-    const { name, port, rcon_password, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type, game_mode, tickrate } = result.data;
+    const { name, port, rcon_password, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type, game_mode, tickrate, auto_start } = result.data;
     
     const result_count = db.prepare("SELECT count(*) as count FROM servers WHERE port = ?").get(port) as { count: number } | undefined;
     if (result_count && result_count.count > 0) {
@@ -144,11 +145,41 @@ router.post("/", createServerLimiter, (req: any, res) => {
     }
 
     const info = db.prepare(`
-      INSERT INTO servers (name, port, rcon_password, status, is_installed, user_id, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type, game_mode, tickrate)
-      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(name, port, rcon_password, req.user.id, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type || 0, game_mode || 0, tickrate || 128);
+      INSERT INTO servers (name, port, rcon_password, status, is_installed, user_id, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type, game_mode, tickrate, auto_start)
+      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(name, port, rcon_password, req.user.id, map, max_players, password, gslt_token, steam_api_key, vac_enabled, game_type || 0, game_mode || 0, tickrate || 128, auto_start ? 1 : 0);
 
-    res.status(201).json({ id: info.lastInsertRowid, ...result.data });
+    const serverId = info.lastInsertRowid as number;
+
+    // If auto_start is enabled, trigger installation immediately
+    if (auto_start) {
+      const io = req.app.get('io');
+      console.log(`[SYSTEM] Auto-starting installation for server ${serverId}`);
+      
+      db.prepare("UPDATE servers SET status = 'INSTALLING' WHERE id = ?").run(serverId);
+      if (io) io.emit('status_update', { serverId, status: 'INSTALLING' });
+
+      serverManager.installOrUpdateServer(serverId, (data: string) => {
+          if (io) io.emit(`console:${serverId}`, data);
+      }).then(async () => {
+          db.prepare("UPDATE servers SET status = 'OFFLINE', is_installed = 1 WHERE id = ?").run(serverId);
+          if (io) io.emit('status_update', { serverId, status: 'OFFLINE' });
+          
+          // Optionally start the server after installation
+          const serverData = db.prepare("SELECT * FROM servers WHERE id = ?").get(serverId) as any;
+          await serverManager.startServer(serverId, serverData, (data: string) => {
+              if (io) io.emit(`console:${serverId}`, data);
+          });
+          db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(serverId);
+          if (io) io.emit('status_update', { serverId, status: 'ONLINE' });
+      }).catch((err: any) => {
+          console.error(`[SYSTEM] Auto-install failed for server ${serverId}:`, err);
+          db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(serverId);
+          if (io) io.emit('status_update', { serverId, status: 'OFFLINE' });
+      });
+    }
+
+    res.status(201).json({ id: serverId, ...result.data });
   } catch (error) {
     console.error("Server creation error:", error);
     res.status(500).json({ message: "Failed to create server" });

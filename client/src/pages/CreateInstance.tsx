@@ -61,7 +61,8 @@ const CreateInstance = () => {
           steam_api_key: formData.steamApiKey || null,
           vac_enabled: formData.vac ? 1 : 0,
           game_type: parseInt(formData.gameType.split('-')[0]),
-          game_mode: parseInt(formData.gameType.split('-')[1])
+          game_mode: parseInt(formData.gameType.split('-')[1]),
+          auto_start: formData.autoStart
         }),
       })
 

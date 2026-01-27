@@ -1,6 +1,6 @@
 import { Router } from "express";
 import db from "../db.js";
-import { serverManager } from "../serverManager.js";
+import serverManager from "../serverManager.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { pluginRegistry, type PluginId } from "../config/plugins.js";
 

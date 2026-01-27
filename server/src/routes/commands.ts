@@ -1,6 +1,6 @@
 import { Router } from "express";
 import db from "../db.js";
-import { serverManager } from "../serverManager.js";
+import serverManager from "../serverManager.js";
 import { authenticateToken } from "../middleware/auth.js";
 
 const router = Router();
@@ -89,7 +89,7 @@ router.post("/:id/install", async (req: any, res) => {
         }).then(() => {
             db.prepare("UPDATE servers SET status = 'OFFLINE', is_installed = 1 WHERE id = ?").run(id);
             if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
-        }).catch((err) => {
+        }).catch((err: any) => {
             db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
             if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
         });
