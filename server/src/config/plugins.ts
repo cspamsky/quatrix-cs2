@@ -1,7 +1,7 @@
 export const pluginRegistry = {
     metamod: {
         name: 'Metamod:Source',
-        currentVersion: '2.0-git1382',
+        currentVersion: '2.0-git1383',
         folderName: 'metamod',
         category: 'core' as const,
         tags: ['core', 'framework'],
