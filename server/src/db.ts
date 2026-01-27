@@ -211,4 +211,29 @@ try {
   // Column already exists
 }
 
+// Create ban_history table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS ban_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    server_id INTEGER NOT NULL,
+    player_name TEXT NOT NULL,
+    steam_id TEXT,
+    ip_address TEXT,
+    reason TEXT,
+    duration INTEGER DEFAULT 0,
+    banned_by TEXT,
+    banned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME,
+    unbanned_at DATETIME,
+    unbanned_by TEXT,
+    is_active INTEGER DEFAULT 1,
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+  )
+`);
+
+// Create index for faster ban lookups
+db.exec(`CREATE INDEX IF NOT EXISTS idx_ban_history_server_id ON ban_history(server_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_ban_history_steam_id ON ban_history(steam_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_ban_history_active ON ban_history(is_active)`);
+
 export default db;

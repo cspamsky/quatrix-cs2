@@ -6,7 +6,8 @@ import {
   Settings, 
   LogOut,
   Layers,
-  Terminal
+  Terminal,
+  ShieldAlert
 } from 'lucide-react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import Logo from './Logo'
@@ -26,6 +27,7 @@ const Layout = ({ children }: LayoutProps) => {
     { path: '/console', icon: Terminal, label: 'Server Console' },
     { path: '/maps', icon: MapIcon, label: 'Map Management' },
     { path: '/players', icon: Users, label: 'Player List' },
+    { path: '/bans', icon: ShieldAlert, label: 'Ban History' },
     { path: '/plugins', icon: Puzzle, label: 'Plugins' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ]

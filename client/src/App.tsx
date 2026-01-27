@@ -21,6 +21,7 @@ const Plugins = lazy(() => import('./pages/Plugins'))
 const Maps = lazy(() => import('./pages/Maps'))
 const ServerSettings = lazy(() => import('./pages/ServerSettings'))
 const FileManager = lazy(() => import('./pages/FileManager'))
+const BanHistory = lazy(() => import('./pages/BanHistory'))
 
 // Loading component with react-loading-icons
 const PageLoader = () => (
@@ -85,6 +86,7 @@ const App = () => {
             <Route path="/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
             <Route path="/players" element={<ProtectedRoute><Layout><Players /></Layout></ProtectedRoute>} />
+            <Route path="/bans" element={<ProtectedRoute><Layout><BanHistory /></Layout></ProtectedRoute>} />
             <Route path="/maps" element={<ProtectedRoute><Layout><Maps /></Layout></ProtectedRoute>} />
             <Route path="/plugins" element={<ProtectedRoute><Layout><Plugins /></Layout></ProtectedRoute>} />
 
