@@ -383,31 +383,40 @@ class ServerManager {
         const sdkDir = path.join(homeDir, ".steam/sdk64");
         const targetLink = path.join(sdkDir, "steamclient.so");
         const steamCmdDir = path.dirname(this.steamCmdExe);
-        const sourceSo = path.join(steamCmdDir, "linux64/steamclient.so");
+        
+        // Potential locations for steamclient.so
+        const possibleSources = [
+          path.join(steamCmdDir, "linux64/steamclient.so"),
+          path.join(steamCmdDir, "steamclient.so"),
+          path.join(serverPath, "game/bin/linuxsteamrt64/steamclient.so"),
+        ];
 
-        await fs.promises.mkdir(sdkDir, { recursive: true });
+        const targetExists = await fs.promises.access(targetLink).then(() => true).catch(() => false);
 
-        const [targetExists, sourceExists] = await Promise.all([
-          fs.promises
-            .access(targetLink)
-            .then(() => true)
-            .catch(() => false),
-          fs.promises
-            .access(sourceSo)
-            .then(() => true)
-            .catch(() => false),
-        ]);
+        if (!targetExists) {
+          let sourceFound = "";
+          for (const source of possibleSources) {
+            if (await fs.promises.access(source).then(() => true).catch(() => false)) {
+              sourceFound = source;
+              break;
+            }
+          }
 
-        if (!targetExists && sourceExists) {
-          console.log(`[SYSTEM] Creating Steam SDK symlink: ${sourceSo} -> ${targetLink}`);
-          try {
-            await fs.promises.symlink(sourceSo, targetLink);
-          } catch (e) {
-            await fs.promises.copyFile(sourceSo, targetLink);
+          if (sourceFound) {
+            console.log(`[SYSTEM] Auto-fixing Steam SDK: ${sourceFound} -> ${targetLink}`);
+            await fs.promises.mkdir(sdkDir, { recursive: true });
+            try {
+              // Try symlink first, if it fails (e.g. on some filesystems), copy the file
+              await fs.promises.symlink(sourceFound, targetLink);
+            } catch (e) {
+              await fs.promises.copyFile(sourceFound, targetLink);
+            }
+          } else {
+            console.warn(`[SYSTEM] Could not find steamclient.so in any of the expected locations.`);
           }
         }
       } catch (err) {
-        console.warn(`[SYSTEM] Potential non-fatal SDK setup issue:`, err);
+        console.warn(`[SYSTEM] Steam SDK auto-fix failed:`, err);
       }
     }
 
