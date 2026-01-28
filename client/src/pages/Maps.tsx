@@ -121,7 +121,7 @@ const Maps = () => {
     const wMaps: CS2Map[] = workshopMaps.map((m: any) => ({
       id: `w-${m.id}`,
       workshop_id: m.workshop_id,
-      name: m.workshop_id,
+      name: m.map_file || m.workshop_id,
       displayName: m.name,
       type: 'Workshop',
       image: m.image_url || '/images/maps/de_dust2.webp',
