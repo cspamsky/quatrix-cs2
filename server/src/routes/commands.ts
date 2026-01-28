@@ -127,6 +127,17 @@ router.post("/:id/rcon", async (req: any, res) => {
         if (io) io.emit(`console:${id}`, `> ${command}`);
 
         const response = await serverManager.sendCommand(id, command);
+        
+        // Immediate database sync for map changes
+        if (command.toLowerCase().startsWith('map ') || command.toLowerCase().startsWith('host_workshop_map ')) {
+            const parts = command.split(' ');
+            if (parts.length > 1) {
+                const newMap = parts[1];
+                db.prepare("UPDATE servers SET map = ? WHERE id = ?").run(newMap, id);
+                if (io) io.emit('server_update', { serverId: parseInt(id) });
+            }
+        }
+
         if (response && response.trim() && io) {
             io.emit(`console:${id}`, response);
         }

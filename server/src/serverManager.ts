@@ -117,6 +117,9 @@ class ServerManager {
   private updatePlayerCountStmt = db.prepare(
     "UPDATE servers SET current_players = ? WHERE id = ?",
   );
+  private updateMapStmt = db.prepare(
+    "UPDATE servers SET map = ? WHERE id = ?",
+  );
 
   constructor() {
     // Async initialization - call init() after construction
@@ -135,6 +138,12 @@ class ServerManager {
       try {
         const { players } = await this.getPlayers(id);
         this.updatePlayerCountStmt.run(players.length, id);
+
+        // Sync current map to database so it persists on restart
+        const currentMap = await this.getCurrentMap(id);
+        if (currentMap) {
+          this.updateMapStmt.run(currentMap, id);
+        }
       } catch (error) {
         // Silently fail, server might be starting or busy
       }
@@ -342,8 +351,20 @@ class ServerManager {
       (options.game_type ?? 0).toString(),
       "+game_mode",
       (options.game_mode ?? 0).toString(),
-      "+map",
-      options.map || "de_dust2",
+    ];
+
+    // Detect if the map is a workshop map
+    const mapName = options.map || "de_dust2";
+    const workshopMatch = mapName.match(/workshop\/(\d+)/i) || mapName.match(/^(\d{8,})$/);
+    
+    if (workshopMatch) {
+      const workshopId = workshopMatch[1];
+      args.push("+host_workshop_map", workshopId);
+    } else {
+      args.push("+map", mapName);
+    }
+
+    args.push(
       "-port",
       options.port.toString(),
       "-maxplayers",
@@ -355,7 +376,7 @@ class ServerManager {
       (options.tickrate || 128).toString(),
       "+exec",
       "server.cfg"
-    ];
+    );
     if (options.vac_enabled) args.push("+sv_lan", "0");
     else args.push("-insecure", "+sv_lan", "1");
     if (options.gslt_token)
