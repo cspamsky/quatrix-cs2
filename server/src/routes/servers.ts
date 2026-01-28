@@ -45,16 +45,16 @@ router.get("/", (req: any, res) => {
       LEFT JOIN workshop_maps wm ON (
         -- Match exact map file
         s.map = wm.map_file OR
-        -- Match workshop ID (best for CS2)
-        s.map LIKE '%/' || wm.workshop_id || '/%' OR
-        s.map LIKE '%\' || wm.workshop_id || '\%' OR
+        -- Match workshop ID
         s.map = wm.workshop_id OR
-        -- Match map file within a path
-        s.map LIKE '%/' || wm.map_file OR
-        s.map LIKE '%\' || wm.map_file OR
-        -- Case insensitive fallbacks
-        LOWER(s.map) = LOWER(wm.map_file) OR
-        LOWER(s.map) LIKE '%/' || LOWER(wm.map_file)
+        -- Match if map contains workshop ID anywhere
+        s.map LIKE '%' || wm.workshop_id || '%' OR
+        -- Match if map name matches the internal filename
+        wm.map_file IS NOT NULL AND (
+          s.map = wm.map_file OR 
+          s.map LIKE '%/' || wm.map_file OR 
+          s.map LIKE '%\' || wm.map_file
+        )
       )
       WHERE s.user_id = ?
     `).all(req.user.id);

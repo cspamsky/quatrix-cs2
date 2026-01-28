@@ -12,7 +12,7 @@ export const mapImages: Record<string, string> = {
   'cs_italy': '/images/maps/de_italy.webp',
   'cs_office': '/images/maps/de_office.webp',
   // Default fallback - Official CS2 key art/background from Steam
-  'default': '/images/maps/de_dust2.webp'
+  'default': 'https://clan.cloudflare.steamstatic.com/images/42564148/804618e4bc392945d94726bf6fb9a5c8e14620f3.png'
 }
 
 export const getMapImage = (mapName: string): string => {
