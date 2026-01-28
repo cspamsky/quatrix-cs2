@@ -110,10 +110,15 @@ const ServerCard = memo(({
           )}
         </div>
 
-        <div className="absolute bottom-3 left-3 pr-3">
+        <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center">
           <p className="text-white text-[10px] font-bold tracking-widest uppercase opacity-80 truncate max-w-[150px]">
             {instance.workshop_map_name || instance.map}
           </p>
+          {instance.workshop_map_image && (
+             <div className="px-1.5 py-0.5 rounded-md bg-blue-500/20 border border-blue-500/30 text-[8px] font-black text-blue-400 uppercase tracking-tighter backdrop-blur-sm">
+                Workshop
+             </div>
+          )}
         </div>
       </div>
 

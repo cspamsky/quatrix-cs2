@@ -141,8 +141,9 @@ setInterval(async () => {
             
             // Auto-discovery of Workshop Maps: 
             // If it's a workshop map and we don't know it, try to fetch details
-            if (currentMap && currentMap.includes('workshop/')) {
-                const workshopIdMatch = currentMap.match(/workshop\/(\d+)/);
+            const lowerMap = currentMap?.toLowerCase() || '';
+            if (currentMap && (lowerMap.includes('workshop/') || lowerMap.includes('workshop\\'))) {
+                const workshopIdMatch = currentMap.match(/workshop[/\\](\d+)/i);
                 if (workshopIdMatch) {
                     const workshopId = workshopIdMatch[1];
                     const existing = db.prepare("SELECT id FROM workshop_maps WHERE workshop_id = ?").get(workshopId);
@@ -150,7 +151,7 @@ setInterval(async () => {
                     if (!existing && workshopId) {
                         console.log(`[SYNC] Discovering new workshop map: ${workshopId}`);
                         // Trigger background registration (direct utility call)
-                        const wid = workshopId; // Local copy to ensure string type
+                        const wid = workshopId; 
                         import("./utils/workshop.js").then(m => m.registerWorkshopMap(wid))
                             .catch(e => console.warn(`[SYNC] Auto-registration failed for ${workshopId}:`, e.message));
                     }
