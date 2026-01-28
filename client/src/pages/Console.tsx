@@ -282,9 +282,11 @@ const Console = () => {
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setSelectedIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
-      } else if (e.key === "Tab" || e.key === "Enter") {
+      } else if (e.key === "Tab") {
         e.preventDefault();
         setCommand(suggestions[selectedIndex]);
+        setShowSuggestions(false);
+      } else if (e.key === "Enter") {
         setShowSuggestions(false);
       } else if (e.key === "Escape") {
         setShowSuggestions(false);
