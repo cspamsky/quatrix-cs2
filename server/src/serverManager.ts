@@ -143,6 +143,15 @@ class ServerManager {
         const currentMap = await this.getCurrentMap(id);
         if (currentMap) {
           this.updateMapStmt.run(currentMap, id);
+
+          // SELF-LEARNING: If it's a workshop path, learn the mapping between filename and ID
+          // Example: workshop/3070247085/awp_lego_2
+          const wsMatch = currentMap.match(/workshop\/(\d+)\/(.+)/i);
+          if (wsMatch) {
+            const wsId = wsMatch[1];
+            const fileName = wsMatch[2];
+            db.prepare("UPDATE workshop_maps SET map_file = ? WHERE workshop_id = ?").run(fileName, wsId);
+          }
         }
       } catch (error) {
         // Silently fail, server might be starting or busy
@@ -362,8 +371,14 @@ class ServerManager {
     if (workshopMatch) {
       workshopId = workshopMatch[1];
     } else {
-      // 2. If it's a plain name (e.g. 'awp_lego_2'), check if we know its ID from the workshop_maps table
-      const knownWorkshop = db.prepare("SELECT workshop_id FROM workshop_maps WHERE map_file = ? OR name = ?").get(mapName, mapName) as { workshop_id: string } | undefined;
+      // 2. Flexible lookup: Check map_file, name (case insensitive), or replacing spaces with underscores
+      const knownWorkshop = db.prepare(`
+        SELECT workshop_id FROM workshop_maps 
+        WHERE LOWER(map_file) = LOWER(?) 
+        OR LOWER(name) = LOWER(?) 
+        OR LOWER(REPLACE(name, ' ', '_')) = LOWER(?)
+      `).get(mapName, mapName, mapName) as { workshop_id: string } | undefined;
+      
       if (knownWorkshop) {
         workshopId = knownWorkshop.workshop_id;
       }
