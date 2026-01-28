@@ -242,7 +242,7 @@ const Maps = () => {
               <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Connecting to Steam Cloud...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
               {filteredMaps.map(map => (
                 <div 
                   key={map.id} 
@@ -251,10 +251,10 @@ const Maps = () => {
                   <img src={map.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                   
-                  <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
-                    <div>
-                      <h4 className="text-white font-bold text-lg">{map.displayName}</h4>
-                      <p className="text-gray-400 text-[10px] font-mono">{map.name}</p>
+                  <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+                    <div className="truncate mr-2">
+                      <h4 className="text-white font-bold text-sm truncate">{map.displayName}</h4>
+                      <p className="text-gray-400 text-[9px] font-mono truncate opacity-60">{map.name}</p>
                     </div>
                     <div className="flex gap-2">
                       {map.type === 'Workshop' && (
