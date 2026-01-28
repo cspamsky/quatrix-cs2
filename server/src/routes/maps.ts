@@ -1,10 +1,62 @@
 import { Router } from "express";
 import db from "../db.js";
 import { authenticateToken } from "../middleware/auth.js";
+import { serverManager } from "../serverManager.js";
+import path from "path";
+import fs from "fs";
 
 const router = Router();
 
 router.use(authenticateToken);
+
+const MAP_CFG_DIR = "game/csgo/cfg/maps_cfg";
+
+// GET /api/maps/config/:serverId/:mapName
+router.get("/config/:serverId/:mapName", async (req: any, res) => {
+    const { serverId, mapName } = req.params;
+    try {
+        const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(serverId, req.user.id);
+        if (!server) return res.status(404).json({ message: "Server not found" });
+
+        const filePath = `${MAP_CFG_DIR}/${mapName}.cfg`;
+        try {
+            const content = await serverManager.readFile(serverId, filePath);
+            res.json({ content });
+        } catch (error: any) {
+            if (error.code === 'ENOENT') {
+                return res.json({ content: "" });
+            }
+            throw error;
+        }
+    } catch (error: any) {
+        res.status(500).json({ message: error.message || "Failed to fetch map config" });
+    }
+});
+
+// POST /api/maps/config/:serverId/:mapName
+router.post("/config/:serverId/:mapName", async (req: any, res) => {
+    const { serverId, mapName } = req.params;
+    const { content } = req.body;
+
+    try {
+        const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(serverId, req.user.id);
+        if (!server) return res.status(404).json({ message: "Server not found" });
+
+        // Ensure directory exists
+        const serverDir = serverManager.getFilePath(serverId, "");
+        const cfgDir = path.join(serverDir, MAP_CFG_DIR);
+        if (!fs.existsSync(cfgDir)) {
+            fs.mkdirSync(cfgDir, { recursive: true });
+        }
+
+        const filePath = `${MAP_CFG_DIR}/${mapName}.cfg`;
+        await serverManager.writeFile(serverId, filePath, content);
+        
+        res.json({ success: true, message: "Map configuration saved" });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message || "Failed to save map config" });
+    }
+});
 
 // GET /api/maps/workshop - Get all saved workshop maps
 router.get("/workshop", (req, res) => {
@@ -49,3 +101,4 @@ router.delete("/workshop/:id", (req, res) => {
 });
 
 export default router;
+

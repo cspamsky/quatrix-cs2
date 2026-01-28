@@ -10,7 +10,8 @@ import {
   Globe,
   Plus,
   Trash2,
-  X
+  X,
+  Settings
 } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import toast from 'react-hot-toast'
@@ -40,6 +41,9 @@ const Maps = () => {
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newWorkshopId, setNewWorkshopId] = useState('')
+  const [editingMapConfig, setEditingMapConfig] = useState<CS2Map | null>(null)
+  const [currentConfig, setCurrentConfig] = useState('')
+  const [isSavingConfig, setIsSavingConfig] = useState(false)
 
   // 1. Fetch Servers
   const { data: servers = [] } = useQuery<Instance[]>({
@@ -58,6 +62,42 @@ const Maps = () => {
     queryKey: ['workshop-maps'],
     queryFn: () => apiFetch('/api/maps/workshop').then(res => res.json()),
   })
+
+  const openConfigEditor = async (map: CS2Map) => {
+    if (!selectedServerId) return
+    setEditingMapConfig(map)
+    try {
+      const response = await apiFetch(`/api/maps/config/${selectedServerId}/${map.name}`)
+      if (response.ok) {
+        const data = await response.json()
+        setCurrentConfig(data.content)
+      }
+    } catch (error) {
+      toast.error('Failed to load map config')
+    }
+  }
+
+  const saveConfig = async () => {
+    if (!selectedServerId || !editingMapConfig) return
+    setIsSavingConfig(true)
+    try {
+      const response = await apiFetch(`/api/maps/config/${selectedServerId}/${editingMapConfig.name}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: currentConfig })
+      })
+      if (response.ok) {
+        toast.success('Map config saved successfully')
+        setEditingMapConfig(null)
+      } else {
+        toast.error('Failed to save config')
+      }
+    } catch (error) {
+      toast.error('Connection error')
+    } finally {
+      setIsSavingConfig(false)
+    }
+  }
 
   // 3. Combine Static Maps and Workshop Maps
   const maps = useMemo(() => {
@@ -268,6 +308,12 @@ const Maps = () => {
                       <p className="text-gray-400 text-[9px] font-mono truncate opacity-60">{map.name}</p>
                     </div>
                     <div className="flex gap-2">
+                      <button 
+                        onClick={() => openConfigEditor(map)}
+                        className="p-3 bg-gray-900/80 text-gray-400 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-white"
+                      >
+                        <Settings size={16} />
+                      </button>
                       {map.type === 'Workshop' && (
                         <button 
                           onClick={() => removeWorkshopMutation.mutate(map.id)}
@@ -335,6 +381,66 @@ const Maps = () => {
               >
                 {addWorkshopMutation.isPending ? 'Verifying...' : 'Link to Server'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Map Config Editor Modal */}
+      {editingMapConfig && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center p-6">
+          <div className="bg-[#111827] border border-gray-800 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#0d1421]">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                  <Settings size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Config Editor: {editingMapConfig.displayName}</h3>
+                  <p className="text-[10px] text-gray-500 font-mono tracking-widest mt-0.5 uppercase">quatrix_maps/{editingMapConfig.name}.cfg</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setEditingMapConfig(null)} 
+                className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 bg-black/40 p-1">
+              <textarea 
+                className="w-full h-full min-h-[400px] bg-transparent text-primary/90 p-8 font-mono text-sm outline-none resize-none leading-relaxed selection:bg-primary/20"
+                spellCheck={false}
+                placeholder="// Enter map-specific commands here...
+// e.g. mp_roundtime 1.92
+// mp_freezetime 5"
+                value={currentConfig}
+                onChange={(e) => setCurrentConfig(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="p-6 bg-[#0d1421] border-t border-gray-800 flex justify-between items-center">
+              <div className="text-[10px] text-gray-500 flex items-center gap-2 font-bold uppercase tracking-widest">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+                Auto-executed when map starts
+              </div>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setEditingMapConfig(null)}
+                  className="px-6 py-2.5 text-xs font-bold text-gray-400 hover:text-white transition-all capitalize"
+                >
+                  Discard
+                </button>
+                <button 
+                  onClick={saveConfig}
+                  disabled={isSavingConfig}
+                  className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-8 py-2.5 rounded-xl text-xs font-black tracking-[0.1em] transition-all shadow-xl shadow-primary/20 disabled:opacity-50"
+                 >
+                  {isSavingConfig ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
+                  SAVE CONFIGURATION
+                </button>
+              </div>
             </div>
           </div>
         </div>
