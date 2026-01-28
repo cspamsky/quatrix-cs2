@@ -21,8 +21,10 @@ Game server management shouldn't feel like 1999. Quatrix bridges the gap between
 - **Live Player Intelligence**: Real-time player list with Steam avatars, accurate connection duration, and latency tracking.
 - **Intelligent Plugin Pool**: Centralized eklenti storage ("Download Once, Sync Everywhere") for instant deployment across multiple server instances with deep-discovery archive parsing.
 - **Dynamic Asset Engine**: Real-time map synchronization with automated themed visuals for the entire official CS2 map pool.
+- **Map-Specific Intelligence**: Advanced per-map configuration editor with automated file discovery for Workshop maps.
 - **Unified File Manager**: A web-native explorer for live configuration editing without SFTP baggage.
 - **Self-Healing Deployment**: Intelligent setup scripts with automated SteamCMD provisioning and dependency resolution.
+- **Advanced Admin Management**: Dedicated interface for managing server administrators compatible with CounterStrikeSharp.
 
 ### 🔒 Enterprise-Grade Security
 
@@ -114,9 +116,10 @@ quatrix/                     # Project Root
 
 ## 🗺️ Roadmap: The Future of Server Management
 
-- [ ] **Live Player Manager**: RCON status integration, Avatars, and Moderation tools.
-- [ ] **Plugin Marketplace**: High-speed centralized pool with one-click install for CSS, MM, and community eklentis.
-- [ ] **Steam Workshop Bridge**: Native workshop browser for automated map deployments.
+- [x] **Live Player Manager**: RCON status integration, Avatars, and Moderation tools (✅ Completed).
+- [x] **Plugin Marketplace**: High-speed centralized pool with one-click install for CSS, MM, and community plugins (✅ Completed).
+- [x] **Map Configuration System**: Per-map CFG editor with automated workshop filename discovery (✅ Completed).
+- [ ] **External Database Orchestrator**: Integrated MySQL/MariaDB management for plugins like Ranks/MatchZy.
 - [ ] **Snapshot Backups**: Automated backups of configurations and plugin data.
 - [ ] **Discord Integration**: Real-time alerts for server status and player sessions.
 
