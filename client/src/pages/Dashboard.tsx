@@ -46,6 +46,15 @@ const Dashboard = () => {
     queryFn: () => apiFetch('/api/stats').then(res => res.json()),
   })
 
+  // Fetch workshop maps to count them
+  const { data: workshopMaps = [] } = useQuery({
+    queryKey: ['workshop-maps-count'],
+    queryFn: () => apiFetch('/api/maps/workshop').then(res => res.json()),
+  })
+
+  const staticMapCount = 10 // de_dust2, de_mirage, ..., cs_italy, cs_office
+  const totalMapsCount = staticMapCount + workshopMaps.length
+
   useEffect(() => {
     // Socket Connection Handlers
     const onConnect = () => {
@@ -162,7 +171,7 @@ const Dashboard = () => {
             </div>
             <div className="bg-[#0F172A]/50 p-4 rounded-lg border border-gray-800/30">
               <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">Total Maps</p>
-              <p className="text-3xl font-bold text-orange-400">47</p>
+              <p className="text-3xl font-bold text-orange-400">{totalMapsCount}</p>
               <p className="text-xs text-gray-400 mt-1">in rotation</p>
             </div>
           </div>
