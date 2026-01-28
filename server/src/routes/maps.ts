@@ -42,18 +42,21 @@ router.post("/config/:serverId/:mapName", async (req: any, res) => {
         const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(serverId, req.user.id);
         if (!server) return res.status(404).json({ message: "Server not found" });
 
-        // Ensure directory exists
+        // Mutlak yol üzerinden klasör kontrolü ve oluşturma
         const serverDir = serverManager.getFilePath(serverId, "");
-        const cfgDir = path.join(serverDir, MAP_CFG_DIR);
-        if (!fs.existsSync(cfgDir)) {
-            fs.mkdirSync(cfgDir, { recursive: true });
+        const cfgDirPath = path.join(serverDir, "game/csgo/cfg/maps_cfg");
+
+        if (!fs.existsSync(cfgDirPath)) {
+            console.log(`Creating directory: ${cfgDirPath}`);
+            fs.mkdirSync(cfgDirPath, { recursive: true, mode: 0o755 });
         }
 
-        const filePath = `${MAP_CFG_DIR}/${mapName}.cfg`;
-        await serverManager.writeFile(serverId, filePath, content);
+        const relativeFilePath = "game/csgo/cfg/maps_cfg/" + mapName + ".cfg";
+        await serverManager.writeFile(serverId, relativeFilePath, content);
         
         res.json({ success: true, message: "Map configuration saved" });
     } catch (error: any) {
+        console.error("Map config save error:", error);
         res.status(500).json({ message: error.message || "Failed to save map config" });
     }
 });
