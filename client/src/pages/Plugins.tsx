@@ -9,7 +9,6 @@ import {
   Trash2,
   Box,
   Layers,
-  ChevronRight,
   Search,
   CheckCircle2,
   XCircle,
@@ -415,21 +414,21 @@ const Plugins = () => {
             <p className="text-sm text-gray-400 mt-1">One-click deployment for professional CS2 server environments</p>
         </div>
         
-        <div className="flex items-center space-x-4 bg-[#0c1424] border border-gray-800/50 p-2 rounded-2xl shadow-2xl">
-            <div className="flex items-center px-4 py-2 text-gray-400 bg-gray-900/50 rounded-xl border border-gray-800">
-                <ServerIcon size={16} className="mr-3 text-primary" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Target Node:</span>
-            </div>
+        <div className="flex flex-col items-end">
+          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
+          <div className="relative group">
+            <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
             <select 
-                className="bg-transparent text-white text-sm font-bold outline-none px-4 py-2 cursor-pointer appearance-none min-w-[150px]"
-                value={selectedServer || ''}
-                onChange={(e) => setSelectedServer(e.target.value)}
+              className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm min-w-[200px]"
+              value={selectedServer || ''}
+              onChange={(e) => setSelectedServer(e.target.value)}
             >
-                {instances.map((inst: Instance) => (
-                    <option key={inst.id} value={inst.id} className="bg-[#0c1424]">{inst.name}</option>
-                ))}
+              <option value="" disabled>Select server...</option>
+              {instances.map((inst: Instance) => (
+                <option key={inst.id} value={inst.id} className="bg-[#0c1424]">{inst.name}</option>
+              ))}
             </select>
-            <ChevronRight size={16} className="text-gray-600 mr-2" />
+          </div>
         </div>
       </header>
 

@@ -162,20 +162,21 @@ const Maps = () => {
           <p className="text-sm text-gray-500 mt-1">Deploy battlegrounds or workshop content to your node</p>
         </div>
 
-        <div className="flex items-center gap-3 bg-[#0c1424] p-1.5 rounded-2xl border border-gray-800/50">
-          <div className="flex items-center px-4 py-2 text-gray-500 bg-gray-900/50 rounded-xl border border-gray-800">
-             <ServerIcon size={14} className="mr-2 text-primary" />
-             <span className="text-[10px] font-black uppercase tracking-widest">Target:</span>
+        <div className="flex flex-col items-end">
+          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
+          <div className="relative group">
+            <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+            <select 
+              className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm min-w-[200px]"
+              value={selectedServerId || ''}
+              onChange={(e) => setSelectedServerId(Number(e.target.value))}
+            >
+              <option value="" disabled>Select server...</option>
+              {servers.map(s => (
+                <option key={s.id} value={s.id} className="bg-[#0c1424]">{s.name}</option>
+              ))}
+            </select>
           </div>
-          <select 
-            className="bg-transparent text-white text-sm font-bold outline-none px-4 py-2 cursor-pointer appearance-none min-w-[140px]"
-            value={selectedServerId || ''}
-            onChange={(e) => setSelectedServerId(Number(e.target.value))}
-          >
-            {servers.map(s => (
-              <option key={s.id} value={s.id} className="bg-[#0c1424]">{s.name}</option>
-            ))}
-          </select>
         </div>
       </div>
 
