@@ -1,13 +1,13 @@
 import db from "../db.js";
 
-export async function registerWorkshopMap(workshopId: string) {
+export async function registerWorkshopMap(workshopId: string, discoveredMapFile?: string) {
     if (!workshopId || workshopId === '0') return null;
 
     try {
         // Fetch details from Steam Web API
         let name = `Workshop Map ${workshopId}`;
         let image_url: string | null = null;
-        let map_file: string | null = null;
+        let map_file: string | null = discoveredMapFile || null;
 
         try {
             const apiKey = process.env.STEAM_API_KEY;
@@ -31,18 +31,19 @@ export async function registerWorkshopMap(workshopId: string) {
                 if (details && details.result === 1) {
                     name = details.title || name;
                     image_url = (details.preview_url as string) || null;
-                    // Extract map filename from Steam data
-                    map_file = (details.filename as string) || null;
                     
-                    // If filename has path, extract just the map name
-                    if (map_file && (map_file.includes('/') || map_file.includes('\\'))) {
-                        const parts = map_file.split(/[/\\]/);
-                        const lastPart = parts.pop();
-                        if (lastPart) {
-                            map_file = lastPart.replace('.vpk', '').replace('.bsp', '');
+                    // Extract map filename from Steam data if not provided
+                    if (!map_file) {
+                        const steamFilename = (details.filename as string) || null;
+                        if (steamFilename && (steamFilename.includes('/') || steamFilename.includes('\\'))) {
+                            const parts = steamFilename.split(/[/\\]/);
+                            const lastPart = parts.pop();
+                            if (lastPart) {
+                                map_file = lastPart.replace('.vpk', '').replace('.bsp', '');
+                            }
+                        } else if (steamFilename) {
+                            map_file = steamFilename.replace('.vpk', '').replace('.bsp', '');
                         }
-                    } else if (map_file) {
-                        map_file = map_file.replace('.vpk', '').replace('.bsp', '');
                     }
                 }
             }
@@ -56,7 +57,7 @@ export async function registerWorkshopMap(workshopId: string) {
             ON CONFLICT(workshop_id) DO UPDATE SET
                 name = excluded.name,
                 image_url = excluded.image_url,
-                map_file = excluded.map_file
+                map_file = COALESCE(excluded.map_file, workshop_maps.map_file)
         `).run(workshopId, name, image_url, map_file);
 
         return { name, image_url, map_file };

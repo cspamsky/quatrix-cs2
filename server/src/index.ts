@@ -148,12 +148,15 @@ setInterval(async () => {
                     const workshopId = workshopIdMatch[1];
                     const existing = db.prepare("SELECT id FROM workshop_maps WHERE workshop_id = ?").get(workshopId);
                     
-                    if (!existing && workshopId) {
-                        console.log(`[SYNC] Discovering new workshop map: ${workshopId}`);
-                        // Trigger background registration (direct utility call)
+                    if (workshopId) {
+                        console.log(`[SYNC] Discovering/Updating workshop map: ${workshopId}`);
+                        // Extract map name from path if available
+                        const mapParts = currentMap.split(/[/\\]/);
+                        const discoveredName = mapParts.pop()?.replace('.vpk', '').replace('.bsp', '');
+                        
                         const wid = workshopId; 
-                        import("./utils/workshop.js").then(m => m.registerWorkshopMap(wid))
-                            .catch(e => console.warn(`[SYNC] Auto-registration failed for ${workshopId}:`, e.message));
+                        import("./utils/workshop.js").then(m => m.registerWorkshopMap(wid, discoveredName))
+                            .catch(e => console.warn(`[SYNC] registration failed for ${workshopId}:`, e.message));
                     }
                 }
             }

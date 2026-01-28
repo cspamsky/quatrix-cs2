@@ -43,14 +43,18 @@ router.get("/", (req: any, res) => {
         wm.image_url as workshop_map_image
       FROM servers s
       LEFT JOIN workshop_maps wm ON (
+        -- Match exact map file
         s.map = wm.map_file OR
-        s.map = wm.workshop_id OR 
-        s.map LIKE '%' || wm.workshop_id || '%' OR
+        -- Match workshop ID (best for CS2)
+        s.map LIKE '%/' || wm.workshop_id || '/%' OR
+        s.map LIKE '%\' || wm.workshop_id || '\%' OR
+        s.map = wm.workshop_id OR
+        -- Match map file within a path
         s.map LIKE '%/' || wm.map_file OR
         s.map LIKE '%\' || wm.map_file OR
+        -- Case insensitive fallbacks
         LOWER(s.map) = LOWER(wm.map_file) OR
-        LOWER(s.map) LIKE '%/' || LOWER(wm.map_file) OR
-        LOWER(s.map) LIKE '%\' || LOWER(wm.map_file)
+        LOWER(s.map) LIKE '%/' || LOWER(wm.map_file)
       )
       WHERE s.user_id = ?
     `).all(req.user.id);
