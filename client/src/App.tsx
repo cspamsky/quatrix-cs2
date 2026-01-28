@@ -82,6 +82,7 @@ const App = () => {
             <Route path="/instances" element={<ProtectedRoute><Layout><Instances /></Layout></ProtectedRoute>} />
             <Route path="/instances/create" element={<ProtectedRoute><Layout><CreateInstance /></Layout></ProtectedRoute>} />
             <Route path="/instances/:id/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
+            <Route path="/console/:id" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
             <Route path="/instances/:id/settings" element={<ProtectedRoute><Layout><ServerSettings /></Layout></ProtectedRoute>} />
             <Route path="/instances/:id/files" element={<ProtectedRoute><Layout><FileManager /></Layout></ProtectedRoute>} />
             <Route path="/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />

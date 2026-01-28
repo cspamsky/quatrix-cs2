@@ -49,8 +49,6 @@ const Console = () => {
   const consoleRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!id) return;
-
     const fetchServerData = async () => {
       try {
         const response = await apiFetch(`/api/servers`);
@@ -65,6 +63,14 @@ const Console = () => {
         console.error("Failed to fetch server info:", error);
       }
     };
+
+    fetchServerData();
+    const serverDataInterval = setInterval(fetchServerData, 5000);
+
+    // Only proceed with logs and socket if an ID is present
+    if (!id) {
+      return () => clearInterval(serverDataInterval);
+    }
 
     const fetchLogs = async () => {
       try {
@@ -105,8 +111,6 @@ const Console = () => {
       }
     };
 
-    const fetchServerDataInterval = setInterval(fetchServerData, 5000);
-    fetchServerData();
     fetchLogs();
 
     const eventName = `console:${id}`;
@@ -171,7 +175,7 @@ const Console = () => {
     );
 
     return () => {
-      clearInterval(fetchServerDataInterval);
+      clearInterval(serverDataInterval);
       socket.off(eventName);
       socket.off("status_update");
     };
