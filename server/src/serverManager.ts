@@ -354,11 +354,22 @@ class ServerManager {
     ];
 
     // Detect if the map is a workshop map
-    const mapName = options.map || "de_dust2";
+    let mapName = options.map || "de_dust2";
+    let workshopId: string | null = null;
+
+    // 1. Double check regex for workshop path or ID
     const workshopMatch = mapName.match(/workshop\/(\d+)/i) || mapName.match(/^(\d{8,})$/);
-    
     if (workshopMatch) {
-      const workshopId = workshopMatch[1];
+      workshopId = workshopMatch[1];
+    } else {
+      // 2. If it's a plain name (e.g. 'awp_lego_2'), check if we know its ID from the workshop_maps table
+      const knownWorkshop = db.prepare("SELECT workshop_id FROM workshop_maps WHERE map_file = ? OR name = ?").get(mapName, mapName) as { workshop_id: string } | undefined;
+      if (knownWorkshop) {
+        workshopId = knownWorkshop.workshop_id;
+      }
+    }
+    
+    if (workshopId) {
       args.push("+host_workshop_map", workshopId);
     } else {
       args.push("+map", mapName);
@@ -686,16 +697,16 @@ class ServerManager {
     try {
       const res = await this.sendCommand(id, "status");
       
-      // 1. Try standard 'map :' line (Most reliable)
+      // 1. Try standard 'map :' line (up to first space/newline)
       // Example: map : workshop/3070176466/de_dust2
-      const mapLineMatch = res.match(/map\s+:\s+(.+)/i);
+      const mapLineMatch = res.match(/map\s+:\s+([^\s\r\n]+)/i);
       if (mapLineMatch && mapLineMatch[1]) {
         return mapLineMatch[1].trim();
       }
 
       // 2. Try 'loaded spawngroup' (Internal engine state)
       const spawnMatch = res.match(
-        /loaded spawngroup\(\s*1\)\s*:\s*SV:\s*\[1:\s*([\w\/]+)/i,
+        /loaded spawngroup\(\s*1\)\s*:\s*SV:\s*\[1:\s*([^\s\r\n\]]+)/i,
       );
       if (spawnMatch && spawnMatch[1]) {
         return spawnMatch[1].trim();
