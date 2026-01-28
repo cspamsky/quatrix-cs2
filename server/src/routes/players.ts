@@ -46,19 +46,18 @@ router.post("/:id/players/:userId/ban", async (req: any, res) => {
         }
 
         try {
-            console.log(`[BAN DEBUG] Attempting ultimate ban for ${playerName}`);
+            console.log(`[BAN DEBUG] EXECUTING MASTER BAN for ${playerName}`);
 
-            // A. Ban by UserID
+            // 1. Core Ban Commands
+            // We send multiple formats to ensure SimpleAdmin catches it regardless of MultiServerMode
             await serverManager.sendCommand(id, `css_ban #${userId} ${durationMinutes} "${banReason}"`);
+            await serverManager.sendCommand(id, `css_addban ${steamId} ${durationMinutes} "${banReason}"`);
             
-            // B. Ban by SteamID (Persistence)
-            await serverManager.sendCommand(id, `css_ban ${steamId} ${durationMinutes} "${banReason}"`);
-            
-            // C. Native Engine Ban (Last Resort)
+            // 2. Engine Level (Native)
             await serverManager.sendCommand(id, `banid ${durationMinutes} ${steamId}`);
             await serverManager.sendCommand(id, `writeid`);
 
-            // D. Force Kick
+            // 3. Force Immediate Enforcement
             await serverManager.sendCommand(id, `kickid ${userId} "${banReason}"`);
             
         } catch (rconError) {
