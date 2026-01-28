@@ -72,7 +72,7 @@ router.get("/workshop", (req, res) => {
 
 // POST /api/maps/workshop - Add a new workshop map
 router.post("/workshop", async (req, res) => {
-    const { workshop_id } = req.body;
+    const { workshop_id, map_file } = req.body;
     
     if (!workshop_id) {
         return res.status(400).json({ message: "Workshop ID is required" });
@@ -80,7 +80,7 @@ router.post("/workshop", async (req, res) => {
 
     try {
         const { registerWorkshopMap } = await import("../utils/workshop.js");
-        const details = await registerWorkshopMap(workshop_id);
+        const details = await registerWorkshopMap(workshop_id, map_file);
         
         res.status(201).json({ 
             message: "Workshop map added successfully",

@@ -41,6 +41,7 @@ const Maps = () => {
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newWorkshopId, setNewWorkshopId] = useState('')
+  const [newMapFile, setNewMapFile] = useState('')
   const [editingMapConfig, setEditingMapConfig] = useState<CS2Map | null>(null)
   const [currentConfig, setCurrentConfig] = useState('')
   const [isSavingConfig, setIsSavingConfig] = useState(false)
@@ -155,14 +156,15 @@ const Maps = () => {
   })
 
   const addWorkshopMutation = useMutation({
-    mutationFn: (workshopId: string) => apiFetch('/api/maps/workshop', {
+    mutationFn: ({ workshopId, mapFile }: { workshopId: string, mapFile: string }) => apiFetch('/api/maps/workshop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ workshop_id: workshopId })
+      body: JSON.stringify({ workshop_id: workshopId, map_file: mapFile })
     }).then(res => res.json()),
     onSuccess: () => {
       toast.success('Workshop map added!')
       setNewWorkshopId('')
+      setNewMapFile('')
       setIsModalOpen(false)
       queryClient.invalidateQueries({ queryKey: ['workshop-maps'] })
     },
@@ -359,23 +361,35 @@ const Maps = () => {
                 <X size={20} />
               </button>
             </div>
-            <div className="p-8 space-y-6">
+            <div className="p-8 space-y-5">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3 ml-1">Workshop Map ID</label>
                 <input 
                   type="text" 
-                  placeholder="e.g. 3070176466"
+                  placeholder="e.g. 3070247085"
                   className="w-full bg-[#0c1424] border border-gray-800 rounded-2xl py-4 px-6 text-white focus:border-primary transition-all outline-none text-lg font-mono placeholder:text-gray-700"
                   value={newWorkshopId}
                   onChange={(e) => setNewWorkshopId(e.target.value)}
                   autoFocus
                 />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3 ml-1">Internal Map Name (Optional)</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. awp_lego_2"
+                  className="w-full bg-[#0c1424] border border-gray-800 rounded-2xl py-4 px-6 text-white focus:border-primary transition-all outline-none text-lg font-mono placeholder:text-gray-700"
+                  value={newMapFile}
+                  onChange={(e) => setNewMapFile(e.target.value)}
+                />
                 <p className="mt-3 text-[10px] text-gray-600 flex items-center gap-2">
-                  <Plus size={10} /> Find the ID in the Steam Workshop URL
+                  <Plus size={10} /> This is the name used for CFG files and RCON
                 </p>
               </div>
+
               <button 
-                onClick={() => addWorkshopMutation.mutate(newWorkshopId)}
+                onClick={() => addWorkshopMutation.mutate({ workshopId: newWorkshopId, mapFile: newMapFile })}
                 disabled={!newWorkshopId || addWorkshopMutation.isPending}
                 className="w-full bg-primary hover:bg-blue-600 disabled:opacity-50 text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs transition-all shadow-xl shadow-primary/20"
               >
