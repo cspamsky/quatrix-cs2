@@ -61,6 +61,7 @@ class ServerManager {
     
     // Linux Pre-Flight Checks
     console.log("[SYSTEM] Running Linux Pre-flight checks...");
+    await this.ensureSteamSdk();
     if (this.steamCmdExe && fs.existsSync(this.steamCmdExe)) {
         await fileSystemService.ensureExecutable(this.steamCmdExe);
     }
@@ -108,6 +109,46 @@ class ServerManager {
       await fs.promises.mkdir(this.installDir, { recursive: true });
     } catch (error: any) {
         if (error.code !== "EEXIST") throw error;
+    }
+
+    // Double check SDK on settings refresh
+    try {
+        await this.ensureSteamSdk();
+    } catch {}
+  }
+
+  private async ensureSteamSdk() {
+    // CS2 on Linux requires steamclient.so in ~/.steam/sdk64/
+    const homeDir = process.env.HOME || "/home/quatrix";
+    const sdkDir = path.join(homeDir, ".steam", "sdk64");
+    const targetSo = path.join(sdkDir, "steamclient.so");
+
+    if (!fs.existsSync(targetSo)) {
+        console.log("[SYSTEM] Steam SDK link missing, creating...");
+        const projectRoot = process.cwd();
+        const steamCmdDir = path.join(projectRoot, "data", "steamcmd");
+        const sourceSo = path.join(steamCmdDir, "linux64", "steamclient.so");
+
+        if (fs.existsSync(sourceSo)) {
+            try {
+                if (!fs.existsSync(sdkDir)) {
+                    fs.mkdirSync(sdkDir, { recursive: true });
+                }
+                // Try to symlink first
+                try {
+                    fs.symlinkSync(sourceSo, targetSo);
+                    console.log("[SYSTEM] Created Steam SDK symlink.");
+                } catch {
+                    // Fallback to copy if symlink fails
+                    fs.copyFileSync(sourceSo, targetSo);
+                    console.log("[SYSTEM] Copied Steam SDK binary.");
+                }
+            } catch (err: any) {
+                console.error("[SYSTEM] Error providing Steam SDK:", err.message);
+            }
+        } else {
+            console.warn("[SYSTEM] Could not find source steamclient.so in data/steamcmd. Skipping SDK link.");
+        }
     }
   }
 
