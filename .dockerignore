@@ -1,0 +1,14 @@
+node_modules
+npm-debug.log
+.git
+.env
+dist
+server/dist
+client/dist
+server/data
+instances
+common
+plugin_pool
+.DS_Store
+*.sqlite
+*.log

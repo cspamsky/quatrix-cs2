@@ -17,16 +17,12 @@ interface ServerData {
   steam_api_key?: string
   game_type: number
   game_mode: number
+  game_alias?: string
+  hibernate: number
+  validate_files: number
+  additional_args?: string
+  tickrate: number
 }
-
-const GAME_MODES = [
-  { name: 'Casual', type: 0, mode: 0 },
-  { name: 'Competitive', type: 0, mode: 1 },
-  { name: 'Wingman', type: 0, mode: 2 },
-  { name: 'Arms Race', type: 1, mode: 0 },
-  { name: 'Demolition', type: 1, mode: 1 },
-  { name: 'Deathmatch', type: 1, mode: 2 }
-]
 
 const ServerSettings = () => {
   const { id } = useParams()
@@ -184,26 +180,6 @@ const ServerSettings = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    Game Mode
-                  </label>
-                  <select
-                    value={`${server.game_type}-${server.game_mode}`}
-                    onChange={(e) => {
-                      const [type, mode] = e.target.value.split('-').map(Number)
-                      setServer({ ...server, game_type: type, game_mode: mode })
-                    }}
-                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
-                  >
-                    {GAME_MODES.map((mode) => (
-                      <option key={`${mode.type}-${mode.mode}`} value={`${mode.type}-${mode.mode}`}>
-                        {mode.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-400">
                     Server Port
                   </label>
                   <input
@@ -213,6 +189,54 @@ const ServerSettings = () => {
                     value={server.port}
                     onChange={(e) => setServer({ ...server, port: parseInt(e.target.value) })}
                     className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono focus:border-primary outline-none transition-all"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-400">
+                    Game Alias
+                  </label>
+                  <select
+                    value={server.game_alias || ''}
+                    onChange={(e) => setServer({ ...server, game_alias: e.target.value })}
+                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer"
+                  >
+                    <option value="">Default (Use Game Mode)</option>
+                    <option value="competitive">Competitive</option>
+                    <option value="casual">Casual</option>
+                    <option value="deathmatch">Deathmatch</option>
+                    <option value="wingman">Wingman</option>
+                    <option value="armsrace">Arms Race</option>
+                    <option value="demolition">Demolition</option>
+                    <option value="training">Training</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-400">
+                    Tickrate
+                  </label>
+                  <input
+                    type="number"
+                    min="64"
+                    max="128"
+                    value={server.tickrate || 128}
+                    onChange={(e) => setServer({ ...server, tickrate: parseInt(e.target.value) })}
+                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-400">
+                    Additional Launch Arguments
+                  </label>
+                  <input
+                    type="text"
+                    value={server.additional_args || ''}
+                    onChange={(e) => setServer({ ...server, additional_args: e.target.value })}
+                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
+                    placeholder="-tickrate 128 +sv_infinite_ammo 1..."
                   />
                 </div>
               </div>
@@ -245,7 +269,7 @@ const ServerSettings = () => {
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    RCON Password
+                    RCON Password <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
@@ -262,7 +286,7 @@ const ServerSettings = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-400">
-                  GSLT Token
+                  GSLT Token <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -275,7 +299,7 @@ const ServerSettings = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-400">
-                  Steam Web API Key
+                  Steam Web API Key <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -301,6 +325,42 @@ const ServerSettings = () => {
                   <div className="flex flex-col">
                     <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">Valve Anti-Cheat (VAC)</span>
                     <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Enhanced Protection</span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-8 pt-4 border-t border-gray-800/50">
+                <label className="flex items-center gap-4 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(server.hibernate)}
+                      onChange={(e) => setServer({ ...server, hibernate: e.target.checked ? 1 : 0 })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-12 h-6 bg-gray-800 rounded-full peer peer-checked:bg-primary transition-all duration-300"></div>
+                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">Hibernation</span>
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Low CPU when empty</span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-4 cursor-pointer group">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(server.validate_files)}
+                      onChange={(e) => setServer({ ...server, validate_files: e.target.checked ? 1 : 0 })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-12 h-6 bg-gray-800 rounded-full peer peer-checked:bg-primary transition-all duration-300"></div>
+                    <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">Validate Files</span>
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Run validation on start</span>
                   </div>
                 </label>
               </div>

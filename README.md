@@ -78,20 +78,25 @@ Edit the `.env` file in the root directory:
 
 ### 4. Running the Hub
 
-**For Development:**
+**For Production (Recommended - Docker Mode):**
 
 ```bash
-npm run dev
+docker compose up -d
 ```
 
-**For Production (Recommended):**
+- **Unified Hub**: `http://localhost:3001`
+- **Docker Advantages**: Automated multi-server management, isolated environments, and zero-manual-SteamCMD setup.
+
+**For Standard Development:**
 
 ```bash
+# Standard Child Process Mode
+npm run dev
+
+# Or Production without Docker
 npm run build
 npm start
 ```
-
-- **Unified Hub**: `http://localhost:3001` (Serves both API and UI in production)
 
 ---
 

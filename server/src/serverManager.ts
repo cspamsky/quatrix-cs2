@@ -7,6 +7,7 @@ import si from "systeminformation";
 import { pluginManager } from "./services/PluginManager.js";
 import { steamManager } from "./services/SteamManager.js";
 import type { PluginId } from "./config/plugins.js";
+import Docker from "dockerode";
 
 import { promisify } from "util";
 const execAsync = promisify(exec);
@@ -15,6 +16,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 class ServerManager {
+  private docker: Docker | null = null;
+  private isDockerMode: boolean = process.env.DOCKER_MODE === "true";
   private runningServers: Map<string, any> = new Map();
   private logBuffers: Map<string, string[]> = new Map();
   private rconConnections: Map<string, any> = new Map();
@@ -126,6 +129,13 @@ class ServerManager {
     this.installDir = "";
     this.steamCmdExe = "";
 
+    if (this.isDockerMode) {
+      console.log("[SYSTEM] Initializing in DOCKER MODE");
+      this.docker = new Docker({ socketPath: "/var/run/docker.sock" });
+    } else {
+      console.log("[SYSTEM] Initializing in CHILD PROCESS MODE");
+    }
+
     // Performance: Flush player identities every 5 seconds in batches
     setInterval(() => this.flushPlayerIdentities(), 5000);
 
@@ -161,15 +171,44 @@ class ServerManager {
 
   public async init() {
     await this.refreshSettings();
+    
+    if (this.isDockerMode && this.docker) {
+        try {
+            const networks = await this.docker.listNetworks();
+            const exists = networks.some(n => n.Name === "quatrix_default");
+            if (!exists) {
+                console.log("[DOCKER] Creating network 'quatrix_default'...");
+                await this.docker.createNetwork({ Name: "quatrix_default", Driver: "bridge" });
+            }
+        } catch (e) {
+            console.error("[DOCKER] Failed to initialize network:", e);
+        }
+    }
+
     this.recoverOrphanedServers();
   }
 
   public async refreshSettings() {
-    const newInstallDir =
-      this.getSetting("install_dir") ||
-      path.join(__dirname, "../data/instances");
-    const newSteamCmdPath = this.getSetting("steamcmd_path") || "";
+    const isWin = process.platform === "win32";
+    const projectRoot = process.cwd();
+    
+    // Docker mount points (must match docker-compose.yml)
+    const defaultInstallDir = this.isDockerMode ? (isWin ? path.join(projectRoot, "instances") : "/app/instances") : path.join(projectRoot, "data/instances");
+    const defaultDataDir = this.isDockerMode ? (isWin ? path.join(projectRoot, "server/data") : "/app/server/data") : path.join(projectRoot, "data");
+    const defaultSteamCmdPath = path.join(defaultDataDir, "steamcmd", isWin ? "steamcmd.exe" : "steamcmd.sh");
+
+    const newInstallDir = this.isDockerMode ? defaultInstallDir : (this.getSetting("install_dir") || defaultInstallDir);
+    const newSteamCmdPath = this.isDockerMode ? defaultSteamCmdPath : (this.getSetting("install_dir") ? this.getSetting("steamcmd_path") : defaultSteamCmdPath);
     const dataDir = path.join(__dirname, "../data");
+
+    // In Docker mode, we don't need to manually clean up or manage SteamCMD paths in the panel
+    if (this.isDockerMode) {
+      this.lastInstallDir = newInstallDir;
+      this.lastSteamCmdPath = newSteamCmdPath;
+      this.installDir = newInstallDir;
+      this.steamCmdExe = newSteamCmdPath;
+      return;
+    }
 
     // If this is not the first run and paths have changed, clean up the local data directory
     if (
@@ -225,28 +264,42 @@ class ServerManager {
   }
 
   // --- Core Management ---
-  recoverOrphanedServers() {
+  async recoverOrphanedServers() {
     interface ServerRow {
       id: number;
-      pid: number | null;
+      pid: number | string | null;
       status: string;
     }
     const servers = this.getOrphanedStmt.all() as ServerRow[];
-
     const deadServerIds: number[] = [];
 
-    for (const server of servers) {
-      let isAlive = false;
-      if (server.pid) {
-        try {
-          process.kill(server.pid, 0);
-          isAlive = true;
-        } catch (e) {
-          isAlive = false;
+    if (this.isDockerMode && this.docker) {
+      const containers = await this.docker.listContainers({ all: true });
+      for (const server of servers) {
+        const containerName = `quatrix-cs2-${server.id}`;
+        const container = containers.find(c => c.Names.includes(`/${containerName}`));
+        
+        if (container && container.State === "running") {
+          console.log(`[SYSTEM] Found running container for server ${server.id}`);
+          this.runningServers.set(server.id.toString(), this.docker.getContainer(container.Id));
+        } else {
+          deadServerIds.push(server.id);
         }
       }
-      if (!isAlive) {
-        deadServerIds.push(server.id);
+    } else {
+      for (const server of servers) {
+        let isAlive = false;
+        if (server.pid) {
+          try {
+            process.kill(Number(server.pid), 0);
+            isAlive = true;
+          } catch (e) {
+            isAlive = false;
+          }
+        }
+        if (!isAlive) {
+          deadServerIds.push(server.id);
+        }
       }
     }
 
@@ -255,7 +308,7 @@ class ServerManager {
         `[SYSTEM] Recovering ${deadServerIds.length} orphaned servers...`,
       );
 
-      // Execute updates in batches for maximum SQLite performance (Batch size 900 to stay under SQLITE_LIMIT_VARIABLE_NUMBER)
+      // Execute updates in batches for maximum SQLite performance
       const BATCH_SIZE = 900;
       const transaction = db.transaction((ids: number[]) => {
         for (let i = 0; i < ids.length; i += BATCH_SIZE) {
@@ -305,8 +358,177 @@ class ServerManager {
     onLog?: (data: string) => void,
   ) {
     const id = instanceId.toString();
+
+    if (this.isDockerMode && this.docker) {
+        console.log(`[DOCKER] Starting CS2 container for instance ${id}...`);
+        
+        const containerName = `quatrix-cs2-${id}`;
+        const imageName = "joedwards32/cs2:latest";
+
+        // Check if image exists locally
+        try {
+            await this.docker.getImage(imageName).inspect();
+        } catch (e) {
+            console.log(`[DOCKER] Image ${imageName} not found. Pulling... (This may take a while)`);
+            if (onLog) onLog(`[SYSTEM] Pulling CS2 Docker Image (${imageName})... Please wait.`);
+            await new Promise((resolve, reject) => {
+                this.docker!.pull(imageName, (err: any, stream: any) => {
+                    if (err) return reject(err);
+                    this.docker!.modem.followProgress(stream, onFinished, onProgress);
+                    function onFinished(err: any, output: any) {
+                        if (err) return reject(err);
+                        resolve(output);
+                    }
+                    function onProgress(event: any) {
+                        // Log to backend console only to avoid spamming UI
+                        // console.log(`[PULL] ${event.status} ${event.progress || ''}`);
+                    }
+                });
+            });
+            console.log(`[DOCKER] Image pulled successfully.`);
+        }
+
+        // Stop and remove existing container with the same name if any
+        try {
+            const existing = this.docker.getContainer(containerName);
+            const info = await existing.inspect();
+            if (info.State.Running) await existing.stop();
+            await existing.remove();
+        } catch (e) {}
+
+        const env = [
+            `CS2_SERVERNAME=${(options.name || "Quatrix Server").replace(/\//g, "\\/")}`,
+            `CS2_PORT=${options.port}`,
+            `CS2_PW=${options.password || ""}`,
+            `CS2_RCONPW=${options.rcon_password || "secret"}`,
+            `CS2_MAXPLAYERS=${options.max_players || 16}`,
+            `CS2_STARTMAP=${options.map || "de_dust2"}`,
+            `CS2_TICKRATE=${options.tickrate || 128}`,
+            `CS2_LAN=${options.vac_enabled ? "0" : "1"}`,
+            `SRCDS_TOKEN=${options.gslt_token || ""}`,
+            `CS2_SERVER_HIBERNATE=${options.hibernate ?? 1}`,
+            `STEAMAPPVALIDATE=0`,
+            `STEAMAPPID=730`,
+            `CS2_RCON_PORT=${options.port}`
+        ];
+
+        if (options.game_alias) {
+            env.push(`CS2_GAMEALIAS=${options.game_alias}`);
+        } else {
+            env.push(`CS2_GAMETYPE=${options.game_type ?? 0}`);
+            env.push(`CS2_GAMEMODE=${options.game_mode ?? 1}`);
+        }
+
+        if (options.additional_args) {
+            env.push(`CS2_ADDITIONAL_ARGS=${options.additional_args}`);
+        }
+
+        if (options.steam_api_key) env.push(`STEAM_AUTHKEY=${options.steam_api_key}`);
+
+        // Ensure host directories exist for binds
+        const isWin = process.platform === "win32";
+        // Host paths (Docker daemon needs the path as seen by the host OS - e.g. D:\PROJE\...)
+        const hostRoot = process.env.HOST_PROJECT_PATH || "";
+        const hostCommonDir = hostRoot ? `${hostRoot}/common`.replace(/\\/g, '/') : "";
+        const hostInstanceDir = hostRoot ? `${hostRoot}/instances/${id}`.replace(/\\/g, '/') : "";
+
+        // Local paths (Panel container needs /app/... to perform fs operations)
+        const localCommonDir = "/app/common";
+        const localInstanceDir = `/app/instances/${id}`;
+        
+        console.log(`[DOCKER] Host Path: ${hostCommonDir}`);
+        console.log(`[DOCKER] Local Path: ${localCommonDir}`);
+
+        try {
+            // ALWAYS use local paths for fs.mkdir, because the panel is inside a container
+            await fs.promises.mkdir(localCommonDir, { recursive: true });
+            await fs.promises.mkdir(path.join(localInstanceDir, "game/csgo/cfg"), { recursive: true });
+            await fs.promises.mkdir(path.join(localInstanceDir, "game/csgo/addons"), { recursive: true });
+            await fs.promises.mkdir(path.join(localInstanceDir, "game/csgo/logs"), { recursive: true });
+        } catch (e) {
+            console.error(`[DOCKER] Failed to create local directories:`, e);
+        }
+
+        const container = await this.docker.createContainer({
+            Image: imageName,
+            name: containerName,
+            Env: env,
+            ExposedPorts: {
+                [`${options.port}/udp`]: {},
+                [`${options.port}/tcp`]: {}
+            },
+            HostConfig: {
+                NetworkMode: "quatrix_default",
+                PortBindings: {
+                    [`${options.port}/udp`]: [{ HostPort: options.port.toString() }],
+                    [`${options.port}/tcp`]: [{ HostPort: options.port.toString() }]
+                },
+                Binds: [
+                    // Use HOST paths for Binds
+                    // Mount common to both the game dir AND the steamcmd's steamapps dir to ensure rename() works (same filesystem)
+                    `${hostCommonDir}:/home/steam/cs2-dedicated`,
+                    `${hostCommonDir}:/home/steam/Steam/steamapps`,
+                    
+                    `${path.join(hostInstanceDir, "game/csgo/cfg").replace(/\\/g, '/')}:/home/steam/cs2-dedicated/game/csgo/cfg:rw`,
+                    `${path.join(hostInstanceDir, "game/csgo/addons").replace(/\\/g, '/')}:/home/steam/cs2-dedicated/game/csgo/addons:rw`,
+                    `${path.join(hostInstanceDir, "game/csgo/logs").replace(/\\/g, '/')}:/home/steam/cs2-dedicated/game/csgo/logs:rw`
+                ],
+                RestartPolicy: { Name: "always" }
+            }
+        });
+
+        await container.start();
+        this.runningServers.set(id, container);
+        this.updateStatusStmt.run("ONLINE", container.id, id);
+
+        // Attached logs for UI
+        const stream = await container.logs({
+            follow: true,
+            stdout: true,
+            stderr: true,
+            timestamps: true
+        });
+
+        stream.on("data", (chunk) => {
+            const lines = chunk.toString().split("\n");
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                
+                // Clean docker timestamp if present
+                const cleanLine = line.replace(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z\s+/, "");
+                
+                if (onLog) onLog(cleanLine);
+                
+                // Mirror logic from spawn mode for player tracking
+                if (this.isNoise(cleanLine)) continue;
+                
+                const buffer = this.logBuffers.get(id) || [];
+                buffer.push(`[LOG] ${cleanLine}`);
+                if (buffer.length > 200) buffer.shift();
+                this.logBuffers.set(id, buffer);
+
+                const steam64Match = cleanLine.match(/steamid:(\d{17})/i);
+                if (steam64Match) {
+                    const steamId64 = steam64Match[1];
+                    const nameMatch = cleanLine.match(/['"](.+?)['"]/);
+                    if (nameMatch) {
+                        const name = nameMatch[1];
+                        const cache = this.playerIdentityCache.get(id) || new Map();
+                        cache.set(`n:${name}`, steamId64);
+                        this.playerIdentityCache.set(id, cache);
+                        this.playerIdentityBuffer.set(name, steamId64);
+                    }
+                }
+            }
+        });
+
+        return;
+    }
+
     const serverPath = path.join(this.installDir, id);
     const isWin = process.platform === "win32";
+    // ... rest of the original startServer follows ...
 
     // Detect binary path based on platform
     const relativeBinPath = isWin
@@ -615,6 +837,21 @@ class ServerManager {
     const idStr = id.toString();
     console.log(`[SERVER] Stopping instance ${idStr}...`);
 
+    if (this.isDockerMode && this.docker) {
+        try {
+            const container = this.docker.getContainer(`quatrix-cs2-${idStr}`);
+            await container.stop();
+            await container.remove();
+            console.log(`[DOCKER] Container quatrix-cs2-${idStr} stopped and removed.`);
+        } catch (e) {
+            console.error(`[DOCKER] Failed to stop container:`, e);
+        }
+        this.updateStatusStmt.run("OFFLINE", null, idStr);
+        this.updatePlayerCountStmt.run(0, idStr);
+        this.runningServers.delete(idStr);
+        return true;
+    }
+
     // 1. Try graceful shutdown via RCON
     try {
       await this.sendCommand(id, "quit");
@@ -694,8 +931,9 @@ class ServerManager {
             console.log(`[RCON] Retry ${attempt}/${retries} for server ${id}`);
           }
 
+          const rconHost = this.isDockerMode ? `quatrix-cs2-${idStr}` : "127.0.0.1";
           rcon = await Rcon.connect({
-            host: "127.0.0.1",
+            host: rconHost,
             port: rconPort,
             password: server.rcon_password,
             timeout: 3000,
@@ -1107,6 +1345,7 @@ class ServerManager {
   // --- Steam/Server Installation ---
   // --- Steam/Server Installation ---
   public async ensureSteamCMD() {
+    if (this.isDockerMode) return true;
     const exists = await steamManager.ensureSteamCMD(this.steamCmdExe);
     if (exists) return true;
 
@@ -1127,10 +1366,50 @@ class ServerManager {
   }
 
   public async installOrUpdateServer(id: string | number, onLog?: any) {
+    if (this.isDockerMode && this.docker) {
+      const serverId = id.toString();
+      console.log(`[DOCKER] Triggering update for shared base using a temporary container...`);
+      if (onLog) onLog("[SYSTEM] Starting shared base update via Docker... This may take a while.");
+      
+      const localCommonDir = "/app/common";
+      const hostRoot = process.env.HOST_PROJECT_PATH || process.cwd();
+      const hostCommonDir = `${hostRoot}/common`.replace(/\\/g, '/');
+
+      await fs.promises.mkdir(localCommonDir, { recursive: true });
+
+      const containerName = `quatrix-updater-${serverId}-${Date.now()}`;
+      const container = await this.docker.createContainer({
+        Image: "joedwards32/cs2",
+        name: containerName,
+        HostConfig: {
+            Binds: [`${hostCommonDir}:/home/steam/cs2-dedicated`],
+            AutoRemove: true
+        }
+      });
+
+      await container.start();
+      if (onLog) onLog("[SYSTEM] Updater container started. Waiting for completion...");
+
+      // Wait for completion
+      try {
+          await container.wait();
+          console.log(`[DOCKER] Update container ${containerName} finished.`);
+          if (onLog) onLog("[SYSTEM] Shared base update completed successfully.");
+          
+          // Mark as installed in DB
+          db.prepare("UPDATE servers SET is_installed = 1 WHERE id = ?").run(id);
+      } catch (err) {
+          console.error(`[DOCKER] Update container failed:`, err);
+          if (onLog) onLog("[ERROR] Update failed. Check docker logs.");
+          throw err;
+        }
+      return;
+    }
+
     const serverId = id.toString();
     try {
       await steamManager.installOrUpdateServer(
-        id,
+        serverId,
         this.steamCmdExe,
         this.installDir,
         onLog,
@@ -1159,12 +1438,13 @@ class ServerManager {
   public async getSystemHealth(): Promise<any> {
     const result: any = {
       os: { platform: process.platform, arch: process.arch },
+      docker: { active: this.isDockerMode },
       cpu: { avx: false, model: "", cores: 0 },
       ram: { total: 0, free: 0, status: "unknown" },
       disk: { total: 0, free: 0, status: "unknown" },
       runtimes: {
-        dotnet: { status: "missing", versions: [], details: [] },
-        steam_sdk: { status: "missing" },
+        dotnet: { status: this.isDockerMode ? "good" : "missing", versions: [], details: [] },
+        steam_sdk: { status: this.isDockerMode ? "good" : "missing" },
       },
     };
     try {

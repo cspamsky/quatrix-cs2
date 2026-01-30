@@ -1,12 +1,21 @@
 import Database from 'better-sqlite3';
 import type { Database as DatabaseType } from 'better-sqlite3';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const isDocker = process.env.DOCKER_MODE === 'true';
+const isWin = process.platform === 'win32';
+const projectRoot = process.cwd();
+const defaultDataDir = isDocker ? (isWin ? path.join(projectRoot, 'server/data') : '/app/server/data') : path.join(projectRoot, 'data');
+const defaultInstallDir = isDocker ? (isWin ? path.join(projectRoot, 'instances') : '/app/instances') : path.join(defaultDataDir, 'instances');
 
-const db: DatabaseType = new Database(path.join(__dirname, '../database.sqlite'));
+// Ensure database directory exists before creating Database instance
+if (!fs.existsSync(defaultDataDir)) {
+  fs.mkdirSync(defaultDataDir, { recursive: true });
+}
+
+const dbPath = path.join(defaultDataDir, 'database.sqlite');
+const db: DatabaseType = new Database(dbPath);
 
 // Create users table
 db.exec(`
@@ -136,9 +145,23 @@ try {
 
 try {
   db.exec(`ALTER TABLE servers ADD COLUMN auto_start INTEGER DEFAULT 0`);
-} catch (error) {
-  // Column already exists
-}
+} catch (error) {}
+
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN game_alias TEXT`);
+} catch (error) {}
+
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN hibernate INTEGER DEFAULT 1`);
+} catch (error) {}
+
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN validate_files INTEGER DEFAULT 0`);
+} catch (error) {}
+
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN additional_args TEXT`);
+} catch (error) {}
 
 // Create settings table
 db.exec(`
@@ -175,10 +198,17 @@ const initializeSetting = (key: string, defaultValue: string) => {
   }
 };
 
-const defaultDataDir = path.join(__dirname, '../data');
+// Redundant declarations removed as they are moved to the top
 const steamCmdExe = process.platform === 'win32' ? 'steamcmd.exe' : 'steamcmd.sh';
-initializeSetting('steamcmd_path', path.join(defaultDataDir, 'steamcmd', steamCmdExe));
-initializeSetting('install_dir', path.join(defaultDataDir, 'instances'));
+
+const steamCmdPath = path.join(defaultDataDir, 'steamcmd', steamCmdExe);
+
+// Ensure paths are correct for the CURRENT environment, always.
+db.prepare("UPDATE settings SET value = ? WHERE key = 'steamcmd_path'").run(steamCmdPath);
+db.prepare("UPDATE settings SET value = ? WHERE key = 'install_dir'").run(defaultInstallDir);
+
+initializeSetting('steamcmd_path', steamCmdPath);
+initializeSetting('install_dir', defaultInstallDir);
 initializeSetting('auto_plugin_updates', 'false');
 
 // Create server_plugins table to track installed versions

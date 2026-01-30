@@ -17,7 +17,6 @@ const CreateInstance = () => {
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     serverName: '',
-    gameType: '0-1', // Default to Competitive (type 0, mode 1)
     maxPlayers: 10,
     port: '27015',
     initialMap: 'de_dust2',
@@ -27,7 +26,11 @@ const CreateInstance = () => {
     rconPassword: '',
     autoStart: true,
     sourceTV: false,
-    vac: true
+    vac: true,
+    gameAlias: 'competitive', // Default to Competitive alias
+    hibernate: true,
+    validateFiles: false,
+    additionalArgs: ''
   })
 
   const nextStep = () => setStep(s => Math.min(s + 1, 3))
@@ -60,8 +63,10 @@ const CreateInstance = () => {
           gslt_token: formData.glstToken || null,
           steam_api_key: formData.steamApiKey || null,
           vac_enabled: formData.vac ? 1 : 0,
-          game_type: parseInt(formData.gameType.split('-')[0]),
-          game_mode: parseInt(formData.gameType.split('-')[1]),
+          game_alias: formData.gameAlias,
+          hibernate: formData.hibernate ? 1 : 0,
+          validate_files: formData.validateFiles ? 1 : 0,
+          additional_args: formData.additionalArgs || null,
           auto_start: formData.autoStart
         }),
       })
@@ -143,24 +148,6 @@ const CreateInstance = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="gameType" className="block text-sm font-bold text-gray-400">Game Type</label>
-                    <select 
-                      id="gameType"
-                      name="gameType"
-                      value={formData.gameType}
-                      onChange={handleInputChange}
-                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-                    >
-                      <option value="0-0">Casual</option>
-                      <option value="0-1">Competitive</option>
-                      <option value="0-2">Wingman</option>
-                      <option value="1-0">Arms Race</option>
-                      <option value="1-1">Demolition</option>
-                      <option value="1-2">Deathmatch</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
                     <label htmlFor="maxPlayers" className="block text-sm font-bold text-gray-400">Max Players</label>
                     <input 
                       id="maxPlayers"
@@ -233,7 +220,9 @@ const CreateInstance = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <label htmlFor="glstToken" className="block text-sm font-bold text-gray-400">GLST Token (Optional)</label>
+                    <label htmlFor="glstToken" className="block text-sm font-bold text-gray-400">
+                      GSLT Token <span className="text-red-500">*</span>
+                    </label>
                     <input 
                       id="glstToken"
                       type="text" 
@@ -246,7 +235,9 @@ const CreateInstance = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="steamApiKey" className="block text-sm font-bold text-gray-400">Steam Web API Key (Optional)</label>
+                    <label htmlFor="steamApiKey" className="block text-sm font-bold text-gray-400">
+                      Steam Web API Key <span className="text-red-500">*</span>
+                    </label>
                     <input 
                       id="steamApiKey"
                       type="text" 
@@ -259,7 +250,7 @@ const CreateInstance = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="serverPassword" className="block text-sm font-bold text-gray-400">Server Password (Optional)</label>
+                    <label htmlFor="serverPassword" className="block text-sm font-bold text-gray-400">Server Password</label>
                     <input 
                       id="serverPassword"
                       type="password" 
@@ -272,7 +263,9 @@ const CreateInstance = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="rconPassword" className="block text-sm font-bold text-gray-400">RCON Password (Optional)</label>
+                    <label htmlFor="rconPassword" className="block text-sm font-bold text-gray-400">
+                      RCON Password <span className="text-red-500">*</span>
+                    </label>
                     <input 
                       id="rconPassword"
                       type="password" 
@@ -283,10 +276,73 @@ const CreateInstance = () => {
                       placeholder="Auto-generated if empty"
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="gameAlias" className="block text-sm font-bold text-gray-400">Game Alias</label>
+                    <select 
+                      id="gameAlias"
+                      name="gameAlias"
+                      value={formData.gameAlias}
+                      onChange={handleInputChange}
+                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
+                    >
+                      <option value="">Default (Use Game Mode)</option>
+                      <option value="competitive">Competitive</option>
+                      <option value="casual">Casual</option>
+                      <option value="deathmatch">Deathmatch</option>
+                      <option value="wingman">Wingman</option>
+                      <option value="armsrace">Arms Race</option>
+                      <option value="demolition">Demolition</option>
+                      <option value="training">Training</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="additionalArgs" className="block text-sm font-bold text-gray-400">Additional Launch Arguments</label>
+                    <input 
+                      id="additionalArgs"
+                      type="text" 
+                      name="additionalArgs"
+                      value={formData.additionalArgs}
+                      onChange={handleInputChange}
+                      className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600" 
+                      placeholder="-tickrate 128 +sv_infinite_ammo 1"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-4 pt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                   <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
+                    <button
+                      aria-label="Toggle Server Hibernation"
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, hibernate: !prev.hibernate }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.hibernate ? 'bg-primary' : 'bg-gray-700'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.hibernate ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                    <div className="flex flex-col">
+                        <span className="text-sm text-gray-300 font-semibold">Enable Hibernation</span>
+                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">Saves CPU when empty</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
+                    <button
+                      aria-label="Toggle Force File Validation"
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, validateFiles: !prev.validateFiles }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.validateFiles ? 'bg-primary' : 'bg-gray-700'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.validateFiles ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                    <div className="flex flex-col">
+                        <span className="text-sm text-gray-300 font-semibold">Validate Files</span>
+                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">Run steamcmd validation</span>
+                    </div>
+                  </div>
+                 <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
                     <button
                       aria-label="Toggle Auto-start server after creation"
                       type="button"
