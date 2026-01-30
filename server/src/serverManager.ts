@@ -414,8 +414,8 @@ class ServerManager {
             `CS2_TICKRATE=${options.tickrate || 128}`,
             `CS2_LAN=${options.vac_enabled ? "0" : "1"}`,
             `SRCDS_TOKEN=${options.gslt_token || ""}`,
-            `CS2_SERVER_HIBERNATE=${options.hibernate ?? 1}`,
-            `STEAMAPPVALIDATE=0`,
+            `CS2_SERVER_HIBERNATE=${options.hibernate ?? 0}`,
+            `STEAMAPPVALIDATE=${options.validate_files ? "1" : "0"}`,
             `STEAMAPPID=730`,
             `CS2_RCON_PORT=${options.port}`
         ];
