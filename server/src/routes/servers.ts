@@ -4,6 +4,8 @@ import db from "../db.js";
 import { serverManager } from "../serverManager.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { createServerLimiter } from "../middleware/rateLimiter.js";
+import { runtimeService } from "../services/RuntimeService.js";
+import { fileSystemService } from "../services/FileSystemService.js";
 
 const router = Router();
 
@@ -84,7 +86,7 @@ router.get("/:id", (req: any, res) => {
 // GET /api/servers/:id/logs
 router.get("/:id/logs", (req: any, res) => {
   try {
-    const logs = serverManager.getLogs(req.params.id);
+    const logs = runtimeService.getLogBuffer(req.params.id);
     res.json(logs);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch logs" });
@@ -103,7 +105,7 @@ router.delete("/:id", async (req: any, res) => {
     }
 
     // Physically delete server folder
-    await serverManager.deleteServerFiles(server.id);
+    await fileSystemService.deleteInstance(server.id);
 
     db.prepare("DELETE FROM servers WHERE id = ?").run(req.params.id);
     res.json({ message: "Server deleted successfully" });
@@ -228,32 +230,8 @@ router.post("/", createServerLimiter, (req: any, res) => {
   }
 });
 
-// POST /api/servers/health/repair
-router.post("/health/repair", async (req: any, res) => {
-  try {
-    const result = await serverManager.repairSystemHealth();
-    res.json(result);
-  } catch (error: any) {
-    res.status(500).json({ 
-      success: false, 
-      message: "System health repair failed", 
-      details: { error: error.message } 
-    });
-  }
-});
 
-// POST /api/servers/cleanup
-router.post("/cleanup", async (req: any, res) => {
-  try {
-    const result = await serverManager.cleanupGarbage();
-    res.json(result);
-  } catch (error: any) {
-    res.status(500).json({ 
-      success: false, 
-      message: "Garbage cleanup failed", 
-      details: { error: error.message } 
-    });
-  }
-});
+
+
 
 export default router;

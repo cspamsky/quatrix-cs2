@@ -1,3 +1,4 @@
+console.log("[BOOT] Loading index.ts...");
 import express from "express";
 import { createServer } from "http";
 import { Server, type Socket } from "socket.io";

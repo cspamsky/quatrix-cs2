@@ -3,11 +3,10 @@ import type { Database as DatabaseType } from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const isDocker = process.env.DOCKER_MODE === 'true';
 const isWin = process.platform === 'win32';
 const projectRoot = process.cwd();
-const defaultDataDir = isDocker ? (isWin ? path.join(projectRoot, 'server/data') : '/app/server/data') : path.join(projectRoot, 'data');
-const defaultInstallDir = isDocker ? (isWin ? path.join(projectRoot, 'instances') : '/app/instances') : path.join(defaultDataDir, 'instances');
+const defaultDataDir = path.join(projectRoot, 'data');
+const defaultInstallDir = path.join(defaultDataDir, 'instances');
 
 // Ensure database directory exists before creating Database instance
 if (!fs.existsSync(defaultDataDir)) {

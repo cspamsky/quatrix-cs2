@@ -56,16 +56,19 @@ export class SteamManager {
     async installOrUpdateServer(instanceId: string | number, steamCmdExe: string, installDir: string, onLog?: (data: string) => void): Promise<void> {
         const id = instanceId.toString();
         const serverPath = path.join(installDir, id);
-        
+        return this.installToPath(serverPath, steamCmdExe, onLog);
+    }
+
+    async installToPath(targetPath: string, steamCmdExe: string, onLog?: (data: string) => void): Promise<void> {
         try {
-            await fs.promises.mkdir(serverPath, { recursive: true });
+            await fs.promises.mkdir(targetPath, { recursive: true });
         } catch (error: any) {
             if (error.code !== 'EEXIST') throw error;
         }
 
         return new Promise((resolve, reject) => {
             const steamCmdParams = [
-                '+force_install_dir', serverPath,
+                '+force_install_dir', targetPath,
                 '+login', 'anonymous',
                 '+app_update', '730', 'validate',
                 '+quit'

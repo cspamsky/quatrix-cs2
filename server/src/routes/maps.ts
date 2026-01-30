@@ -2,6 +2,7 @@ import { Router } from "express";
 import db from "../db.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { serverManager } from "../serverManager.js";
+import { fileSystemService } from "../services/FileSystemService.js";
 import path from "path";
 import fs from "fs";
 
@@ -19,8 +20,11 @@ router.get("/config/:serverId/:mapName", async (req: any, res) => {
         if (!server) return res.status(404).json({ message: "Server not found" });
 
         const filePath = `${MAP_CFG_DIR}/${mapName}.cfg`;
+        const serverPath = fileSystemService.getInstancePath(serverId);
+        const fullPath = path.join(serverPath, 'game/csgo', filePath); // Corrected path relative to csgo
+        
         try {
-            const content = await serverManager.readFile(serverId, filePath);
+            const content = await fs.promises.readFile(fullPath, 'utf-8');
             res.json({ content });
         } catch (error: any) {
             if (error.code === 'ENOENT') {
@@ -43,15 +47,16 @@ router.post("/config/:serverId/:mapName", async (req: any, res) => {
         if (!server) return res.status(404).json({ message: "Server not found" });
 
         // Ensure directory exists
-        const serverDir = serverManager.getFilePath(serverId, "");
-        const cfgDirPath = path.join(serverDir, "game/csgo", MAP_CFG_DIR);
+        // Ensure directory exists
+        const serverPath = fileSystemService.getInstancePath(serverId);
+        const cfgDirPath = path.join(serverPath, "game/csgo", MAP_CFG_DIR);
 
         if (!fs.existsSync(cfgDirPath)) {
             fs.mkdirSync(cfgDirPath, { recursive: true, mode: 0o755 });
         }
 
-        const relativeFilePath = MAP_CFG_DIR + "/" + mapName + ".cfg";
-        await serverManager.writeFile(serverId, relativeFilePath, content);
+        const fullPath = path.join(cfgDirPath, mapName + ".cfg");
+        await fs.promises.writeFile(fullPath, content);
         
         res.json({ success: true, message: `Configuration saved for ${mapName}` });
     } catch (error: any) {

@@ -2,6 +2,9 @@ import { Router } from "express";
 import { serverManager } from "../serverManager.js";
 import { authenticateToken } from "../middleware/auth.js";
 import db from "../db.js";
+import { fileSystemService } from "../services/FileSystemService.js";
+import path from "path";
+import fs from "fs";
 
 const router = Router();
 
@@ -17,7 +20,9 @@ router.get("/:id/admins", async (req: any, res) => {
         const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
         if (!server) return res.status(404).json({ message: "Server not found" });
 
-        const content = await serverManager.readFile(id, ADMINS_FILE_PATH);
+        const serverPath = fileSystemService.getInstancePath(id);
+        const filePath = path.join(serverPath, ADMINS_FILE_PATH);
+        const content = await fs.promises.readFile(filePath, 'utf-8');
         res.json(JSON.parse(content));
     } catch (error: any) {
         if (error.code === 'ENOENT') {
@@ -38,7 +43,10 @@ router.post("/:id/admins", async (req: any, res) => {
         const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
         if (!server) return res.status(404).json({ message: "Server not found" });
 
-        await serverManager.writeFile(id, ADMINS_FILE_PATH, JSON.stringify(admins, null, 4));
+        const serverPath = fileSystemService.getInstancePath(id);
+        const filePath = path.join(serverPath, ADMINS_FILE_PATH);
+        await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.promises.writeFile(filePath, JSON.stringify(admins, null, 4));
         
         // Reload admins in-game if server is running
         if (serverManager.isServerRunning(id)) {
