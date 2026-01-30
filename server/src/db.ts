@@ -17,6 +17,9 @@ if (!fs.existsSync(defaultDataDir)) {
 const dbPath = path.join(defaultDataDir, 'database.sqlite');
 const db: DatabaseType = new Database(dbPath);
 
+// Enable foreign keys
+db.pragma('foreign_keys = ON');
+
 // Create users table
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (

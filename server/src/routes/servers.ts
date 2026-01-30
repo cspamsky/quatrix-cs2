@@ -173,6 +173,8 @@ router.post("/", createServerLimiter, (req: any, res) => {
       return res.status(400).json({ message: "Port is already in use" });
     }
 
+    console.log(`[DEBUG] Creating server for user ID: ${req.user.id} (Type: ${typeof req.user.id})`);
+
     const info = db.prepare(`
       INSERT INTO servers (
         name, port, rcon_password, status, is_installed, user_id, 
