@@ -64,6 +64,30 @@ class RuntimeService {
         if (options.password) args.push("+sv_password", options.password);
         if (options.rcon_password) args.push("+rcon_password", options.rcon_password);
 
+        // Feature Parity: Hibernate
+        if (options.hibernate !== undefined) {
+             args.push("+sv_hibernate_when_empty", options.hibernate.toString());
+        }
+
+        // Feature Parity: SourceTV
+        // Assuming database has a field or we check for specific arg? 
+        // For now, if passed in options (checked later in ServerManager)
+        if (options.tv_enabled) {
+            args.push("+tv_enable", "1");
+            args.push("+tv_port", (options.port + 1).toString()); // Default convention: ServerPort + 1
+            args.push("+tv_autorecord", "0");
+        }
+
+        // Feature Parity: Additional Launch Arguments
+        if (options.additional_args) {
+            // Regex to respect quoted arguments like +hostname "My Server"
+            // Matches either non-whitespace characters OR text within quotes
+            const extraArgs = options.additional_args.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+            if (extraArgs.length > 0) {
+                args.push(...extraArgs);
+            }
+        }
+
         // Custom config file
         args.push("+exec", "server.cfg");
 

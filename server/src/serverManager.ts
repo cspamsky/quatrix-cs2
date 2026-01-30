@@ -134,6 +134,24 @@ class ServerManager {
     const id = instanceId.toString();
     console.log(`[SERVER] Request to start instance ${id}`);
 
+    const server = this.getServerStmt.get(id) as any;
+    if (!server) throw new Error(`Server instance ${id} not found.`);
+
+    let dbOptions = JSON.parse(server.settings || "{}");
+    const mergedOptions = { ...server, ...dbOptions, ...options }; // Combine DB cols, DB settings, and runtime options
+
+    // Feature Parity: Validate Files
+    if (mergedOptions.validate_files) {
+        console.log(`[SERVER] Validation requested for server ${id}. Running SteamCMD verify...`);
+        try {
+            // We use 730 (CS2 App ID)
+            await this.validateServerFiles(id, "730"); 
+        } catch (e) {
+            console.error(`[SERVER] Validation failed for ${id}, aborting start.`, e);
+            throw new Error("Validation failed");
+        }
+    }
+
     // 1. Config Generation (Server.cfg)
     // We treat this as "Pre-Flight" preparation
     const serverPath = fileSystemService.getInstancePath(id);
@@ -251,6 +269,41 @@ class ServerManager {
   public isServerRunning(id: string | number) {
       return runtimeService.getInstanceStatus(id.toString()) === "ONLINE" || 
              runtimeService.getInstanceStatus(id.toString()) === "STARTING";
+  }
+
+  // --- Validation ---
+  private async validateServerFiles(id: string, appId: string) {
+      if (!this.steamCmdExe) throw new Error("SteamCMD not initialized");
+      
+      const instancePath = fileSystemService.getInstancePath(id);
+      console.log(`[VALIDATE] Verifying files for ${id} inside ${instancePath}...`);
+
+      // Use steamManager logic but adapted for specific instance
+      // SteamManager manages the 'install' but we want to force validate on existing instance
+      // We can reuse steamManager.installServer but with force=true and validate=true
+      // But steamManager installs to "servers/id"?
+      
+      // Let's implement direct steamcmd call here for transparency and control
+      const args = [
+          "+force_install_dir", instancePath,
+          "+login", "anonymous",
+          "+app_update", appId,
+          "validate",
+          "+quit"
+      ];
+      
+      return new Promise<void>((resolve, reject) => {
+          const { spawn } = require("child_process");
+          const p = spawn(this.steamCmdExe, args, { cwd: path.dirname(this.steamCmdExe) });
+          
+          p.stdout.on("data", (d: any) => console.log(`[STEAMCMD:${id}] ${d.toString().trim()}`));
+          p.stderr.on("data", (d: any) => console.error(`[STEAMCMD:${id}] ${d.toString().trim()}`));
+          
+          p.on("close", (code: number) => {
+              if (code === 0) resolve();
+              else reject(new Error(`SteamCMD validation exited with code ${code}`));
+          });
+      });
   }
 
   // --- RCON & Game State ---
