@@ -175,7 +175,7 @@ class ServerManager {
     if (this.isDockerMode && this.docker) {
         try {
             const networks = await this.docker.listNetworks();
-            const exists = networks.some(n => n.Name === "quatrix_default");
+            const exists = networks.some((n: any) => n.Name === "quatrix_default");
             if (!exists) {
                 console.log(`[DOCKER] Creating network 'quatrix_default'...`);
                 await this.docker.createNetwork({
@@ -285,7 +285,7 @@ class ServerManager {
       const containers = await this.docker.listContainers({ all: true });
       for (const server of servers) {
         const containerName = `quatrix-cs2-${server.id}`;
-        const container = containers.find(c => c.Names.includes(`/${containerName}`));
+        const container = containers.find((c: any) => c.Names.includes(`/${containerName}`));
         
         if (container && container.State === "running") {
           console.log(`[SYSTEM] Found running container for server ${server.id}`);
@@ -448,13 +448,37 @@ class ServerManager {
         console.log(`[DOCKER] Local Path: ${localCommonDir}`);
 
         try {
-            // ALWAYS use local paths for fs.mkdir, because the panel is inside a container
             await fs.promises.mkdir(localCommonDir, { recursive: true });
+            
+            // Create essential config/log directories
             await fs.promises.mkdir(path.join(localInstanceDir, "game/csgo/cfg"), { recursive: true });
             await fs.promises.mkdir(path.join(localInstanceDir, "game/csgo/addons"), { recursive: true });
             await fs.promises.mkdir(path.join(localInstanceDir, "game/csgo/logs"), { recursive: true });
+
+            // Ensure plugin asset directories exist so they can be bound
+            const assetDirs = ["materials", "models", "particles", "sound", "soundevents", "scripts", "maps", "resource"];
+            for (const dir of assetDirs) {
+                await fs.promises.mkdir(path.join(localInstanceDir, "game/csgo", dir), { recursive: true });
+            }
         } catch (e) {
             console.error(`[DOCKER] Failed to create local directories:`, e);
+        }
+
+        const binds = [
+            // Use HOST paths for Binds
+            // Mount common to both the game dir AND the steamcmd's steamapps dir to ensure rename() works (same filesystem)
+            `${hostCommonDir}:/home/steam/cs2-dedicated`,
+            `${hostCommonDir}:/home/steam/Steam/steamapps`,
+            
+            `${path.join(hostInstanceDir, "game/csgo/cfg").replace(/\\/g, '/')}:/home/steam/cs2-dedicated/game/csgo/cfg:rw`,
+            `${path.join(hostInstanceDir, "game/csgo/addons").replace(/\\/g, '/')}:/home/steam/cs2-dedicated/game/csgo/addons:rw`,
+            `${path.join(hostInstanceDir, "game/csgo/logs").replace(/\\/g, '/')}:/home/steam/cs2-dedicated/game/csgo/logs:rw`
+        ];
+
+        // Add binds for plugin assets
+        const assetDirs = ["materials", "models", "particles", "sound", "soundevents", "scripts", "maps", "resource"];
+        for (const dir of assetDirs) {
+            binds.push(`${path.join(hostInstanceDir, "game/csgo", dir).replace(/\\/g, '/')}:/home/steam/cs2-dedicated/game/csgo/${dir}:rw`);
         }
 
         const container = await this.docker.createContainer({
@@ -467,7 +491,7 @@ class ServerManager {
             },
             HostConfig: {
                 NetworkMode: "quatrix_default",
-                PidsLimit: 0, // 0 means unlimited PIDs in most docker versions
+                PidsLimit: 0,
                 Ulimits: [
                     { Name: "nofile", Soft: 65536, Hard: 65536 },
                     { Name: "nproc", Soft: 65536, Hard: 65536 }
@@ -476,16 +500,7 @@ class ServerManager {
                     [`${options.port}/udp`]: [{ HostPort: options.port.toString() }],
                     [`${options.port}/tcp`]: [{ HostPort: options.port.toString() }]
                 },
-                Binds: [
-                    // Use HOST paths for Binds
-                    // Mount common to both the game dir AND the steamcmd's steamapps dir to ensure rename() works (same filesystem)
-                    `${hostCommonDir}:/home/steam/cs2-dedicated`,
-                    `${hostCommonDir}:/home/steam/Steam/steamapps`,
-                    
-                    `${path.join(hostInstanceDir, "game/csgo/cfg").replace(/\\/g, '/')}:/home/steam/cs2-dedicated/game/csgo/cfg:rw`,
-                    `${path.join(hostInstanceDir, "game/csgo/addons").replace(/\\/g, '/')}:/home/steam/cs2-dedicated/game/csgo/addons:rw`,
-                    `${path.join(hostInstanceDir, "game/csgo/logs").replace(/\\/g, '/')}:/home/steam/cs2-dedicated/game/csgo/logs:rw`
-                ],
+                Binds: binds,
                 RestartPolicy: { Name: "always" }
             }
         });
@@ -502,7 +517,7 @@ class ServerManager {
             timestamps: true
         });
 
-        stream.on("data", (chunk) => {
+        stream.on("data", (chunk: any) => {
             const lines = chunk.toString().split("\n");
             for (let line of lines) {
                 line = line.trim();
@@ -938,7 +953,9 @@ class ServerManager {
         if (!rcon) {
           const rconHost = this.isDockerMode ? `quatrix-cs2-${idStr}` : "127.0.0.1";
           
-          console.log(`[RCON] Attempting connection to ${rconHost}:${rconPort} with pass: ${server.rcon_password.substring(0,2)}***`);
+          
+          console.log(`[RCON] Init connection to ${rconHost}:${rconPort} (Docker: ${this.isDockerMode})...`);
+          console.log(`[RCON] Connection details - Host: ${rconHost}, Port: ${rconPort}, Password (len): ${server.rcon_password?.length || 0}`);
 
           rcon = await Rcon.connect({
             host: rconHost,
