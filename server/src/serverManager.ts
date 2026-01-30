@@ -177,8 +177,16 @@ class ServerManager {
             const networks = await this.docker.listNetworks();
             const exists = networks.some(n => n.Name === "quatrix_default");
             if (!exists) {
-                console.log("[DOCKER] Creating network 'quatrix_default'...");
-                await this.docker.createNetwork({ Name: "quatrix_default", Driver: "bridge" });
+                console.log(`[DOCKER] Creating network 'quatrix_default'...`);
+                await this.docker.createNetwork({
+                    Name: "quatrix_default",
+                    Driver: "bridge",
+                    CheckDuplicate: true,
+                    Labels: {
+                        "com.docker.compose.network": "default",
+                        "com.docker.compose.project": "quatrix"
+                    }
+                });
             }
         } catch (e) {
             console.error("[DOCKER] Failed to initialize network:", e);
