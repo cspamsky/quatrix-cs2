@@ -102,15 +102,15 @@ WantedBy=multi-user.target`;
                 }
 
                 // 3.3 Firewall
-                const fwChoice = await ask(`${C.yellow}[?] Configure UFW firewall ports (22, 80, 3000, CS2)? (y/N): ${C.reset}`);
+                const fwChoice = await ask(`${C.yellow}[?] Configure UFW firewall ports (22, 80, 3001, CS2)? (y/N): ${C.reset}`);
                 if (fwChoice.toLowerCase() === 'y') {
                     log(C.magenta, "FIREWALL", "Allowing critical ports...");
-                    execSync('sudo ufw allow 22/tcp');
-                    execSync('sudo ufw allow 80/tcp');
-                    execSync('sudo ufw allow 3000/tcp');
-                    execSync('sudo ufw allow 27015:27050/udp'); // Game ports
-                    execSync('sudo ufw allow 27015:27050/tcp');
-                    execSync('sudo ufw --force enable');
+                    execSync('sudo ufw allow 22/tcp', { stdio: 'inherit' });
+                    execSync('sudo ufw allow 80/tcp', { stdio: 'inherit' });
+                    execSync('sudo ufw allow 3001/tcp', { stdio: 'inherit' });
+                    execSync('sudo ufw allow 27015:27050/udp', { stdio: 'inherit' });
+                    execSync('sudo ufw allow 27015:27050/tcp', { stdio: 'inherit' });
+                    execSync('sudo ufw --force enable', { stdio: 'inherit' });
                     log(C.green, "SUCCESS", "Firewall configured.");
                 }
 

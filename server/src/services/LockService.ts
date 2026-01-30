@@ -63,8 +63,40 @@ class LockService {
   private async isLocked(lockPath: string): Promise<boolean> {
     try {
       await fs.promises.access(lockPath);
-      // Optional: Check if PID is actually alive?
-      // For now, strict file existence is safer.
+      
+      // Smart Lock Check: Check age and content
+      try {
+          const stats = await fs.promises.stat(lockPath);
+          const ageMs = Date.now() - stats.mtimeMs;
+          
+          // 5 Minute Timeout for locks
+          if (ageMs > 5 * 60 * 1000) {
+              console.warn(`[LOCK] Found stale lock at ${lockPath} (${Math.floor(ageMs/1000)}s old). Removing...`);
+              await fs.promises.unlink(lockPath);
+              return false;
+          }
+
+          // Optional: Check if PID is alive (if content is valid JSON)
+          const content = await fs.promises.readFile(lockPath, 'utf-8');
+          try {
+              const data = JSON.parse(content);
+              if (data.pid) {
+                  try {
+                       process.kill(data.pid, 0); // Check if process exists
+                  } catch {
+                       console.warn(`[LOCK] Lock owner PID ${data.pid} is dead. Removing stale lock.`);
+                       await fs.promises.unlink(lockPath);
+                       return false;
+                  }
+              }
+          } catch {} 
+
+      } catch (e) {
+          // If reading fails, assume locked to be safe, or corrupt? 
+          // If we can't read it but it exists, it's a zombie file.
+          // Let's rely on age check mainly.
+      }
+
       return true;
     } catch {
       return false;
