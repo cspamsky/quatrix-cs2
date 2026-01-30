@@ -376,6 +376,7 @@ class ServerManager {
 
   public async installOrUpdateServer(id: string | number, onLog?: any) {
       if (!await lockService.acquireInstanceLock(id, 'UPDATE')) {
+          console.warn(`[LOCK] Installation rejected for ${id}: Instance already has an active UPDATE lock.`);
           throw new Error(`Instance ${id} is locked.`);
       }
 
@@ -388,13 +389,16 @@ class ServerManager {
                   console.log("[SYSTEM] Core Update successful.");
               } catch (e: any) {
                   console.error("[SYSTEM] Core Update failed:", e.message);
-                  // Fallback check
+                  throw e; // Rethrow to notify caller
               } finally {
                   lockService.releaseCoreLock();
               }
+          } else {
+              console.log("[SYSTEM] Core Update skipped: Core is currently locked by another process.");
           }
 
           // 2. Prepare Instance
+          console.log(`[SYSTEM] Preparing instance ${id}...`);
           await fileSystemService.prepareInstance(id);
       } finally {
           lockService.releaseInstanceLock(id);
