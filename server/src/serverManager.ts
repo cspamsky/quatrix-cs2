@@ -62,7 +62,7 @@ class ServerManager {
     // Linux Pre-Flight Checks
     if (process.platform !== "win32") {
         console.log("[SYSTEM] Running Linux Pre-flight checks...");
-        if (this.steamCmdExe) {
+        if (this.steamCmdExe && fs.existsSync(this.steamCmdExe)) {
             await fileSystemService.ensureExecutable(this.steamCmdExe);
         }
         
