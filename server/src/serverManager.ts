@@ -428,7 +428,9 @@ class ServerManager {
         }
 
         // Always disable RCON banning to prevent the panel from being locked out during polling
-        const safetyArgs = "+sv_rcon_banpenalty 0 +sv_rcon_maxfailures 100 +sv_rcon_minfailures 100 +sv_rcon_minfailuretime 60";
+        // -nojoy: Disable joystick subsystem (prevents crashes on some hosts)
+        // -nobreakpad: Disable breakage reporting (prevents core dump abort signals)
+        const safetyArgs = "+sv_rcon_banpenalty 0 +sv_rcon_maxfailures 100 +sv_rcon_minfailures 100 +sv_rcon_minfailuretime 60 -nojoy -nobreakpad";
         if (options.additional_args) {
             env.push(`CS2_ADDITIONAL_ARGS=${options.additional_args} ${safetyArgs}`);
         } else {
