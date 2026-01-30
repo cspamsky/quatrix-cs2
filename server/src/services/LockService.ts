@@ -23,9 +23,14 @@ class LockService {
     });
 
     try {
+      const lockDir = path.dirname(lockFile);
+      if (!fs.existsSync(lockDir)) {
+          await fs.promises.mkdir(lockDir, { recursive: true });
+      }
       await fs.promises.writeFile(lockFile, content);
       return true;
-    } catch (e) {
+    } catch (e: any) {
+      console.error(`[LOCK] Unexpected error writing lock file ${lockFile}:`, e.message);
       return false;
     }
   }
@@ -46,9 +51,14 @@ class LockService {
     if (await this.isLocked(lockFile)) return false;
 
     try {
+      const lockDir = path.dirname(lockFile);
+      if (!fs.existsSync(lockDir)) {
+          await fs.promises.mkdir(lockDir, { recursive: true });
+      }
       await fs.promises.writeFile(lockFile, String(process.pid));
       return true;
-    } catch {
+    } catch (e: any) {
+      console.error(`[LOCK] Unexpected error writing core lock file ${lockFile}:`, e.message);
       return false;
     }
   }
