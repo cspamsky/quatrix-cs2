@@ -7,11 +7,12 @@ class FileSystemService {
   private instancesDir: string;
 
   constructor() {
-    this.baseDir = path.resolve(process.cwd(), "quatrix_root"); // Default dev path
+    this.baseDir = path.resolve(process.cwd(), "data"); // Default path matching db.ts
     this.coreDir = path.join(this.baseDir, "core", "cs2");
     this.instancesDir = path.join(this.baseDir, "instances");
-    
-    // Auto-init directories
+  }
+
+  private initDirs() {
     if (!fs.existsSync(this.coreDir)) fs.mkdirSync(this.coreDir, { recursive: true });
     if (!fs.existsSync(this.instancesDir)) fs.mkdirSync(this.instancesDir, { recursive: true });
   }
