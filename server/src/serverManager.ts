@@ -933,13 +933,13 @@ class ServerManager {
         if (!rcon) {
           const rconHost = this.isDockerMode ? `quatrix-cs2-${idStr}` : "127.0.0.1";
           
-          console.log(`[RCON] Attempting connection to ${rconHost}:${rconPort} (Attempt ${attempt})`);
+          console.log(`[RCON] Attempting connection to ${rconHost}:${rconPort} with pass: ${server.rcon_password.substring(0,2)}***`);
 
           rcon = await Rcon.connect({
             host: rconHost,
             port: parseInt(rconPort.toString()),
             password: server.rcon_password,
-            timeout: 5000,
+            timeout: 10000, // 10 seconds timeout
           });
           rcon.on("error", () => this.rconConnections.delete(idStr));
           rcon.on("end", () => this.rconConnections.delete(idStr));
