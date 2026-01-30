@@ -467,6 +467,10 @@ class ServerManager {
             },
             HostConfig: {
                 NetworkMode: "quatrix_default",
+                PidsLimit: 2048, // Increase PID limit for heavy multi-threading
+                Ulimits: [
+                    { Name: "nofile", Soft: 65536, Hard: 65536 }
+                ],
                 PortBindings: {
                     [`${options.port}/udp`]: [{ HostPort: options.port.toString() }],
                     [`${options.port}/tcp`]: [{ HostPort: options.port.toString() }]
