@@ -467,9 +467,10 @@ class ServerManager {
             },
             HostConfig: {
                 NetworkMode: "quatrix_default",
-                PidsLimit: 2048, // Increase PID limit for heavy multi-threading
+                PidsLimit: 0, // 0 means unlimited PIDs in most docker versions
                 Ulimits: [
-                    { Name: "nofile", Soft: 65536, Hard: 65536 }
+                    { Name: "nofile", Soft: 65536, Hard: 65536 },
+                    { Name: "nproc", Soft: 65536, Hard: 65536 }
                 ],
                 PortBindings: {
                     [`${options.port}/udp`]: [{ HostPort: options.port.toString() }],
