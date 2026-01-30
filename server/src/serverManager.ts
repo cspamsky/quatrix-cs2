@@ -427,8 +427,12 @@ class ServerManager {
             env.push(`CS2_GAMEMODE=${options.game_mode ?? 1}`);
         }
 
+        // Always disable RCON banning to prevent the panel from being locked out during polling
+        const safetyArgs = "+sv_rcon_banpenalty 0 +sv_rcon_maxfailures 100 +sv_rcon_minfailures 100 +sv_rcon_minfailuretime 60";
         if (options.additional_args) {
-            env.push(`CS2_ADDITIONAL_ARGS=${options.additional_args}`);
+            env.push(`CS2_ADDITIONAL_ARGS=${options.additional_args} ${safetyArgs}`);
+        } else {
+            env.push(`CS2_ADDITIONAL_ARGS=${safetyArgs}`);
         }
 
         if (options.steam_api_key) env.push(`STEAM_AUTHKEY=${options.steam_api_key}`);
@@ -963,7 +967,13 @@ class ServerManager {
             password: server.rcon_password,
             timeout: 10000, // 10 seconds timeout
           });
-          rcon.on("error", () => this.rconConnections.delete(idStr));
+          
+          // Add error handler to prevent "Uncaught Exception: Error: read ECONNRESET"
+          // This ensures the socket error doesn't crash the entire node process
+          rcon.on("error", (err: any) => {
+             // console.warn(`[RCON] Socket error for ${idStr}:`, err.message);
+             this.rconConnections.delete(idStr);
+          });
           rcon.on("end", () => this.rconConnections.delete(idStr));
           this.rconConnections.set(idStr, rcon);
         }
