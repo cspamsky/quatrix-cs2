@@ -382,11 +382,13 @@ class ServerManager {
       try {
           // 1. Update Core
           if (await lockService.acquireCoreLock()) {
+              console.log("[SYSTEM] Starting Core Update (Downloading CS2 base files)... This might take 10-15 minutes.");
               try {
                   await steamManager.installToPath(fileSystemService.getCorePath(), this.steamCmdExe, onLog);
-              } catch (e) {
+                  console.log("[SYSTEM] Core Update successful.");
+              } catch (e: any) {
+                  console.error("[SYSTEM] Core Update failed:", e.message);
                   // Fallback check
-                  // ...
               } finally {
                   lockService.releaseCoreLock();
               }

@@ -83,10 +83,14 @@ class LockService {
               if (data.pid) {
                   try {
                        process.kill(data.pid, 0); // Check if process exists
-                  } catch {
-                       console.warn(`[LOCK] Lock owner PID ${data.pid} is dead. Removing stale lock.`);
-                       await fs.promises.unlink(lockPath);
-                       return false;
+                  } catch (e: any) {
+                       if (e.code === 'ESRCH') {
+                           console.warn(`[LOCK] Lock owner PID ${data.pid} is dead. Removing stale lock.`);
+                           await fs.promises.unlink(lockPath);
+                           return false;
+                       }
+                       // If EPERM, it means it's ALIVE but we can't signal it.
+                       // In that case, we should assume it's LOCKED.
                   }
               }
           } catch {} 

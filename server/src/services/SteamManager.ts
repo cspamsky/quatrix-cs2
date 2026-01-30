@@ -82,7 +82,10 @@ export class SteamManager {
                 const lines = stdoutBuffer.split(/\r?\n|\r/);
                 stdoutBuffer = lines.pop() || '';
                 lines.forEach(line => {
-                    if (line.trim() && onLog) onLog(line.trim());
+                    if (line.trim()) {
+                        console.log(`[STEAMCMD] ${line.trim()}`);
+                        if (onLog) onLog(line.trim());
+                    }
                 });
             });
 
