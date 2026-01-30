@@ -931,20 +931,15 @@ class ServerManager {
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {
         if (!rcon) {
-          if (attempt === 1) {
-            console.log(
-              `[RCON] Connecting to server ${id} at 127.0.0.1:${rconPort}`,
-            );
-          } else {
-            console.log(`[RCON] Retry ${attempt}/${retries} for server ${id}`);
-          }
-
           const rconHost = this.isDockerMode ? `quatrix-cs2-${idStr}` : "127.0.0.1";
+          
+          console.log(`[RCON] Attempting connection to ${rconHost}:${rconPort} (Attempt ${attempt})`);
+
           rcon = await Rcon.connect({
             host: rconHost,
-            port: rconPort,
+            port: parseInt(rconPort.toString()),
             password: server.rcon_password,
-            timeout: 3000,
+            timeout: 5000,
           });
           rcon.on("error", () => this.rconConnections.delete(idStr));
           rcon.on("end", () => this.rconConnections.delete(idStr));
