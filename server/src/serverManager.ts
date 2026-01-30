@@ -57,6 +57,7 @@ class ServerManager {
   // --- Initialization & Settings ---
 
   public async init() {
+    await fileSystemService.init();
     await this.refreshSettings();
     
     // Linux Pre-Flight Checks

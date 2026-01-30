@@ -12,7 +12,7 @@ class FileSystemService {
     this.instancesDir = path.join(this.baseDir, "instances");
   }
 
-  private initDirs() {
+  public init() {
     if (!fs.existsSync(this.coreDir)) fs.mkdirSync(this.coreDir, { recursive: true });
     if (!fs.existsSync(this.instancesDir)) fs.mkdirSync(this.instancesDir, { recursive: true });
   }
