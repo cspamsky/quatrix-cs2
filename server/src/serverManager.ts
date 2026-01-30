@@ -1,4 +1,4 @@
-import { exec } from "child_process";
+import { exec, spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -60,18 +60,9 @@ class ServerManager {
     await this.refreshSettings();
     
     // Linux Pre-Flight Checks
-    if (process.platform !== "win32") {
-        console.log("[SYSTEM] Running Linux Pre-flight checks...");
-        if (this.steamCmdExe && fs.existsSync(this.steamCmdExe)) {
-            await fileSystemService.ensureExecutable(this.steamCmdExe);
-        }
-        
-        // Check for 32-bit libraries (Basic check)
-        try {
-            const { execSync } = await import("child_process");
-            // ldd might not be available or steamcmd might not be installed yet, so strict check might be too aggressive.
-            // We just ensure executables are executable.
-        } catch {}
+    console.log("[SYSTEM] Running Linux Pre-flight checks...");
+    if (this.steamCmdExe && fs.existsSync(this.steamCmdExe)) {
+        await fileSystemService.ensureExecutable(this.steamCmdExe);
     }
 
 
@@ -84,12 +75,11 @@ class ServerManager {
   }
 
   public async refreshSettings() {
-    const isWin = process.platform === "win32";
     const projectRoot = process.cwd();
     
     const defaultInstallDir = path.join(projectRoot, "data/instances");
     const defaultDataDir = path.join(projectRoot, "data");
-    const defaultSteamCmdPath = path.join(defaultDataDir, "steamcmd", isWin ? "steamcmd.exe" : "steamcmd.sh");
+    const defaultSteamCmdPath = path.join(defaultDataDir, "steamcmd", "steamcmd.sh");
 
     const newInstallDir = this.getSetting("install_dir") || defaultInstallDir;
     const newSteamCmdPath = this.getSetting("install_dir") ? this.getSetting("steamcmd_path") : defaultSteamCmdPath;
@@ -103,17 +93,15 @@ class ServerManager {
     fileSystemService.setBaseDir(baseDir);
 
     if (newSteamCmdPath) {
-      if (newSteamCmdPath.endsWith(".sh") || newSteamCmdPath.endsWith(".exe")) {
+      if (newSteamCmdPath.endsWith(".sh")) {
         this.steamCmdExe = newSteamCmdPath;
       } else {
-        const exeName = process.platform === "win32" ? "steamcmd.exe" : "steamcmd.sh";
-        this.steamCmdExe = path.join(newSteamCmdPath, exeName);
+        this.steamCmdExe = path.join(newSteamCmdPath, "steamcmd.sh");
       }
     } else {
         // Fallback
         const steamCmdDir = path.join(projectRoot, "data/steamcmd");
-        const exeName = process.platform === "win32" ? "steamcmd.exe" : "steamcmd.sh";
-        this.steamCmdExe = path.join(steamCmdDir, exeName);
+        this.steamCmdExe = path.join(steamCmdDir, "steamcmd.sh");
     }
 
     try {
@@ -146,9 +134,9 @@ class ServerManager {
         try {
             // We use 730 (CS2 App ID)
             await this.validateServerFiles(id, "730"); 
-        } catch (e) {
-            console.error(`[SERVER] Validation failed for ${id}, aborting start.`, e);
-            throw new Error("Validation failed");
+        } catch (e: any) {
+            console.error(`[SERVER] Validation failed for ${id}, aborting start:`, e.message || e);
+            throw new Error(`Validation failed: ${e.message || "Unknown error"}`);
         }
     }
 
@@ -293,7 +281,6 @@ class ServerManager {
       ];
       
       return new Promise<void>((resolve, reject) => {
-          const { spawn } = require("child_process");
           const p = spawn(this.steamCmdExe, args, { cwd: path.dirname(this.steamCmdExe) });
           
           p.stdout.on("data", (d: any) => console.log(`[STEAMCMD:${id}] ${d.toString().trim()}`));

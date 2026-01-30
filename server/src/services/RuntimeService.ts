@@ -38,11 +38,8 @@ class RuntimeService {
 
         const instancePath = fileSystemService.getInstancePath(id);
         
-        // 1. Resolve Executable
-        const isWin = process.platform === "win32";
-        const relativeBinPath = isWin
-            ? path.join("game", "bin", "win64", "cs2.exe")
-            : path.join("game", "bin", "linuxsteamrt64", "cs2");
+        // 1. Resolve Executable (Linux Only)
+        const relativeBinPath = path.join("game", "bin", "linuxsteamrt64", "cs2");
         const cs2Exe = path.join(instancePath, relativeBinPath);
 
         // 2. Prepare Arguments
@@ -88,16 +85,11 @@ class RuntimeService {
             }
         }
 
-        // Custom config file
-        args.push("+exec", "server.cfg");
-
-        // 3. Environment
+        // 3. Environment (Linux Only)
         const env: NodeJS.ProcessEnv = { ...process.env };
-        if (!isWin) {
-             const binDir = path.dirname(cs2Exe);
-             // CS2 Linux needs LD_LIBRARY_PATH set to its bin directory
-             env.LD_LIBRARY_PATH = `${binDir}:${path.join(binDir, "linux64")}:${process.env.LD_LIBRARY_PATH || ""}`;
-        }
+        const binDir = path.dirname(cs2Exe);
+        // CS2 Linux needs LD_LIBRARY_PATH set to its bin directory
+        env.LD_LIBRARY_PATH = `${binDir}:${path.join(binDir, "linux64")}:${process.env.LD_LIBRARY_PATH || ""}`;
 
         // 4. Spawn
         console.log(`[Runtime] Spawning instance ${id}: ${cs2Exe} ${args.join(" ")}`);
@@ -105,7 +97,7 @@ class RuntimeService {
         const proc = spawn(cs2Exe, args, {
             cwd: instancePath,
             env,
-            detached: !isWin, // Detached on Linux to survive parent exit? Actually keep attached for management for now.
+            detached: true, // Detached on Linux
             stdio: ['ignore', 'pipe', 'pipe']
         });
 

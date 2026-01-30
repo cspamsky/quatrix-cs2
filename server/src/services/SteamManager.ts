@@ -15,7 +15,6 @@ export class SteamManager {
 
     async downloadSteamCmd(targetExe: string): Promise<void> {
         const steamCmdDir = path.dirname(targetExe);
-        const isWin = process.platform === 'win32';
         
         try {
             await fs.promises.mkdir(steamCmdDir, { recursive: true });
@@ -23,32 +22,23 @@ export class SteamManager {
             if (error.code !== 'EEXIST') throw error;
         }
 
-        const archiveName = isWin ? 'steamcmd.zip' : 'steamcmd_linux.tar.gz';
+        const archiveName = 'steamcmd_linux.tar.gz';
         const archivePath = path.join(steamCmdDir, archiveName);
-        const url = isWin 
-            ? 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip'
-            : 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz';
+        const url = 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz';
 
-        console.log(`Downloading ${isWin ? 'Windows' : 'Linux'} SteamCMD to ${steamCmdDir}`);
+        console.log(`Downloading Linux SteamCMD to ${steamCmdDir}`);
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to download SteamCMD: ${response.statusText}`);
         
         const arrayBuffer = await response.arrayBuffer();
         await fs.promises.writeFile(archivePath, Buffer.from(arrayBuffer));
 
-        if (isWin) {
-            console.log(`Extracting Windows SteamCMD...`);
-            const { default: AdmZip } = await import('adm-zip');
-            const zip = new AdmZip(archivePath);
-            zip.extractAllTo(steamCmdDir, true);
-        } else {
-            const { exec } = await import('child_process');
-            const { promisify } = await import('util');
-            const execAsync = promisify(exec);
+        const { exec } = await import('child_process');
+        const { promisify } = await import('util');
+        const execAsync = promisify(exec);
 
-            console.log(`Extracting Linux SteamCMD...`);
-            await execAsync(`tar -xzf "${archivePath}" -C "${steamCmdDir}"`);
-        }
+        console.log(`Extracting Linux SteamCMD...`);
+        await execAsync(`tar -xzf "${archivePath}" -C "${steamCmdDir}"`);
 
         await fs.promises.unlink(archivePath);
     }

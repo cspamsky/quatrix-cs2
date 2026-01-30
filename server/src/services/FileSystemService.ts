@@ -55,9 +55,9 @@ class FileSystemService {
     // 2. ROOT Symlinks (Direct links to Core)
     // engine -> Core/engine
     // bin -> Core/bin
-    // cs2.sh -> Core/cs2.sh (or .exe)
+    // cs2.sh -> Core/cs2.sh
     // steamclient.so -> Core/steamclient.so
-    const rootItems = ["engine", "bin", "cs2.sh", "cs2.exe", "steamclient.so"];
+    const rootItems = ["engine", "bin", "cs2.sh", "steamclient.so"];
     await this.createSymlinks(this.coreDir, targetDir, rootItems);
 
     // 3. GAME Directory Symlinks (Granular)
@@ -110,7 +110,7 @@ class FileSystemService {
         await fs.promises.access(source);
         await this.createSymlink(source, target);
       } catch {
-        // Ignore missing source files (e.g. cs2.exe on linux)
+        // Ignore missing source files
       }
     }
   }
@@ -123,10 +123,7 @@ class FileSystemService {
       } catch {}
 
       const stat = await fs.promises.stat(source);
-      const type = stat.isDirectory() ? "junction" : "file"; // 'junction' is better for Windows dirs
-
-      // On Linux 'junction' is ignored and treated as 'dir', but let's be explicit
-      const symlinkType = process.platform === "win32" ? type : (stat.isDirectory() ? "dir" : "file");
+      const symlinkType = stat.isDirectory() ? "dir" : "file";
 
       await fs.promises.symlink(source, target, symlinkType);
     } catch (e) {
@@ -136,7 +133,6 @@ class FileSystemService {
   }
   
   public async ensureExecutable(filePath: string) {
-    if (process.platform === 'win32') return;
     try {
       await fs.promises.chmod(filePath, 0o755);
     } catch (error) {

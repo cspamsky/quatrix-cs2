@@ -33,53 +33,49 @@ async function runSetup() {
         log(C.blue, "CHECK", `Node.js Version: ${C.bright}${nodeVersion}${C.reset}`);
 
         // 2. Linux Dependency Check (SteamCMD requirements)
-        if (process.platform === 'linux') {
-            log(C.cyan, "SYSTEM", "Detected Linux environment. Checking for SteamCMD dependencies...");
-            try {
-                log(C.magenta, "DEPS", "Attempting to install SteamCMD and Core dependencies (requires sudo)...");
-                // Added libicu-dev, libssl-dev, libkrb5-3 and dotnet-runtime-8.0 for CounterStrikeSharp support
-                execSync('sudo apt-get update && sudo apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1 libicu-dev libkrb5-3 zlib1g libssl-dev dotnet-runtime-8.0', { stdio: 'inherit' });
-                log(C.green, "SUCCESS", "Linux system dependencies are ready.");
-            } catch (err) {
-                log(C.yellow, "WARNING", "Could not install dependencies automatically.");
-                log(C.yellow, "TIP", "Please run: sudo apt-get update && sudo apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1");
-            }
+        log(C.cyan, "SYSTEM", "Preparing Linux environment. Checking for SteamCMD dependencies...");
+        try {
+            log(C.magenta, "DEPS", "Attempting to install SteamCMD and Core dependencies (requires sudo)...");
+            // Added libicu-dev, libssl-dev, libkrb5-3 and dotnet-runtime-8.0 for CounterStrikeSharp support
+            execSync('sudo apt-get update && sudo apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1 libicu-dev libkrb5-3 zlib1g libssl-dev dotnet-runtime-8.0', { stdio: 'inherit' });
+            log(C.green, "SUCCESS", "Linux system dependencies are ready.");
+        } catch (err) {
+            log(C.yellow, "WARNING", "Could not install dependencies automatically.");
+            log(C.yellow, "TIP", "Please run: sudo apt-get update && sudo apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1");
         }
 
         // 3. Linux User & Service Configuration (Interactive)
-        if (process.platform === 'linux') {
-            const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-            const ask = (q) => new Promise(r => rl.question(q, a => r(a)));
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        const ask = (q) => new Promise(r => rl.question(q, a => r(a)));
 
-            try {
-                log(C.cyan, "SETUP", "Starting Linux Server Configuration...");
-                
-                // 3.1 Create Service User
-                const userChoice = await ask(`${C.yellow}[?] Create dedicated 'quatrix' user for security? (Y/n): ${C.reset}`);
-                if (userChoice.toLowerCase() !== 'n') {
-                    try {
-                        execSync('id -u quatrix', { stdio: 'ignore' });
-                        log(C.blue, "INFO", "User 'quatrix' already exists.");
-                    } catch {
-                        log(C.magenta, "USER", "Creating user 'quatrix'...");
-                        execSync('sudo useradd -m -s /bin/bash quatrix');
-                        execSync('sudo usermod -aG sudo quatrix'); // Optional: Add to sudo for ease of admin
-                        log(C.green, "SUCCESS", "User 'quatrix' created.");
-                    }
-
-                    // Fix Permissions
-                    log(C.magenta, "PERMS", "Fixing project permissions...");
-                    const currentDir = process.cwd();
-                    execSync(`sudo chown -R quatrix:quatrix ${currentDir}`);
-                    execSync(`sudo chmod +x ${path.join(currentDir, 'server/src/services/FileSystemService.ts')}`); // Example check, redundant if chown works
-                    log(C.green, "SUCCESS", "Project ownership updated to quatrix:quatrix");
+        try {
+            log(C.cyan, "SETUP", "Starting Linux Server Configuration...");
+            
+            // 3.1 Create Service User
+            const userChoice = await ask(`${C.yellow}[?] Create dedicated 'quatrix' user for security? (Y/n): ${C.reset}`);
+            if (userChoice.toLowerCase() !== 'n') {
+                try {
+                    execSync('id -u quatrix', { stdio: 'ignore' });
+                    log(C.blue, "INFO", "User 'quatrix' already exists.");
+                } catch {
+                    log(C.magenta, "USER", "Creating user 'quatrix'...");
+                    execSync('sudo useradd -m -s /bin/bash quatrix');
+                    execSync('sudo usermod -aG sudo quatrix'); // Optional: Add to sudo for ease of admin
+                    log(C.green, "SUCCESS", "User 'quatrix' created.");
                 }
 
-                // 3.2 Systemd Service
-                const serviceChoice = await ask(`${C.yellow}[?] Install 'quatrix' as a Systemd service (auto-start)? (Y/n): ${C.reset}`);
-                if (serviceChoice.toLowerCase() !== 'n') {
-                    log(C.magenta, "SERVICE", "Generating systemd unit file...");
-                    const serviceContent = `[Unit]
+                // Fix Permissions
+                log(C.magenta, "PERMS", "Fixing project permissions...");
+                const currentDir = process.cwd();
+                execSync(`sudo chown -R quatrix:quatrix ${currentDir}`);
+                log(C.green, "SUCCESS", "Project ownership updated to quatrix:quatrix");
+            }
+
+            // 3.2 Systemd Service
+            const serviceChoice = await ask(`${C.yellow}[?] Install 'quatrix' as a Systemd service (auto-start)? (Y/n): ${C.reset}`);
+            if (serviceChoice.toLowerCase() !== 'n') {
+                log(C.magenta, "SERVICE", "Generating systemd unit file...");
+                const serviceContent = `[Unit]
 Description=Quatrix Game Server Manager
 After=network.target
 
@@ -94,31 +90,30 @@ Environment=NODE_ENV=production
 [Install]
 WantedBy=multi-user.target`;
 
-                    fs.writeFileSync('/tmp/quatrix.service', serviceContent);
-                    execSync('sudo mv /tmp/quatrix.service /etc/systemd/system/quatrix.service');
-                    execSync('sudo systemctl daemon-reload');
-                    execSync('sudo systemctl enable quatrix');
-                    log(C.green, "SUCCESS", "Service installed & enabled. Start with 'sudo systemctl start quatrix'.");
-                }
-
-                // 3.3 Firewall
-                const fwChoice = await ask(`${C.yellow}[?] Configure UFW firewall ports (22, 80, 3001, CS2)? (y/N): ${C.reset}`);
-                if (fwChoice.toLowerCase() === 'y') {
-                    log(C.magenta, "FIREWALL", "Allowing critical ports...");
-                    execSync('sudo ufw allow 22/tcp', { stdio: 'inherit' });
-                    execSync('sudo ufw allow 80/tcp', { stdio: 'inherit' });
-                    execSync('sudo ufw allow 3001/tcp', { stdio: 'inherit' });
-                    execSync('sudo ufw allow 27015:27050/udp', { stdio: 'inherit' });
-                    execSync('sudo ufw allow 27015:27050/tcp', { stdio: 'inherit' });
-                    execSync('sudo ufw --force enable', { stdio: 'inherit' });
-                    log(C.green, "SUCCESS", "Firewall configured.");
-                }
-
-            } catch (err) {
-                log(C.red, "ERROR", `Linux setup step failed: ${err.message}`);
-            } finally {
-                rl.close();
+                fs.writeFileSync('/tmp/quatrix.service', serviceContent);
+                execSync('sudo mv /tmp/quatrix.service /etc/systemd/system/quatrix.service');
+                execSync('sudo systemctl daemon-reload');
+                execSync('sudo systemctl enable quatrix');
+                log(C.green, "SUCCESS", "Service installed & enabled. Start with 'sudo systemctl start quatrix'.");
             }
+
+            // 3.3 Firewall
+            const fwChoice = await ask(`${C.yellow}[?] Configure UFW firewall ports (22, 80, 3001, CS2)? (y/N): ${C.reset}`);
+            if (fwChoice.toLowerCase() === 'y') {
+                log(C.magenta, "FIREWALL", "Allowing critical ports...");
+                execSync('sudo ufw allow 22/tcp', { stdio: 'inherit' });
+                execSync('sudo ufw allow 80/tcp', { stdio: 'inherit' });
+                execSync('sudo ufw allow 3001/tcp', { stdio: 'inherit' });
+                execSync('sudo ufw allow 27015:27050/udp', { stdio: 'inherit' });
+                execSync('sudo ufw allow 27015:27050/tcp', { stdio: 'inherit' });
+                execSync('sudo ufw --force enable', { stdio: 'inherit' });
+                log(C.green, "SUCCESS", "Firewall configured.");
+            }
+
+        } catch (err) {
+            log(C.red, "ERROR", `Linux setup step failed: ${err.message}`);
+        } finally {
+            rl.close();
         }
 
 
@@ -178,13 +173,13 @@ WantedBy=multi-user.target`;
         console.log(`${C.cyan}2. ${C.bright}Launch Battlefield (npm run dev)${C.reset}`);
         console.log(`${C.cyan}${C.bright}${"=".repeat(60)}${C.reset}`);
 
-        const rl = readline.createInterface({
+        const rlFinal = readline.createInterface({
             input: process.stdin,
             output: process.stdout
         });
 
-        rl.question(`\n${C.yellow}[INPUT] Select an option (1-2): ${C.reset}`, (choice) => {
-            rl.close();
+        rlFinal.question(`\n${C.yellow}[INPUT] Select an option (1-2): ${C.reset}`, (choice) => {
+            rlFinal.close();
             if (choice === '2') {
                 console.clear();
                 log(C.green, "ACTION", "Launching battlefield... Good luck, soldier!\n");

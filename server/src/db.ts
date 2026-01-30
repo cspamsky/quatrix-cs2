@@ -3,7 +3,6 @@ import type { Database as DatabaseType } from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const isWin = process.platform === 'win32';
 const projectRoot = process.cwd();
 const defaultDataDir = path.join(projectRoot, 'data');
 const defaultInstallDir = path.join(defaultDataDir, 'instances');
@@ -201,7 +200,7 @@ const initializeSetting = (key: string, defaultValue: string) => {
 };
 
 // Redundant declarations removed as they are moved to the top
-const steamCmdExe = process.platform === 'win32' ? 'steamcmd.exe' : 'steamcmd.sh';
+const steamCmdExe = 'steamcmd.sh';
 
 const steamCmdPath = path.join(defaultDataDir, 'steamcmd', steamCmdExe);
 
