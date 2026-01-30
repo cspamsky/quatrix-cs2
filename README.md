@@ -78,14 +78,23 @@ Edit the `.env` file in the root directory:
 
 ### 4. Running the Hub
 
-**For Production (Recommended - Docker Mode):**
+**For Production (Recommended - Native Linux Service):**
+
+Quatrix is designed to run as a high-performance native systemd service on Linux.
 
 ```bash
-docker compose up -d
+# Start the service
+sudo systemctl start quatrix
+
+# Enable auto-start on boot
+sudo systemctl enable quatrix
+
+# View live logs
+journalctl -u quatrix -f
 ```
 
-- **Unified Hub**: `http://localhost:3001`
-- **Docker Advantages**: Automated multi-server management, isolated environments, and zero-manual-SteamCMD setup.
+- **Unified Hub**: `http://your-server-ip:3001`
+- **Native Performance**: Direct access to hardware, minimal latency, and zero Docker overhead.
 
 **For Standard Development:**
 
@@ -109,7 +118,7 @@ quatrix/                     # Project Root
 │   └── public/              # Static Brand Assets
 ├── server/                  # Backend Orchestrator (Express 5 & Socket.IO)
 │   ├── src/                 # Services (RCON, Plugin Manager, Server Logic)
-│   ├── database.sqlite      # SQLite Persistent Storage
+│   ├── data/                # Persistent Storage (SQLite, Game Core, Instances)
 │   └── dist/                # Production-ready Backend Build
 ├── plugin_pool/             # Centralized Plugin Depository (Pool Strategy)
 ├── scripts/                 # System Automation & Infrastructure Scripts
