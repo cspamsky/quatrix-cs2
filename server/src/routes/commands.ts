@@ -77,6 +77,7 @@ router.post("/:id/restart", async (req: any, res) => {
 
 // POST /api/servers/:id/install
 router.post("/:id/install", async (req: any, res) => {
+    console.log(`[API] POST /api/servers/${req.params.id}/install - Manual install trigger`);
     try {
         const id = req.params.id;
         const io = req.app.get('io');

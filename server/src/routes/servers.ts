@@ -155,8 +155,8 @@ router.put("/:id", (req: any, res) => {
   }
 });
 
-// POST /api/servers
 router.post("/", createServerLimiter, (req: any, res) => {
+  console.log(`[API] POST /api/servers - Creating new server instance for user ${req.user.id}`);
   try {
     const result = createServerSchema.safeParse(req.body);
     if (!result.success) {
