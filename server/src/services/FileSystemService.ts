@@ -117,6 +117,22 @@ class FileSystemService {
         const targetGameInfo = path.join(targetCsgoDir, "gameinfo.gi");
         try { await fs.promises.unlink(targetGameInfo); } catch {}
         await fs.promises.copyFile(coreGameInfo, targetGameInfo);
+
+        // Patch it to include Metamod
+        try {
+            let content = await fs.promises.readFile(targetGameInfo, 'utf8');
+            if (!content.includes("csgo/addons/metamod")) {
+                // Insert after Game_LowViolence line
+                content = content.replace(
+                    /Game_LowViolence\s+csgo_lv\s+\/\/ Perfect World content override/g,
+                    "Game_LowViolence\tcsgo_lv\t// Perfect World content override\n\t\t\tGame\tcsgo/addons/metamod"
+                );
+                await fs.promises.writeFile(targetGameInfo, content);
+                console.log(`[FileSystem] Instance ${instanceId} gameinfo.gi patched with Metamod.`);
+            }
+        } catch (err) {
+            console.error(`[FileSystem] Failed to patch gameinfo.gi for instance ${instanceId}:`, err);
+        }
     }
 
     // 5. Setup Local Directories and populate CFG
