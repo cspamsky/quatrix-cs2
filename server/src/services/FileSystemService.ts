@@ -77,6 +77,18 @@ class FileSystemService {
     const targetGameBin = path.join(targetGameDir, "bin");
     await this.copyStructureAndLinkFiles(coreGameBin, targetGameBin);
 
+    // List all items in core/game and symlink others (csgo_imported, core, etc.)
+    if (fs.existsSync(coreGameDir)) {
+      const gameItems = await fs.promises.readdir(coreGameDir);
+      for (const item of gameItems) {
+        if (["bin", "csgo"].includes(item)) continue;
+        await this.createSymlink(
+          path.join(coreGameDir, item),
+          path.join(targetGameDir, item)
+        );
+      }
+    }
+
     // 4. CSGO Directory Symlinks (The most critical part)
     const coreCsgoDir = path.join(coreGameDir, "csgo");
     const targetCsgoDir = path.join(targetGameDir, "csgo");
