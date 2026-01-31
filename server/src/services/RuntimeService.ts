@@ -39,9 +39,10 @@ class RuntimeService {
         const instancePath = fileSystemService.getInstancePath(id);
         
         // 1. Resolve Executable (Linux Only)
-        // CRITICAL: Use relative path from instance directory, not absolute symlink path
-        // This ensures CS2 engine uses instance directory as base, not core directory
+        // Now that FileSystemService COPIES the binary instead of symlinking,
+        // using the absolute path of the local copy preserves the instance root.
         const relativeBinPath = path.join("game", "bin", "linuxsteamrt64", "cs2");
+        const cs2Exe = path.join(instancePath, relativeBinPath);
 
         // 2. Prepare Arguments
         const args = [
@@ -88,20 +89,18 @@ class RuntimeService {
 
         // 3. Environment (Linux Only)
         const env: NodeJS.ProcessEnv = { ...process.env };
-        // Use instance bin directory for LD_LIBRARY_PATH (symlink will resolve correctly)
-        const instanceBinDir = path.join(instancePath, "game", "bin", "linuxsteamrt64");
-        env.LD_LIBRARY_PATH = `${instanceBinDir}:${path.join(instanceBinDir, "linux64")}:${process.env.LD_LIBRARY_PATH || ""}`;
+        const binDir = path.dirname(cs2Exe);
+        // CS2 Linux needs LD_LIBRARY_PATH set to its bin directory
+        env.LD_LIBRARY_PATH = `${binDir}:${path.join(binDir, "linux64")}:${process.env.LD_LIBRARY_PATH || ""}`;
 
-        // 4. Spawn with RELATIVE path from instance directory
-        console.log(`[Runtime] Spawning instance ${id} from ${instancePath}`);
-        console.log(`[Runtime] Command: ./${relativeBinPath} ${args.join(" ")}`);
+        // 4. Spawn
+        console.log(`[Runtime] Spawning instance ${id}: ${cs2Exe} ${args.join(" ")}`);
         
-        const proc = spawn(`./${relativeBinPath}`, args, {
+        const proc = spawn(cs2Exe, args, {
             cwd: instancePath,
             env,
             detached: true, // Detached on Linux
-            stdio: ['ignore', 'pipe', 'pipe'],
-            shell: true // Required for relative path execution
+            stdio: ['ignore', 'pipe', 'pipe']
         });
 
         if (!proc.pid) throw new Error("Failed to spawn process");

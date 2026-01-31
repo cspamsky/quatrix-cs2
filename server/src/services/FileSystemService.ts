@@ -56,19 +56,24 @@ class FileSystemService {
     // engine -> Core/engine
     // bin -> Core/bin
     // cs2.sh -> Core/cs2.sh
-    // steamclient.so -> Core/steamclient.so
-    const rootItems = ["engine", "bin", "cs2.sh", "steamclient.so"];
+    const rootItems = ["engine", "bin", "cs2.sh"];
     await this.createSymlinks(this.coreDir, targetDir, rootItems);
+    
+    // steamclient.so -> We need this to NOT be a broken link
+    const coreSo = path.join(this.coreDir, "steamclient.so");
+    if (fs.existsSync(coreSo)) {
+        await fs.promises.copyFile(coreSo, path.join(targetDir, "steamclient.so"));
+    }
 
     // 3. GAME Directory Symlinks (Granular)
     const coreGameDir = path.join(this.coreDir, "game");
     const targetGameDir = path.join(targetDir, "game");
 
-    // Symlink game/bin (contains engine binaries for game)
-    await this.createSymlink(
-      path.join(coreGameDir, "bin"),
-      path.join(targetGameDir, "bin")
-    );
+    // Symlink game/bin CONTENT granularly to keep instance root
+    // This is crucial: the actual 'bin' folders should be real directories
+    const coreGameBin = path.join(coreGameDir, "bin");
+    const targetGameBin = path.join(targetGameDir, "bin");
+    await this.copyStructureAndLinkFiles(coreGameBin, targetGameBin);
 
     // 4. CSGO Directory Symlinks (The most critical part)
     const coreCsgoDir = path.join(coreGameDir, "csgo");
@@ -81,7 +86,7 @@ class FileSystemService {
       const csgoItems = await fs.promises.readdir(coreCsgoDir);
       for (const item of csgoItems) {
         // EXCLUSION LIST: These are the directories we want to keep LOCAL/PRIVATE
-        if (["cfg", "maps", "logs", "addons"].includes(item)) continue;
+        if (["cfg", "maps", "logs", "addons", "gameinfo.gi"].includes(item)) continue;
 
         // Everything else (bin, resource, scripts, .vpk files) -> SYMLINK from Core
         await this.createSymlink(
@@ -89,6 +94,13 @@ class FileSystemService {
           path.join(targetCsgoDir, item)
         );
       }
+    }
+
+    // 5. Special Treatment for gameinfo.gi
+    // It MUST be a local file to allow Metamod to hook in
+    const coreGameInfo = path.join(coreCsgoDir, "gameinfo.gi");
+    if (fs.existsSync(coreGameInfo)) {
+        await fs.promises.copyFile(coreGameInfo, path.join(targetCsgoDir, "gameinfo.gi"));
     }
 
     // 5. Setup Local Directories for excluded items
@@ -137,6 +149,36 @@ class FileSystemService {
       await fs.promises.chmod(filePath, 0o755);
     } catch (error) {
       console.warn(`[FileSystem] Failed to chmod +x ${filePath}`, error);
+    }
+  }
+
+  /**
+   * Recursively creates directory structure and symlinks files individually.
+   * This is used for bin folders to ensure the 'cs2' executable can be replaced/copied
+   * while its dependencies remain linked to core.
+   */
+  private async copyStructureAndLinkFiles(source: string, target: string) {
+    if (!fs.existsSync(source)) return;
+
+    await fs.promises.mkdir(target, { recursive: true });
+    const items = await fs.promises.readdir(source);
+
+    for (const item of items) {
+        const srcPath = path.join(source, item);
+        const dstPath = path.join(target, item);
+        const stats = await fs.promises.stat(srcPath);
+
+        if (stats.isDirectory()) {
+            await this.copyStructureAndLinkFiles(srcPath, dstPath);
+        } else {
+            // SPECIAL CASE: The cs2 executable MUST be a real file to preserve instance root
+            if (item === "cs2") {
+                await fs.promises.copyFile(srcPath, dstPath);
+                await this.ensureExecutable(dstPath);
+            } else {
+                await this.createSymlink(srcPath, dstPath);
+            }
+        }
     }
   }
 
