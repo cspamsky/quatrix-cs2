@@ -64,6 +64,19 @@ class RuntimeService {
                 needsPrepare = true;
             }
 
+            // Check if gameinfo.gi is patched for Metamod
+            if (!needsPrepare) {
+                const gameinfoPath = path.join(gameDir, "csgo", "gameinfo.gi");
+                if (fs.existsSync(gameinfoPath)) {
+                    const content = await fs.promises.readFile(gameinfoPath, 'utf8');
+                    if (!content.includes("csgo/addons/metamod")) {
+                        needsPrepare = true;
+                    }
+                } else {
+                    needsPrepare = true;
+                }
+            }
+
             if (needsPrepare) {
                 console.log(`[Runtime] Instance ${id} has incomplete or old structure. Re-preparing...`);
                 await fileSystemService.prepareInstance(id);

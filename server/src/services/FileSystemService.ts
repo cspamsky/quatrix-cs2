@@ -122,13 +122,17 @@ class FileSystemService {
         try {
             let content = await fs.promises.readFile(targetGameInfo, 'utf8');
             if (!content.includes("csgo/addons/metamod")) {
-                // Insert after Game_LowViolence line
-                content = content.replace(
-                    /Game_LowViolence\s+csgo_lv\s+\/\/ Perfect World content override/g,
-                    "Game_LowViolence\tcsgo_lv\t// Perfect World content override\n\t\t\tGame\tcsgo/addons/metamod"
-                );
-                await fs.promises.writeFile(targetGameInfo, content);
-                console.log(`[FileSystem] Instance ${instanceId} gameinfo.gi patched with Metamod.`);
+                // More robust regex: Find the Game_LowViolence line and append Metamod after it
+                const regex = /(Game_LowViolence\s+csgo_lv.*)/;
+                if (regex.test(content)) {
+                    content = content.replace(regex, "$1\n\t\t\tGame\tcsgo/addons/metamod");
+                    await fs.promises.writeFile(targetGameInfo, content);
+                    console.log(`[FileSystem] Instance ${instanceId} gameinfo.gi patched with Metamod.`);
+                } else {
+                    console.warn(`[FileSystem] Could not find anchor in gameinfo.gi for instance ${instanceId}. Patching at start of SearchPaths.`);
+                    content = content.replace(/SearchPaths\s*\{/, "SearchPaths\n\t\t{\n\t\t\tGame\tcsgo/addons/metamod");
+                    await fs.promises.writeFile(targetGameInfo, content);
+                }
             }
         } catch (err) {
             console.error(`[FileSystem] Failed to patch gameinfo.gi for instance ${instanceId}:`, err);
