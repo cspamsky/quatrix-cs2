@@ -38,17 +38,28 @@ class RuntimeService {
 
         const instancePath = fileSystemService.getInstancePath(id);
         
-        // 1. Safety Check: If 'game/bin' is a symlink (old structure), re-prepare
+        // 1. Safety Check: If 'game/bin' is a symlink or critical mods are missing, re-prepare
         try {
-            const gameBinDir = path.join(instancePath, "game", "bin");
+            const gameDir = path.join(instancePath, "game");
+            const gameBinDir = path.join(gameDir, "bin");
+            const csgoImportedDir = path.join(gameDir, "csgo_imported");
+            
+            let needsPrepare = false;
+            
             if (fs.existsSync(gameBinDir)) {
                 const stats = await fs.promises.lstat(gameBinDir);
-                if (stats.isSymbolicLink()) {
-                    console.log(`[Runtime] Instance ${id} has old symlink structure. Re-preparing...`);
-                    await fileSystemService.prepareInstance(id);
-                }
+                if (stats.isSymbolicLink()) needsPrepare = true;
             } else {
-                // If it doesn't exist at all, prepare it
+                needsPrepare = true;
+            }
+
+            // Also check for critical symlinks (csgo_imported, core, etc.)
+            if (!needsPrepare && !fs.existsSync(csgoImportedDir)) {
+                needsPrepare = true;
+            }
+
+            if (needsPrepare) {
+                console.log(`[Runtime] Instance ${id} has incomplete or old structure. Re-preparing...`);
                 await fileSystemService.prepareInstance(id);
             }
         } catch (e) {
