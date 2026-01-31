@@ -43,6 +43,7 @@ class RuntimeService {
             const gameDir = path.join(instancePath, "game");
             const gameBinDir = path.join(gameDir, "bin");
             const csgoImportedDir = path.join(gameDir, "csgo_imported");
+            const csgoCfgDir = path.join(gameDir, "csgo", "cfg");
             
             let needsPrepare = false;
             
@@ -55,6 +56,11 @@ class RuntimeService {
 
             // Also check for critical symlinks (csgo_imported, core, etc.)
             if (!needsPrepare && !fs.existsSync(csgoImportedDir)) {
+                needsPrepare = true;
+            }
+
+            // Check if CFG is empty or missing (should have at least boot.vcfg or similar from core)
+            if (!needsPrepare && (!fs.existsSync(csgoCfgDir) || (await fs.promises.readdir(csgoCfgDir)).length <= 1)) {
                 needsPrepare = true;
             }
 

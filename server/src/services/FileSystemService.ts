@@ -119,11 +119,24 @@ class FileSystemService {
         await fs.promises.copyFile(coreGameInfo, targetGameInfo);
     }
 
-    // 5. Setup Local Directories for excluded items
-    // These were skipped in the loop above, so we ensure they exist as real directories
-    await fs.promises.mkdir(path.join(targetCsgoDir, "cfg"), { recursive: true });
+    // 5. Setup Local Directories and populate CFG
+    const targetCfgDir = path.join(targetCsgoDir, "cfg");
+    await fs.promises.mkdir(targetCfgDir, { recursive: true });
     await fs.promises.mkdir(path.join(targetCsgoDir, "maps"), { recursive: true });
     await fs.promises.mkdir(path.join(targetCsgoDir, "logs"), { recursive: true });
+
+    // Populate CFG with links from Core CFG (except for managed files like server.cfg)
+    const coreCfgDir = path.join(coreCsgoDir, "cfg");
+    if (fs.existsSync(coreCfgDir)) {
+      const cfgItems = await fs.promises.readdir(coreCfgDir);
+      for (const item of cfgItems) {
+        if (item === "server.cfg") continue; // Managed locally
+        await this.createSymlink(
+          path.join(coreCfgDir, item),
+          path.join(targetCfgDir, item)
+        );
+      }
+    }
 
     return true;
   }
