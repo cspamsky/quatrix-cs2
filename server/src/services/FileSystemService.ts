@@ -62,7 +62,9 @@ class FileSystemService {
     // steamclient.so -> We need this to NOT be a broken link
     const coreSo = path.join(this.coreDir, "steamclient.so");
     if (fs.existsSync(coreSo)) {
-        await fs.promises.copyFile(coreSo, path.join(targetDir, "steamclient.so"));
+        const targetSo = path.join(targetDir, "steamclient.so");
+        try { await fs.promises.unlink(targetSo); } catch {}
+        await fs.promises.copyFile(coreSo, targetSo);
     }
 
     // 3. GAME Directory Symlinks (Granular)
@@ -100,7 +102,9 @@ class FileSystemService {
     // It MUST be a local file to allow Metamod to hook in
     const coreGameInfo = path.join(coreCsgoDir, "gameinfo.gi");
     if (fs.existsSync(coreGameInfo)) {
-        await fs.promises.copyFile(coreGameInfo, path.join(targetCsgoDir, "gameinfo.gi"));
+        const targetGameInfo = path.join(targetCsgoDir, "gameinfo.gi");
+        try { await fs.promises.unlink(targetGameInfo); } catch {}
+        await fs.promises.copyFile(coreGameInfo, targetGameInfo);
     }
 
     // 5. Setup Local Directories for excluded items
@@ -159,6 +163,14 @@ class FileSystemService {
    */
   private async copyStructureAndLinkFiles(source: string, target: string) {
     if (!fs.existsSync(source)) return;
+
+    // If target is a symlink, we MUST remove it first to convert it to a real directory
+    try {
+        const lstat = await fs.promises.lstat(target);
+        if (lstat.isSymbolicLink()) {
+            await fs.promises.unlink(target);
+        }
+    } catch {}
 
     await fs.promises.mkdir(target, { recursive: true });
     const items = await fs.promises.readdir(source);

@@ -38,13 +38,30 @@ class RuntimeService {
 
         const instancePath = fileSystemService.getInstancePath(id);
         
-        // 1. Resolve Executable (Linux Only)
+        // 1. Safety Check: If 'game/bin' is a symlink (old structure), re-prepare
+        try {
+            const gameBinDir = path.join(instancePath, "game", "bin");
+            if (fs.existsSync(gameBinDir)) {
+                const stats = await fs.promises.lstat(gameBinDir);
+                if (stats.isSymbolicLink()) {
+                    console.log(`[Runtime] Instance ${id} has old symlink structure. Re-preparing...`);
+                    await fileSystemService.prepareInstance(id);
+                }
+            } else {
+                // If it doesn't exist at all, prepare it
+                await fileSystemService.prepareInstance(id);
+            }
+        } catch (e) {
+            console.warn(`[Runtime] Auto-prepare check failed for instance ${id}:`, e);
+        }
+
+        // 2. Resolve Executable (Linux Only)
         // Now that FileSystemService COPIES the binary instead of symlinking,
         // using the absolute path of the local copy preserves the instance root.
         const relativeBinPath = path.join("game", "bin", "linuxsteamrt64", "cs2");
         const cs2Exe = path.join(instancePath, relativeBinPath);
 
-        // 2. Prepare Arguments
+        // 3. Prepare Arguments
         const args = [
             "-dedicated",
             "-usercon",
@@ -87,13 +104,13 @@ class RuntimeService {
             }
         }
 
-        // 3. Environment (Linux Only)
+        // 4. Environment (Linux Only)
         const env: NodeJS.ProcessEnv = { ...process.env };
         const binDir = path.dirname(cs2Exe);
         // CS2 Linux needs LD_LIBRARY_PATH set to its bin directory
         env.LD_LIBRARY_PATH = `${binDir}:${path.join(binDir, "linux64")}:${process.env.LD_LIBRARY_PATH || ""}`;
 
-        // 4. Spawn
+        // 5. Spawn
         console.log(`[Runtime] Spawning instance ${id}: ${cs2Exe} ${args.join(" ")}`);
         
         const proc = spawn(cs2Exe, args, {
@@ -105,7 +122,7 @@ class RuntimeService {
 
         if (!proc.pid) throw new Error("Failed to spawn process");
 
-        // 5. State Management
+        // 6. State Management
         const logStream = fs.createWriteStream(path.join(instancePath, "console.log"), { flags: 'a' });
         
         const state: InstanceState = {
@@ -118,10 +135,10 @@ class RuntimeService {
         };
         this.instances.set(id, state);
 
-        // 6. DB Update
+        // 7. DB Update
         db.prepare("UPDATE servers SET status = 'ONLINE', pid = ? WHERE id = ?").run(proc.pid, id);
 
-        // 7. Event Listeners
+        // 8. Event Listeners
         proc.stdout?.on('data', (data) => this.handleOutput(id, data, false, onLog));
         proc.stderr?.on('data', (data) => this.handleOutput(id, data, true, onLog));
 
