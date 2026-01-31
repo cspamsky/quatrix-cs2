@@ -126,8 +126,8 @@ class ServerManager {
 
     if (!fs.existsSync(targetSo)) {
         console.log("[SYSTEM] Steam SDK link missing, creating...");
-        const projectRoot = process.cwd();
-        const steamCmdDir = path.join(projectRoot, "data", "steamcmd");
+        // Use path.dirname(this.steamCmdExe) to get the actual steamcmd directory
+        const steamCmdDir = this.steamCmdExe ? path.dirname(this.steamCmdExe) : path.join(process.cwd(), "data", "steamcmd");
         const sourceSo = path.join(steamCmdDir, "linux64", "steamclient.so");
 
         if (fs.existsSync(sourceSo)) {

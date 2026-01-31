@@ -148,9 +148,13 @@ class RuntimeService {
                 } catch (e) {
                     console.log(`[Runtime] Server ${id} (PID: ${s.pid}) is dead. Marking OFFLINE.`);
                     db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
+                    // Clean stale lock
+                    await lockService.releaseInstanceLock(id);
                 }
             } else {
                  db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
+                 // Clean stale lock
+                 await lockService.releaseInstanceLock(id);
             }
         }
     }
@@ -183,6 +187,9 @@ class RuntimeService {
         // Clean up immediately from DB perspective
         this.instances.delete(id);
         db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
+        
+        // Release lock
+        await lockService.releaseInstanceLock(id);
         
         return true;
     }
