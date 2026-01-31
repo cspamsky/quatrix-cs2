@@ -122,14 +122,14 @@ class FileSystemService {
         try {
             let content = await fs.promises.readFile(targetGameInfo, 'utf8');
             if (!content.includes("csgo/addons/metamod")) {
-                // More robust regex: Find the Game_LowViolence line and append Metamod after it
-                const regex = /(Game_LowViolence\s+csgo_lv.*)/;
+                // More robust approach: Insert AFTER 'Game csgo' to avoid hijacking DEFAULT_WRITE_PATH
+                const regex = /(Game\s+csgo\s*\n)/;
                 if (regex.test(content)) {
-                    content = content.replace(regex, "$1\n\t\t\tGame\tcsgo/addons/metamod");
+                    content = content.replace(regex, "$1\t\t\tGame\tcsgo/addons/metamod\n");
                     await fs.promises.writeFile(targetGameInfo, content);
-                    console.log(`[FileSystem] Instance ${id} gameinfo.gi patched with Metamod.`);
+                    console.log(`[FileSystem] Instance ${id} gameinfo.gi patched with Metamod (After CSGO).`);
                 } else {
-                    console.warn(`[FileSystem] Could not find anchor in gameinfo.gi for instance ${id}. Patching at start of SearchPaths.`);
+                    // Fallback to SearchPaths start
                     content = content.replace(/SearchPaths\s*\{/, "SearchPaths\n\t\t{\n\t\t\tGame\tcsgo/addons/metamod");
                     await fs.promises.writeFile(targetGameInfo, content);
                 }
