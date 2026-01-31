@@ -127,15 +127,15 @@ class FileSystemService {
                 if (regex.test(content)) {
                     content = content.replace(regex, "$1\n\t\t\tGame\tcsgo/addons/metamod");
                     await fs.promises.writeFile(targetGameInfo, content);
-                    console.log(`[FileSystem] Instance ${instanceId} gameinfo.gi patched with Metamod.`);
+                    console.log(`[FileSystem] Instance ${id} gameinfo.gi patched with Metamod.`);
                 } else {
-                    console.warn(`[FileSystem] Could not find anchor in gameinfo.gi for instance ${instanceId}. Patching at start of SearchPaths.`);
+                    console.warn(`[FileSystem] Could not find anchor in gameinfo.gi for instance ${id}. Patching at start of SearchPaths.`);
                     content = content.replace(/SearchPaths\s*\{/, "SearchPaths\n\t\t{\n\t\t\tGame\tcsgo/addons/metamod");
                     await fs.promises.writeFile(targetGameInfo, content);
                 }
             }
         } catch (err) {
-            console.error(`[FileSystem] Failed to patch gameinfo.gi for instance ${instanceId}:`, err);
+            console.error(`[FileSystem] Failed to patch gameinfo.gi for instance ${id}:`, err);
         }
     }
 
