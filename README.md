@@ -6,7 +6,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-7.x-646CFF.svg)](https://vitejs.dev/)
 
-![Quatrix Header](https://raw.githubusercontent.com/cspamsky/quatrix/main/assets/Banner.png)
+![Quatrix Header](https://raw.githubusercontent.com/cspamsky/quatrix/main/assets/Dashboard.png)
 
 **Quatrix** is an elite, real-time web orchestration platform designed for professional Counter-Strike 2 server clusters. It bridges the gap between raw CLI power and premium UI aesthetics, offering a "glassmorphism" inspired dashboard with zero-latency feedback.
 
