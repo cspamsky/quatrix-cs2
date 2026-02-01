@@ -53,21 +53,41 @@ class FileSystemService {
     }
 
     // 2. ROOT Symlinks (Direct links to Core)
-    // engine -> Core/engine
-    // bin -> Core/bin
-    // cs2.sh -> Core/cs2.sh
     const rootItems = ["engine", "bin", "cs2.sh"];
     await this.createSymlinks(this.coreDir, targetDir, rootItems);
     
-    // steamclient.so -> We need this to NOT be a broken link
-    const coreSo = path.join(this.coreDir, "steamclient.so");
-    if (fs.existsSync(coreSo)) {
-        const targetSo = path.join(targetDir, "steamclient.so");
-        try { await fs.promises.unlink(targetSo); } catch {}
-        await fs.promises.copyFile(coreSo, targetSo);
+    // 3. Populate Steam SDK (steamclient.so)
+    // CS2 needs this library to talk to Steam (Workshop, VAC, GSLT).
+    // We source it from our local steamcmd folder which is the most reliable source.
+    const steamCmdDir = path.join(this.baseDir, "steamcmd");
+    const sourceSo = path.join(steamCmdDir, "linux64", "steamclient.so");
+    
+    if (fs.existsSync(sourceSo)) {
+        const sdkTargets = [
+            path.join(targetDir, "steamclient.so"), // Instance root
+            path.join(targetDir, "game", "bin", "linuxsteamrt64", "steamclient.so"), // CS2 bin
+            path.join(targetDir, "bin", "linux64", "steamclient.so"), // Engine bin
+        ];
+
+        for (const targetSo of sdkTargets) {
+            try {
+                const targetParent = path.dirname(targetSo);
+                if (!fs.existsSync(targetParent)) {
+                    await fs.promises.mkdir(targetParent, { recursive: true });
+                }
+                try { await fs.promises.unlink(targetSo); } catch {}
+                await fs.promises.copyFile(sourceSo, targetSo);
+                await this.ensureExecutable(targetSo);
+            } catch (err) {
+                console.warn(`[FileSystem] Failed to populate Steam SDK at ${targetSo}:`, err);
+            }
+        }
+        console.log(`[FileSystem] Instance ${id} Steam SDK populated from steamcmd/linux64.`);
+    } else {
+        console.warn(`[FileSystem] Source steamclient.so not found at ${sourceSo}. Workshop maps may fail.`);
     }
 
-    // 3. GAME Directory Symlinks (Granular)
+    // 4. GAME Directory Symlinks (Granular)
     const coreGameDir = path.join(this.coreDir, "game");
     const targetGameDir = path.join(targetDir, "game");
 
