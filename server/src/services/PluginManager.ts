@@ -524,6 +524,9 @@ export class PluginManager {
           if (item.isFile()) {
             const ext = path.extname(item.name).toLowerCase();
             if ([".json", ".cfg", ".txt", ".ini", ".toml"].includes(ext)) {
+              // Exclude system files like .deps.json
+              if (item.name.toLowerCase().endsWith(".deps.json")) continue;
+
               const fullPath = path.join(searchDir, item.name);
               configs.push({
                 name: item.name,
