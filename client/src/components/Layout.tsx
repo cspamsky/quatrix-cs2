@@ -10,7 +10,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   Menu,
-  X
+  X,
+  MessageSquare
 } from 'lucide-react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
@@ -29,6 +30,7 @@ const Layout = ({ children }: LayoutProps) => {
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/instances', icon: Layers, label: 'Instances' },
+    { path: '/chat', icon: MessageSquare, label: 'Chat Logs' },
     { path: '/console', icon: Terminal, label: 'Server Console' },
     { path: '/maps', icon: MapIcon, label: 'Map Management' },
     { path: '/players', icon: Users, label: 'Player List' },

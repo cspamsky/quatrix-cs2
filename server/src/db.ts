@@ -267,4 +267,22 @@ db.exec(`CREATE INDEX IF NOT EXISTS idx_ban_history_server_id ON ban_history(ser
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ban_history_steam_id ON ban_history(steam_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_ban_history_active ON ban_history(is_active)`);
 
+// Create chat_logs table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS chat_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    server_id INTEGER NOT NULL,
+    player_name TEXT NOT NULL,
+    steam_id TEXT,
+    message TEXT NOT NULL,
+    type TEXT DEFAULT 'say', -- say or say_team
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+  )
+`);
+
+// Create index for chat logs
+db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_logs_server_id ON chat_logs(server_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_logs_created_at ON chat_logs(created_at)`);
+
 export default db;

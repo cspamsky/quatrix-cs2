@@ -42,6 +42,10 @@ class ServerManager {
   private getOrphanedStmt = db.prepare("SELECT id, pid, status FROM servers WHERE status != 'OFFLINE'");
   private updatePlayerCountStmt = db.prepare("UPDATE servers SET current_players = ? WHERE id = ?");
   private updateMapStmt = db.prepare("UPDATE servers SET map = ? WHERE id = ?");
+  private chatInsertStmt = db.prepare(`
+    INSERT INTO chat_logs (server_id, player_name, steam_id, message, type)
+    VALUES (?, ?, ?, ?, ?)
+  `);
 
   constructor() {
     this.installDir = "";
@@ -279,6 +283,33 @@ class ServerManager {
                   cache.set(`n:${name}`, steamId64);
                   this.playerIdentityBuffer.set(name, steamId64);
               }
+          }
+      }
+
+      // Chat Message Tracking
+      // Example say: "PlayerName<1><SteamID><>" say "MessageContent"
+      // Example team say: "PlayerName<1><SteamID><TeamName>" say_team "MessageContent"
+      const chatMatch = line.match(/^"(.+?)<\d+><(.+?)><.*?>" (say|say_team) "(.*)"$/);
+      if (chatMatch) {
+          const [, name, steamId, type, message] = chatMatch;
+          const steamId64 = steamId === "Console" ? "0" : steamId;
+          
+          try {
+              this.chatInsertStmt.run(id, name, steamId64, message, type);
+              
+              // Emit via Socket.IO for real-time dashboard
+              if (this.io) {
+                  this.io.emit('chat_message', {
+                      serverId: id,
+                      name,
+                      steamId: steamId64,
+                      message,
+                      type,
+                      timestamp: new Date().toISOString()
+                  });
+              }
+          } catch (e) {
+              console.error(`[SERVER:${id}] Failed to save chat message:`, e);
           }
       }
   }
