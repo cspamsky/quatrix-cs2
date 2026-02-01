@@ -120,18 +120,23 @@ class FileSystemService {
         // Patch it to include Metamod
         try {
             let content = await fs.promises.readFile(targetGameInfo, 'utf8');
-            if (!content.includes("csgo/addons/metamod")) {
-                // IMPORTANT: Metamod MUST be before 'Game csgo' to hook correctly.
-                // The previous "hang" was due to missing VPKs/Maps, not this path order.
-                const regex = /(Game\s+csgo\n)/;
-                if (regex.test(content)) {
-                    content = content.replace(regex, "\t\t\tGame\tcsgo/addons/metamod\n\t\t\tGame\tcsgo\n");
+            
+            // 1. Remove ANY existing metamod entries to avoid duplicates and ensure priority
+            content = content.replace(/^.*csgo\/addons\/metamod.*$/gm, "");
+            
+            // 2. Insert Metamod specifically AFTER Game_LowViolence line
+            const lvLine = /(Game_LowViolence\s+csgo_lv\s+\/\/ Perfect World content override)/;
+            if (lvLine.test(content)) {
+                content = content.replace(lvLine, "$1\n\t\t\tGame\tcsgo/addons/metamod");
+                await fs.promises.writeFile(targetGameInfo, content);
+                console.log(`[FileSystem] Instance ${id} gameinfo.gi patched with Metamod (After LowViolence).`);
+            } else {
+                // Fallback to start of SearchPaths if LV line not found
+                const searchPathStart = /SearchPaths\s*\{/;
+                if (searchPathStart.test(content)) {
+                    content = content.replace(searchPathStart, "SearchPaths\n\t\t{\n\t\t\tGame\tcsgo/addons/metamod");
                     await fs.promises.writeFile(targetGameInfo, content);
-                    console.log(`[FileSystem] Instance ${id} gameinfo.gi patched with Metamod (Top of Game paths).`);
-                } else {
-                    // Fallback to SearchPaths start
-                    content = content.replace(/SearchPaths\s*\{/, "SearchPaths\n\t\t{\n\t\t\tGame\tcsgo/addons/metamod");
-                    await fs.promises.writeFile(targetGameInfo, content);
+                    console.log(`[FileSystem] Instance ${id} gameinfo.gi patched with Metamod (Start of SearchPaths).`);
                 }
             }
         } catch (err) {
