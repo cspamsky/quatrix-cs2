@@ -10,8 +10,8 @@ type ServerStatus = "ONLINE" | "OFFLINE" | "STARTING" | "CRASHED";
 interface InstanceState {
     process?: ChildProcess;
     pid?: number;
-    logStream?: fs.WriteStream;
     logBuffer: string[];
+    logWatcher?: fs.FSWatcher;
     status: ServerStatus;
     startedAt?: Date;
 }
@@ -169,39 +169,86 @@ class RuntimeService {
         
         env.LD_LIBRARY_PATH = libraryPaths.join(":");
 
-        // 5. Spawn
+        // 5. Spawn with file redirection to prevent SIGPIPE on backend exit
+        const logFilePath = path.join(instancePath, "console.log");
+        const logFd = fs.openSync(logFilePath, 'a');
+
         console.log(`[Runtime] Spawning instance ${id}: ${cs2Exe} ${args.join(" ")}`);
         
         const proc = spawn(cs2Exe, args, {
             cwd: instancePath,
             env,
             detached: true, // Detached on Linux
-            stdio: ['ignore', 'pipe', 'pipe']
+            stdio: ['ignore', logFd, logFd] // Redirect both stdout and stderr to the log file
         });
+
+        // Close the FD in our process as the child now has its own copy
+        fs.closeSync(logFd);
 
         if (!proc.pid) throw new Error("Failed to spawn process");
 
+        // Allow the backend process to exit without terminating the server
+        proc.unref();
+
         // 6. State Management
-        const logStream = fs.createWriteStream(path.join(instancePath, "console.log"), { flags: 'a' });
-        
         const state: InstanceState = {
             process: proc,
             pid: proc.pid,
-            logStream,
             logBuffer: [],
             status: "STARTING",
             startedAt: new Date()
         };
         this.instances.set(id, state);
 
-        // 7. DB Update
+        // 7. Start log tailing for live console/chat
+        this.startLogWatcher(id, logFilePath, onLog);
+
+        // 8. DB Update
         db.prepare("UPDATE servers SET status = 'ONLINE', pid = ? WHERE id = ?").run(proc.pid, id);
 
-        // 8. Event Listeners
-        proc.stdout?.on('data', (data) => this.handleOutput(id, data, false, onLog));
-        proc.stderr?.on('data', (data) => this.handleOutput(id, data, true, onLog));
-
+        // 9. Event Listeners (Process level for crash detection)
         proc.on('exit', (code) => this.handleExit(id, code));
+    }
+
+    private startLogWatcher(id: string, logFilePath: string, onLog?: (line: string) => void) {
+        const state = this.instances.get(id);
+        if (!state) return;
+
+        // Ensure file exists
+        if (!fs.existsSync(logFilePath)) {
+            fs.writeFileSync(logFilePath, "");
+        }
+
+        let currentSize = fs.statSync(logFilePath).size;
+
+        try {
+            const watcher = fs.watch(logFilePath, (event) => {
+                if (event === 'change') {
+                    try {
+                        const newSize = fs.statSync(logFilePath).size;
+                        if (newSize > currentSize) {
+                            const bufferSize = newSize - currentSize;
+                            const buffer = Buffer.alloc(bufferSize);
+                            const fd = fs.openSync(logFilePath, 'r');
+                            fs.readSync(fd, buffer, 0, bufferSize, currentSize);
+                            fs.closeSync(fd);
+
+                            currentSize = newSize;
+                            this.handleOutput(id, buffer, false, onLog);
+                        } else if (newSize < currentSize) {
+                            // File was truncated or rotated
+                            currentSize = newSize;
+                        }
+                    } catch (e) {
+                         // Silent fail for log read errors to prevent backend crash
+                    }
+                }
+            });
+
+            state.logWatcher = watcher;
+        } catch (e) {
+            console.error(`[Runtime] Failed to start log watcher for ${id}:`, e);
+        }
     }
 
     public async init() {
@@ -223,6 +270,11 @@ class RuntimeService {
                         status: "ONLINE",
                         startedAt: new Date() // Approximate
                     });
+
+                    // Start log tailing for adopted process
+                    const instancePath = fileSystemService.getInstancePath(id);
+                    const logFilePath = path.join(instancePath, "console.log");
+                    this.startLogWatcher(id, logFilePath);
                 } catch (e) {
                     console.log(`[Runtime] Server ${id} (PID: ${s.pid}) is dead. Marking OFFLINE.`);
                     db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
@@ -263,6 +315,9 @@ class RuntimeService {
         }
 
         // Clean up immediately from DB perspective
+        if (state.logWatcher) {
+            state.logWatcher.close();
+        }
         this.instances.delete(id);
         db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
         
@@ -281,11 +336,10 @@ class RuntimeService {
             const trimmed = line.trim();
             if(!trimmed) continue;
 
-            const logLine = `[${new Date().toISOString()}] ${trimmed}`;
+            const logLine = trimmed; // Timestamps are already in console.log or added by engine
             
-            // File Log (Async)
-            state.logStream?.write(logLine + '\n');
-
+            // File Log: Handled by redirection in startInstance
+            
             // Memory Buffer
             state.logBuffer.push(logLine);
             if (state.logBuffer.length > 200) state.logBuffer.shift();
@@ -300,7 +354,7 @@ class RuntimeService {
         const state = this.instances.get(id);
         
         if (state) {
-            state.logStream?.end();
+            if (state.logWatcher) state.logWatcher.close();
             lockService.releaseInstanceLock(id);
         }
 
