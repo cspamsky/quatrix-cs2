@@ -203,10 +203,34 @@ class ServerManager {
     await fs.promises.writeFile(serverCfgPath, cfgContent);
 
     // 2. Start via RuntimeService
-    // We wrap the onLog to handle player identities
-    await runtimeService.startInstance(id, mergedOptions, (line) => {
-        this.handleLog(id, line, onLog);
-    });
+    const originalMap = mergedOptions.map || "de_dust2";
+    const isWorkshopID = (m: string) => /^\d+$/.test(m);
+    
+    if (isWorkshopID(originalMap)) {
+        console.log(`[SERVER] Workshop bootstrap: Starting instance ${id} on de_dust2 first...`);
+        // We override the map just for the startup command to ensure a clean boot
+        const bootOptions = { ...mergedOptions, map: "de_dust2" };
+        
+        await runtimeService.startInstance(id, bootOptions, (line) => {
+            this.handleLog(id, line, onLog);
+        });
+
+        // Target switch after boot (Wait for engine + Steam initialization)
+        setTimeout(async () => {
+            try {
+                console.log(`[SERVER] Bootstrap phase complete for ${id}. Switching to target workshop map ${originalMap}...`);
+                await this.sendCommand(id, `host_workshop_map ${originalMap}`, 10);
+                // Note: database 'map' column already contains originalMap, so it remains persistent.
+            } catch (e) {
+                console.error(`[SERVER] Bootstrap switch failed for instance ${id}:`, e);
+            }
+        }, 20000);
+    } else {
+        // Normal startup for local maps
+        await runtimeService.startInstance(id, mergedOptions, (line) => {
+            this.handleLog(id, line, onLog);
+        });
+    }
   }
 
   public async stopServer(id: string | number) {
