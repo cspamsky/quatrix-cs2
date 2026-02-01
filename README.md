@@ -61,7 +61,7 @@ graph TD
     subgraph "Isolation Instances"
         Instance1[Instance 1 Cluster]
         Instance2[Instance 2 Cluster]
-        CoreData[(Main CS2 Core - 40GB+)] ---|Granular Symlinks| Instance1
+        CoreData[(Main CS2 Core - 60GB+)] ---|Granular Symlinks| Instance1
         CoreData ---|Granular Symlinks| Instance2
     end
     BE -->|Process Spawn| Instance1
