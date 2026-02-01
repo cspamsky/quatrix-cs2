@@ -21,7 +21,7 @@ router.get("/:id/admins", async (req: any, res) => {
         if (!server) return res.status(404).json({ message: "Server not found" });
 
         const serverPath = fileSystemService.getInstancePath(id);
-        const filePath = path.join(serverPath, ADMINS_FILE_PATH);
+        const filePath = path.join(serverPath, "game/csgo", ADMINS_FILE_PATH);
         const content = await fs.promises.readFile(filePath, 'utf-8');
         res.json(JSON.parse(content));
     } catch (error: any) {
@@ -44,7 +44,7 @@ router.post("/:id/admins", async (req: any, res) => {
         if (!server) return res.status(404).json({ message: "Server not found" });
 
         const serverPath = fileSystemService.getInstancePath(id);
-        const filePath = path.join(serverPath, ADMINS_FILE_PATH);
+        const filePath = path.join(serverPath, "game/csgo", ADMINS_FILE_PATH);
         await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
         await fs.promises.writeFile(filePath, JSON.stringify(admins, null, 4));
         
