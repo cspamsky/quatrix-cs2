@@ -94,15 +94,14 @@ class FileSystemService {
     const targetCsgoDir = path.join(targetGameDir, "csgo");
 
     // List all items in core/game/csgo
-    // If it's 'cfg' or 'maps' -> DO NOT LINK (We already made dirs or will make them)
-    // If it's anything else -> LINK
     if (fs.existsSync(coreCsgoDir)) {
       const csgoItems = await fs.promises.readdir(coreCsgoDir);
       for (const item of csgoItems) {
         // EXCLUSION LIST: These are the directories we want to keep LOCAL/PRIVATE
-        if (["cfg", "maps", "logs", "addons", "gameinfo.gi"].includes(item)) continue;
+        // 'bin' is NOT in exclusion here because we handle it granularly below
+        if (["bin", "cfg", "maps", "logs", "addons", "gameinfo.gi"].includes(item)) continue;
 
-        // Everything else (bin, resource, scripts, .vpk files) -> SYMLINK from Core
+        // Everything else (resource, scripts, .vpk files) -> SYMLINK from Core
         await this.createSymlink(
           path.join(coreCsgoDir, item),
           path.join(targetCsgoDir, item)
@@ -139,16 +138,20 @@ class FileSystemService {
         }
     }
 
-    // 5. Setup Local Directories for excluded items
-    // These were skipped in the loop above, so we ensure they exist as real directories
+    // 5. Setup Local Directories and populate content
     await fs.promises.mkdir(path.join(targetCsgoDir, "cfg"), { recursive: true });
     await fs.promises.mkdir(path.join(targetCsgoDir, "maps"), { recursive: true });
     await fs.promises.mkdir(path.join(targetCsgoDir, "logs"), { recursive: true });
 
-    // Link Core maps CONTENT to target maps
+    // Link Core maps CONTENT to target maps (granularly)
     const coreMapsDir = path.join(coreCsgoDir, "maps");
     const targetMapsDir = path.join(targetCsgoDir, "maps");
     await this.copyStructureAndLinkFiles(coreMapsDir, targetMapsDir);
+    
+    // Link Core csgo/bin CONTENT (granularly)
+    const coreCsgoBin = path.join(coreCsgoDir, "bin");
+    const targetCsgoBin = path.join(targetCsgoDir, "bin");
+    await this.copyStructureAndLinkFiles(coreCsgoBin, targetCsgoBin);
 
     // Populate CFG from core (granularly, so we don't overwrite server.cfg)
     const targetCfgDir = path.join(targetCsgoDir, "cfg");

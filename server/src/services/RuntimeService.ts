@@ -43,10 +43,13 @@ class RuntimeService {
             const gameDir = path.join(instancePath, "game");
             const gameBinDir = path.join(gameDir, "bin");
             const csgoImportedDir = path.join(gameDir, "csgo_imported");
+            const csgoBinDir = path.join(gameDir, "csgo", "bin");
+            const csgoMapsDir = path.join(gameDir, "csgo", "maps");
             const csgoCfgDir = path.join(gameDir, "csgo", "cfg");
             
             let needsPrepare = false;
             
+            // 1. Check game/bin (must be a directory, not a symlink)
             if (fs.existsSync(gameBinDir)) {
                 const stats = await fs.promises.lstat(gameBinDir);
                 if (stats.isSymbolicLink()) needsPrepare = true;
@@ -54,12 +57,23 @@ class RuntimeService {
                 needsPrepare = true;
             }
 
-            // Also check for critical symlinks (csgo_imported, core, etc.)
+            // 2. Check game/csgo/bin (must be a directory, not a symlink)
+            if (!needsPrepare && fs.existsSync(csgoBinDir)) {
+                const stats = await fs.promises.lstat(csgoBinDir);
+                if (stats.isSymbolicLink()) needsPrepare = true;
+            }
+
+            // 3. Check for critical symlinks (csgo_imported, core, etc.)
             if (!needsPrepare && !fs.existsSync(csgoImportedDir)) {
                 needsPrepare = true;
             }
 
-            // Check if CFG is empty or missing (should have at least boot.vcfg or similar from core)
+            // 4. Check if maps are missing (should have more than just '.' and '..')
+            if (!needsPrepare && (!fs.existsSync(csgoMapsDir) || (await fs.promises.readdir(csgoMapsDir)).length === 0)) {
+                needsPrepare = true;
+            }
+
+            // 5. Check if CFG is empty or missing
             if (!needsPrepare && (!fs.existsSync(csgoCfgDir) || (await fs.promises.readdir(csgoCfgDir)).length <= 1)) {
                 needsPrepare = true;
             }
