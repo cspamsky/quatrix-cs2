@@ -83,8 +83,9 @@ After=network.target
 Type=simple
 User=quatrix
 WorkingDirectory=${process.cwd()}/server
-ExecStart=/usr/bin/npm run start
+ExecStart=/usr/bin/node --env-file=${process.cwd()}/.env ${process.cwd()}/server/dist/index.js
 Restart=always
+KillMode=process
 Environment=NODE_ENV=production
 
 [Install]

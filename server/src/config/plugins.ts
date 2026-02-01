@@ -40,9 +40,9 @@ export const pluginRegistry = {
         description: 'Removes max speed limitation (BHOP/Surf)',
         folderName: 'MovementUnlocker'
     },
-    addonmanager: {
+    multiaddonmanager: {
         name: 'MultiAddonManager',
-        currentVersion: '1.4.8',
+        currentVersion: '1.4.10',
         category: 'metamod' as const,
         tags: ['utility', 'workshop'],
         description: 'Manage multiple workshop addons',
@@ -136,6 +136,14 @@ export const pluginRegistry = {
         tags: ['utility', 'admin', 'commands'],
         description: 'Executes commands after server events or delay',
         folderName: 'CS2_ExecAfter'
+    },
+    weaponrestrict: {
+        name: 'WeaponRestrict',
+        currentVersion: '26.01.3',
+        category: 'cssharp' as const,
+        tags: ['utility', 'weapons', 'restriction'],
+        description: 'Restrict specific weapons per team or globally',
+        folderName: 'WeaponRestrict'
     },
     removemapweapons: {
         name: 'CS2 Remove Map Weapons',
