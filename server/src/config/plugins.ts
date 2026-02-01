@@ -99,7 +99,7 @@ export const pluginRegistry = {
     },
     rtv: {
         name: 'RockTheVote',
-        currentVersion: '1.8.5',
+        currentVersion: '1.9.6',
         category: 'cssharp' as const,
         tags: ['utility', 'map-voting'],
         description: 'Map voting and management system',
@@ -440,6 +440,30 @@ export const pluginRegistry = {
         tags: ['utility', 'afk', 'management'],
         description: 'Detects and manages AFK players (kick/move to spec)',
         folderName: 'AFKManager'
+    },
+    antirush: {
+        name: 'AntiRush',
+        currentVersion: '2.0.3',
+        category: 'cssharp' as const,
+        tags: ['utility', 'rush', 'management'],
+        description: 'Defines and manages rush/camp zones on maps',
+        folderName: 'AntiRush'
+    },
+    autobalance: {
+        name: 'AutoBalance',
+        currentVersion: '1.0.0',
+        category: 'cssharp' as const,
+        tags: ['utility', 'balance', 'teams'],
+        description: 'Automatically balances teams based on player count',
+        folderName: 'AutoBalance'
+    },
+    mappropads: {
+        name: 'MapPropAds',
+        currentVersion: '1.0.0',
+        category: 'cssharp' as const,
+        tags: ['utility', 'ads', 'visual'],
+        description: 'Create billboard-type advertisements on map props',
+        folderName: 'CS2-Poor-MapPropAds'
     }
 } as const;
 
