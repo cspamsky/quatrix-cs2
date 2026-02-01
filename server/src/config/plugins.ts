@@ -351,7 +351,7 @@ export const pluginRegistry = {
         category: 'cssharp' as const,
         tags: ['utility', 'combat', 'weapons'],
         description: 'Advanced weapon attribute control',
-        folderName: 'cs2-advanced-weapon-system'
+        folderName: 'AdvancedWeaponSystem'
     },
     oneinthechamber: {
         name: 'CS2 One In The Chamber',
