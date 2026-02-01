@@ -529,7 +529,7 @@ const Plugins = () => {
       {configModalPlugin && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setConfigModalPlugin(null)} />
-          <div className="relative w-full max-w-4xl bg-[#0c1424] border border-gray-800 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+          <div className="relative w-full max-w-6xl bg-[#0c1424] border border-gray-800 rounded-3xl shadow-2xl flex flex-col h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
               <div className="flex items-center gap-3">
@@ -575,7 +575,7 @@ const Plugins = () => {
               {/* Editor */}
               <div className="flex-1 flex flex-col bg-[#080c14]">
                 <textarea
-                  className="flex-1 w-full bg-transparent p-6 text-xs font-mono text-gray-300 focus:outline-none resize-none scrollbar-hide"
+                  className="flex-1 w-full bg-transparent p-6 text-sm font-mono text-gray-300 focus:outline-none resize-none scrollbar-hide leading-relaxed"
                   value={editingContent}
                   onChange={(e) => setEditingContent(e.target.value)}
                   spellCheck={false}
