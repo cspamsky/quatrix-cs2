@@ -204,27 +204,9 @@ class ServerManager {
 
     // 2. Start via RuntimeService
     // We wrap the onLog to handle player identities
-    await runtimeService.startInstance(id, options, (line) => {
+    await runtimeService.startInstance(id, mergedOptions, (line) => {
         this.handleLog(id, line, onLog);
     });
-
-    // 3. Workshop Switch Logic
-    const mapName = options.map || "de_dust2";
-    let workshopId: string | null = null;
-    const workshopMatch = mapName.match(/workshop\/(\d+)/i) || mapName.match(/^(\d{8,})$/);
-    if (workshopMatch) workshopId = workshopMatch[1];
-
-    if (workshopId) {
-        console.log(`[SERVER] Workshop map ${workshopId} detected. Initiating delayed switch.`);
-        setTimeout(async () => {
-            try {
-                // Try RCON switch
-                await this.sendCommand(id, `host_workshop_map ${workshopId}`, 10);
-            } catch (e) {
-                console.error(`[SERVER] Workshop switch failed for ${id}:`, e);
-            }
-        }, 20000);
-    }
   }
 
   public async stopServer(id: string | number) {

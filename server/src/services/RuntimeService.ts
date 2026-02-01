@@ -106,6 +106,9 @@ class RuntimeService {
         const cs2Exe = path.join(instancePath, relativeBinPath);
 
         // 3. Prepare Arguments
+        const mapName = options.map || "de_dust2";
+        const isWorkshopID = (m: string) => /^\d+$/.test(m);
+        
         const args = [
             "-dedicated",
             "-usercon",
@@ -114,7 +117,7 @@ class RuntimeService {
             "+port", options.port.toString(),
             "-maxplayers", (options.max_players || 16).toString(),
             "-tickrate", (options.tickrate || 128).toString(),
-            "+map", options.map || "de_dust2"
+            isWorkshopID(mapName) ? "+host_workshop_map" : "+map", mapName
         ];
         
         if (options.vac_enabled === false) args.push("-insecure");
