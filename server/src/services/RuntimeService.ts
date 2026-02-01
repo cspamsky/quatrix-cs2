@@ -109,53 +109,65 @@ class RuntimeService {
         const mapName = options.map || "de_dust2";
         const isWorkshopID = (m: string) => /^\d+$/.test(m);
         
+        // Group 1: Engine/Dash Parameters (Order matters for some engine initializations)
         const args = [
             "-dedicated",
             "-usercon",
-            "-console",
-            "+ip", "0.0.0.0",
-            "+port", options.port.toString(),
-            "-maxplayers", (options.max_players || 16).toString(),
-            "-tickrate", (options.tickrate || 128).toString(),
-            isWorkshopID(mapName) ? "+host_workshop_map" : "+map", mapName
+            "-console"
         ];
-        
-        if (options.vac_enabled === false) args.push("-insecure");
+
         if (options.steam_api_key) args.push("-authkey", options.steam_api_key);
+        args.push("-maxplayers", (options.max_players || 16).toString());
+        args.push("-tickrate", (options.tickrate || 128).toString());
+        if (options.vac_enabled === false) args.push("-insecure");
+
+        // Group 2: Console Variables / Plus Parameters
+        args.push("+ip", "0.0.0.0");
+        args.push("+port", options.port.toString());
+        
         if (options.gslt_token) args.push("+sv_setsteamaccount", options.gslt_token);
         if (options.name) args.push("+hostname", options.name);
         if (options.password) args.push("+sv_password", options.password);
         if (options.rcon_password) args.push("+rcon_password", options.rcon_password);
 
-        // Feature Parity: Hibernate
         if (options.hibernate !== undefined) {
              args.push("+sv_hibernate_when_empty", options.hibernate.toString());
         }
 
-        // Feature Parity: SourceTV
-        // Assuming database has a field or we check for specific arg? 
-        // For now, if passed in options (checked later in ServerManager)
         if (options.tv_enabled) {
             args.push("+tv_enable", "1");
-            args.push("+tv_port", (options.port + 1).toString()); // Default convention: ServerPort + 1
+            args.push("+tv_port", (options.port + 1).toString());
             args.push("+tv_autorecord", "0");
         }
 
-        // Feature Parity: Additional Launch Arguments
+        // Feature Parity: Additional Launch Arguments (mixed, usually best late)
         if (options.additional_args) {
-            // Regex to respect quoted arguments like +hostname "My Server"
-            // Matches either non-whitespace characters OR text within quotes
             const extraArgs = options.additional_args.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
             if (extraArgs.length > 0) {
                 args.push(...extraArgs);
             }
         }
 
+        // Map parameter - usually best last to ensure all cvars are set
+        args.push(isWorkshopID(mapName) ? "+host_workshop_map" : "+map", mapName);
+
         // 4. Environment (Linux Only)
         const env: NodeJS.ProcessEnv = { ...process.env };
         const binDir = path.dirname(cs2Exe);
+        
         // CS2 Linux needs LD_LIBRARY_PATH set to its bin directory
-        env.LD_LIBRARY_PATH = `${binDir}:${path.join(binDir, "linux64")}:${process.env.LD_LIBRARY_PATH || ""}`;
+        // Fix: Add ~/.steam/sdk64 for Steam client initialization (fixes "Universe is invalid")
+        const homeDir = process.env.HOME || "/home/quatrix";
+        const steamSdk64 = path.join(homeDir, ".steam", "sdk64");
+        
+        const libraryPaths = [
+            binDir,
+            path.join(binDir, "linux64"),
+            steamSdk64,
+            process.env.LD_LIBRARY_PATH || ""
+        ].filter(Boolean);
+        
+        env.LD_LIBRARY_PATH = libraryPaths.join(":");
 
         // 5. Spawn
         console.log(`[Runtime] Spawning instance ${id}: ${cs2Exe} ${args.join(" ")}`);
