@@ -114,9 +114,9 @@ const Chat = () => {
   );
 
   return (
-    <div className="flex flex-col h-full overflow-hidden font-display bg-[#0B0F19]">
+    <div className="flex flex-col h-full overflow-hidden font-display">
       {/* Header */}
-      <header className="h-20 flex items-center justify-between px-6 shrink-0 border-b border-gray-800/50 bg-[#0B0F19]/80 backdrop-blur-md sticky top-0 z-10">
+      <header className="h-20 flex items-center justify-between px-6 shrink-0">
         <div>
           <div className="flex items-center gap-2">
             <MessageSquare className="text-primary w-6 h-6" />
@@ -167,8 +167,8 @@ const Chat = () => {
       </header>
 
       {/* Chat Area */}
-      <div className="flex-1 overflow-hidden flex flex-col p-6 pt-2">
-        <div className="flex-1 bg-[#0d1421]/60 border border-gray-800/50 rounded-2xl overflow-hidden shadow-2xl flex flex-col backdrop-blur-sm">
+      <div className="flex-1 overflow-hidden flex flex-col px-6 pb-6 gap-6">
+        <div className="flex-1 bg-[#0d1421] border border-gray-800 rounded-xl overflow-hidden shadow-2xl flex flex-col">
           <div className="overflow-y-auto flex-1 p-4 flex flex-col-reverse custom-scrollbar" ref={chatContainerRef}>
             <div className="space-y-4 pb-2">
               {filteredLogs.length === 0 ? (
