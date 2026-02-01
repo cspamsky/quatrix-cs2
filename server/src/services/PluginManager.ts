@@ -78,13 +78,13 @@ export class PluginManager {
   async getPluginStatus(
     installDir: string,
     instanceId: string | number,
-  ): Promise<Record<string, boolean>> {
+  ): Promise<Record<string, { installed: boolean; hasConfigs: boolean }>> {
     const id = instanceId.toString();
     const csgoDir = path.join(installDir, id, "game", "csgo");
     const addonsDir = path.join(csgoDir, "addons");
     const cssPluginsDir = path.join(addonsDir, "counterstrikesharp", "plugins");
     const cssSharedDir = path.join(addonsDir, "counterstrikesharp", "shared");
-    const status: Record<string, boolean> = {};
+    const status: Record<string, { installed: boolean; hasConfigs: boolean }> = {};
 
     const dirCache = new Map<
       string,
@@ -122,8 +122,8 @@ export class PluginManager {
         .catch(() => false),
     ]);
 
-    status.metamod = hasMetaVdf || hasMetaX64Vdf;
-    status.cssharp = hasCSS;
+    status.metamod = { installed: hasMetaVdf || hasMetaX64Vdf, hasConfigs: false };
+    status.cssharp = { installed: hasCSS, hasConfigs: false };
 
     const checkExists = async (dir: string, name: string) => {
       const items = await getDirItems(dir);
@@ -141,17 +141,18 @@ export class PluginManager {
     const checks = Object.keys(this.pluginRegistry).map(async (pid) => {
       const info = (this.pluginRegistry as any)[pid];
       if (info.category === "core") {
-        status[pid] = status[pid] || false;
+        if (!status[pid]) status[pid] = { installed: false, hasConfigs: false };
         return;
       }
 
+      let installed = false;
       if (info.category === "metamod") {
-        status[pid] =
+        installed =
           (await checkExists(addonsDir, pid)) ||
           (await checkExists(addonsDir, info.folderName || "")) ||
           (await checkExists(addonsDir, info.name));
       } else if (info.category === "cssharp") {
-        status[pid] =
+        installed =
           (await checkExists(cssPluginsDir, pid)) ||
           (await checkExists(cssPluginsDir, info.folderName || "")) ||
           (await checkExists(cssPluginsDir, info.name)) ||
@@ -159,13 +160,21 @@ export class PluginManager {
           (await checkExists(cssSharedDir, info.folderName || "")) ||
           (await checkExists(cssSharedDir, info.name));
 
-        if (!status[pid]) {
-          status[pid] =
+        if (!installed) {
+          installed =
             (await checkExists(csgoDir, pid)) ||
             (await checkExists(csgoDir, info.folderName || "")) ||
             (await checkExists(csgoDir, info.name));
         }
       }
+
+      let hasConfigs = false;
+      if (installed) {
+        const configs = await this.getPluginConfigFiles(installDir, instanceId, pid as PluginId);
+        hasConfigs = configs.length > 0;
+      }
+
+      status[pid] = { installed, hasConfigs };
     });
 
     await Promise.all(checks);
@@ -457,6 +466,72 @@ export class PluginManager {
   async uninstallCounterStrikeSharp(installDir: string, instanceId: string | number): Promise<void> {
     const cssDir = path.join(installDir, instanceId.toString(), "game", "csgo", "addons", "counterstrikesharp");
     await fs.promises.rm(cssDir, { recursive: true, force: true }).catch(() => {});
+  }
+
+  async getPluginConfigFiles(
+    installDir: string,
+    instanceId: string | number,
+    pluginId: PluginId
+  ): Promise<{ name: string; path: string }[]> {
+    const id = instanceId.toString();
+    const serverPath = path.join(installDir, id);
+    const csgoDir = path.join(serverPath, "game", "csgo");
+    const info = (this.pluginRegistry as any)[pluginId];
+    if (!info) return [];
+
+    const configs: { name: string; path: string }[] = [];
+    const searchPaths: string[] = [];
+
+    // 1. CSSharp Specific Configs
+    if (info.category === "cssharp") {
+      const cssConfigBase = path.join(csgoDir, "addons", "counterstrikesharp", "configs", "plugins");
+      const candidates = [pluginId, info.folderName, info.name].filter(Boolean);
+      
+      for (const cand of candidates) {
+        searchPaths.push(path.join(cssConfigBase, cand!));
+      }
+    }
+
+    // 2. MetaMod Specific Configs
+    if (info.category === "metamod") {
+        const mmAddonDir = path.join(csgoDir, "addons", info.folderName || pluginId);
+        searchPaths.push(path.join(mmAddonDir, "configs"));
+        searchPaths.push(mmAddonDir);
+    }
+
+    // 3. General Map Configs (Check for files matching plugin name in cfg/maps)
+    const mapCfgDir = path.join(csgoDir, "cfg", "maps");
+    if (fs.existsSync(mapCfgDir)) {
+        // We could look for de_dust2_plugin.cfg but that's complex to guess. 
+        // For now, let's stick to the official config directories.
+    }
+
+    // Deduplicate and filter search paths
+    const uniquePaths = [...new Set(searchPaths)];
+
+    for (const searchDir of uniquePaths) {
+      if (!fs.existsSync(searchDir)) continue;
+
+      try {
+        const items = await fs.promises.readdir(searchDir, { withFileTypes: true });
+        for (const item of items) {
+          if (item.isFile()) {
+            const ext = path.extname(item.name).toLowerCase();
+            if ([".json", ".cfg", ".txt", ".ini"].includes(ext)) {
+              const fullPath = path.join(searchDir, item.name);
+              configs.push({
+                name: item.name,
+                path: path.relative(serverPath, fullPath).replace(/\\/g, "/")
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error(`[PLUGIN] Failed to read config dir ${searchDir}:`, err);
+      }
+    }
+
+    return configs;
   }
 }
 

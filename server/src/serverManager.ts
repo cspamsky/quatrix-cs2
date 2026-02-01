@@ -533,6 +533,7 @@ class ServerManager {
   async installPlugin(id: string | number, pid: PluginId) { return pluginManager.installPlugin(this.installDir, id, pid); }
   async uninstallPlugin(id: string | number, pid: PluginId) { return pluginManager.uninstallPlugin(this.installDir, id, pid); }
   async updatePlugin(id: string | number, pid: PluginId) { return pluginManager.updatePlugin(this.installDir, id, pid); }
+  async getPluginConfigFiles(id: string | number, pid: PluginId) { return pluginManager.getPluginConfigFiles(this.installDir, id, pid); }
 }
 
 export const serverManager = new ServerManager();

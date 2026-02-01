@@ -39,6 +39,20 @@ router.get("/:id/plugins/updates", async (req: any, res) => {
     }
 });
 
+// GET /api/servers/:id/plugins/:plugin/configs
+router.get("/:id/plugins/:plugin/configs", async (req: any, res) => {
+    const { id, plugin } = req.params;
+    try {
+        const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+        if (!server) return res.status(404).json({ message: "Server not found" });
+
+        const configs = await serverManager.getPluginConfigFiles(id, plugin as PluginId);
+        res.json(configs);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // Generic Plugin Action (Install/Uninstall/Update)
 router.post("/:id/plugins/:plugin/:action", async (req: any, res) => {
     const { id, plugin, action } = req.params;

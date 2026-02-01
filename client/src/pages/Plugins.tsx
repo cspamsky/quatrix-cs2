@@ -13,7 +13,10 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Tag
+  Tag,
+  Settings,
+  Save,
+  X
 } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import toast from 'react-hot-toast'
@@ -47,6 +50,14 @@ const Plugins = () => {
   const [activeCategory, setActiveCategory] = useState<'all' | 'core' | 'metamod' | 'cssharp'>('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'installed' | 'not-installed' | 'update'>('all')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
+  
+  // Config Editor State
+  const [configModalPlugin, setConfigModalPlugin] = useState<{id: string, name: string} | null>(null);
+  const [configFiles, setConfigFiles] = useState<{name: string, path: string}[]>([]);
+  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
 
   // 1. Fetch Plugin Registry (Global Pool)
   const { data: registry = {}, isLoading: registryLoading } = useQuery<Record<string, PluginInfo>>({
@@ -68,7 +79,7 @@ const Plugins = () => {
   }, [instances, selectedServer]);
 
   // 3. Fetch Plugin Status for selected server
-  const { data: pluginStatus = {} } = useQuery<Record<string, boolean>>({
+  const { data: pluginStatus = {} } = useQuery<Record<string, { installed: boolean; hasConfigs: boolean }>>({
     queryKey: ['plugin-status', selectedServer],
     queryFn: () => apiFetch(`/api/servers/${selectedServer}/plugins/status`).then(res => res.json()),
     enabled: !!selectedServer,
@@ -90,10 +101,10 @@ const Plugins = () => {
 
     // Logic guards
     if (action === 'install') {
-        if (pluginInfo.category === 'cssharp' && !pluginStatus.metamod) {
+        if (pluginInfo.category === 'cssharp' && !pluginStatus.metamod?.installed) {
             return toast.error('Metamod:Source is required before installing C# plugins');
         }
-        if (pluginInfo.category === 'cssharp' && plugin !== 'cssharp' && !pluginStatus.cssharp) {
+        if (pluginInfo.category === 'cssharp' && plugin !== 'cssharp' && !pluginStatus.cssharp?.installed) {
             return toast.error('CounterStrikeSharp is required first');
         }
     }
@@ -131,6 +142,72 @@ const Plugins = () => {
     Object.entries(registry).map(([id, info]) => ({ ...(info as PluginInfo), id })), 
   [registry]);
 
+  const openConfigEditor = async (pluginId: string, pluginName: string) => {
+    if (!selectedServer) return;
+    
+    setConfigModalPlugin({ id: pluginId, name: pluginName });
+    setIsLoadingConfigs(true);
+    setConfigFiles([]);
+    setSelectedFilePath(null);
+    setEditingContent('');
+
+    try {
+        const res = await apiFetch(`/api/servers/${selectedServer}/plugins/${pluginId}/configs`);
+        const files = await res.json();
+        setConfigFiles(files);
+        
+        if (files.length > 0) {
+            handleFileSelect(files[0].path);
+        }
+    } catch (error) {
+        toast.error('Failed to load configuration list');
+    } finally {
+        setIsLoadingConfigs(false);
+    }
+  };
+
+  const handleFileSelect = async (filePath: string) => {
+    if (!selectedServer) return;
+    setSelectedFilePath(filePath);
+    setEditingContent('');
+    
+    try {
+        const res = await apiFetch(`/api/servers/${selectedServer}/files/read?path=${encodeURIComponent(filePath)}`);
+        const data = await res.json();
+        if (data.content !== undefined) {
+            setEditingContent(data.content);
+        }
+    } catch (error) {
+        toast.error('Failed to read file content');
+    }
+  };
+
+  const handleSaveConfig = async () => {
+    if (!selectedServer || !selectedFilePath) return;
+    
+    setIsSaving(true);
+    try {
+        const res = await apiFetch(`/api/servers/${selectedServer}/files/write`, {
+            method: 'POST',
+            body: JSON.stringify({
+                path: selectedFilePath,
+                content: editingContent
+            })
+        });
+        
+        if (res.ok) {
+            toast.success('Configuration saved successfully');
+        } else {
+            const data = await res.json();
+            toast.error(data.message || 'Failed to save configuration');
+        }
+    } catch (error) {
+        toast.error('Network error while saving');
+    } finally {
+        setIsSaving(false);
+    }
+  };
+
   const filteredPlugins = useMemo(() => {
     return allPlugins.filter(plugin => {
         // Search filter
@@ -142,7 +219,7 @@ const Plugins = () => {
         const matchesCategory = activeCategory === 'all' || plugin.category === activeCategory;
         
         // Status filter
-        const isInstalled = pluginStatus[plugin.id];
+        const isInstalled = !!pluginStatus[plugin.id]?.installed;
         const hasUpdate = pluginUpdates?.[plugin.id]?.hasUpdate;
         let matchesStatus = true;
         if (statusFilter === 'installed') matchesStatus = isInstalled;
@@ -261,10 +338,10 @@ const Plugins = () => {
                           {section.icon}
                         </div>
                         <span className="text-[11px] font-black text-gray-300 uppercase tracking-[0.2em]">{section.name}</span>
-                        {section.id === 'metamod' && !pluginStatus['metamod'] && (
+                        {section.id === 'metamod' && !pluginStatus['metamod']?.installed && (
                             <span className="text-[8px] font-bold text-yellow-500/60 bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10 uppercase ml-2">Req. Metamod:Source</span>
                         )}
-                        {section.id === 'cssharp' && !pluginStatus['cssharp'] && (
+                        {section.id === 'cssharp' && !pluginStatus['cssharp']?.installed && (
                             <span className="text-[8px] font-bold text-yellow-500/60 bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10 uppercase ml-2">Req. CounterStrikeSharp</span>
                         )}
                         <span className="ml-auto text-[10px] text-gray-600 font-bold uppercase tracking-widest">{sectionPlugins.length} found</span>
@@ -274,7 +351,9 @@ const Plugins = () => {
                   
                   {sectionPlugins.map((info) => {
                     const pid = info.id;
-                    const isInstalled = !!pluginStatus[pid];
+                    const status = pluginStatus[pid];
+                    const isInstalled = !!status?.installed;
+                    const hasConfigs = !!status?.hasConfigs;
                     const hasUpdate = !!pluginUpdates?.[pid]?.hasUpdate;
                     const isLoading = actionLoading === pid;
                     const updates = pluginUpdates?.[pid];
@@ -328,14 +407,26 @@ const Plugins = () => {
                                     disabled={actionLoading !== null}
                                     onClick={() => handleAction(pid, 'update')}
                                     className="p-1.5 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Update Plugin"
                                   >
                                     {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                  </button>
+                                )}
+                                {hasConfigs && (
+                                  <button 
+                                    disabled={actionLoading !== null}
+                                    onClick={() => openConfigEditor(pid, info.name)}
+                                    className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="Plugin Settings"
+                                  >
+                                    <Settings size={14} />
                                   </button>
                                 )}
                                 <button 
                                   disabled={actionLoading !== null}
                                   onClick={() => handleAction(pid, 'uninstall')}
                                   className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                  title="Uninstall Plugin"
                                 >
                                   {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                                 </button>
@@ -344,8 +435,8 @@ const Plugins = () => {
                               <button 
                                 disabled={
                                   actionLoading !== null || 
-                                  (pid !== 'metamod' && !pluginStatus['metamod']) || 
-                                  (info.category === 'cssharp' && pid !== 'cssharp' && !pluginStatus['cssharp'])
+                                  (pid !== 'metamod' && !pluginStatus['metamod']?.installed) || 
+                                  (info.category === 'cssharp' && pid !== 'cssharp' && !pluginStatus['cssharp']?.installed)
                                 }
                                 onClick={() => handleAction(pid, 'install')}
                                 className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-primary/10 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
@@ -433,6 +524,89 @@ const Plugins = () => {
       </header>
 
       {renderUnifiedPluginTable()}
+
+      {/* Config Editor Modal */}
+      {configModalPlugin && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setConfigModalPlugin(null)} />
+          <div className="relative w-full max-w-4xl bg-[#0c1424] border border-gray-800 rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 text-primary">
+                  <Settings size={18} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">{configModalPlugin.name} Settings</h3>
+                  <p className="text-[10px] text-gray-500 font-mono tracking-tight mt-0.5">{selectedFilePath || 'Select a file'}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setConfigModalPlugin(null)}
+                className="p-2 text-gray-500 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex flex-1 min-h-0">
+              {/* Sidebar (File List) */}
+              <div className="w-1/4 border-r border-gray-800 bg-[#111827]/40 overflow-y-auto">
+                <div className="p-3 uppercase text-[9px] font-black text-gray-600 tracking-widest">Available Files</div>
+                {isLoadingConfigs ? (
+                    <div className="p-6 flex justify-center">
+                        <Loader2 size={24} className="text-primary animate-spin" />
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-1 p-2">
+                        {configFiles.map(file => (
+                            <button
+                                key={file.path}
+                                onClick={() => handleFileSelect(file.path)}
+                                className={`px-3 py-2 rounded-xl text-left text-xs font-bold transition-all ${selectedFilePath === file.path ? 'bg-primary/20 text-primary' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'}`}
+                            >
+                                {file.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+              </div>
+
+              {/* Editor */}
+              <div className="flex-1 flex flex-col bg-[#080c14]">
+                <textarea
+                  className="flex-1 w-full bg-transparent p-6 text-xs font-mono text-gray-300 focus:outline-none resize-none scrollbar-hide"
+                  value={editingContent}
+                  onChange={(e) => setEditingContent(e.target.value)}
+                  spellCheck={false}
+                  placeholder="// No content or loading..."
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-800 bg-[#111827]/40 flex items-center justify-between">
+              <span className="text-[10px] text-gray-500 font-medium">Changes are applied immediately after saving.</span>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => setConfigModalPlugin(null)}
+                  className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-300 transition-all uppercase tracking-widest"
+                >
+                  Cancel
+                </button>
+                <button 
+                  disabled={isSaving || !selectedFilePath}
+                  onClick={handleSaveConfig}
+                  className="flex items-center gap-2 bg-primary text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
+                >
+                  {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {instances.length === 0 && !instancesLoading && (
         <div className="flex flex-col items-center justify-center py-20 bg-gray-900/30 rounded-3xl border-2 border-dashed border-gray-800">
