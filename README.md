@@ -1,4 +1,4 @@
-# <img src="client/public/favicon.svg" width="32" height="32" /> Quatrix CS2 Manager
+# <img src="client/public/favicon.svg" width="38" height="38" /> Quatrix CS2 Orchestration Platform
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.6.0-brightgreen.svg)](https://nodejs.org/)
@@ -6,44 +6,76 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-7.x-646CFF.svg)](https://vitejs.dev/)
 
-**Quatrix** is an elite, real-time web orchestration platform for Counter-Strike 2 server clusters. Designed for professional administrators who demand a premium, high-performance interface with zero-latency feedback.
+![Quatrix Header](https://raw.githubusercontent.com/cspamsky/quatrix/main/assets/Banner.png)
 
-![Quatrix Dashboard](assets/Dashboard.png)
-
-## 🔥 Why Quatrix?
-
-Game server management shouldn't feel like 1999. Quatrix bridges the gap between raw CLI power and modern UI aesthetics, offering a "glassmorphism" inspired dashboard that puts total control at your fingertips.
-
-### 🚀 Core Performance Features
-
-- **Elite Dashboard**: Live telemetry streams (CPU/RAM/Network) with delta-accurate traffic monitoring.
-- **Smart RCON Orchestration**: High-speed console with intelligent auto-scroll, full ANSI color support, and spawngroup-aware status parsing.
-- **Live Player Intelligence**: Real-time player list with Steam avatars, accurate connection duration, and latency tracking.
-- **Intelligent Plugin Pool**: Centralized eklenti storage ("Download Once, Sync Everywhere") for instant deployment across multiple server instances with deep-discovery archive parsing.
-- **Dynamic Asset Engine**: Real-time map synchronization with automated themed visuals for the entire official CS2 map pool.
-- **Map-Specific Intelligence**: Advanced per-map configuration editor with automated file discovery for Workshop maps.
-- **Unified File Manager**: A web-native explorer for live configuration editing without SFTP baggage.
-- **Self-Healing Deployment**: Intelligent setup scripts with automated SteamCMD provisioning and dependency resolution.
-- **Advanced Admin Management**: Dedicated interface for managing server administrators compatible with CounterStrikeSharp.
-
-### 🔒 Enterprise-Grade Security
-
-- **Centralized Environment**: All configurations managed via a single, secure root `.env` file.
-- **JWT-Powered Auth**: Stateless, secure authentication with bcrypt password hashing.
-- **Path Confinement**: Strict directory traversal protection for all file system operations.
-- **Rate Limiting**: Layered API protection against brute-force and DDoS attempts.
+**Quatrix** is an elite, real-time web orchestration platform designed for professional Counter-Strike 2 server clusters. It bridges the gap between raw CLI power and premium UI aesthetics, offering a "glassmorphism" inspired dashboard with zero-latency feedback.
 
 ---
 
-## 🛠️ Technology Stack
+## � The Quatrix Difference
 
-| Layer              | Technology                                           |
-| :----------------- | :--------------------------------------------------- |
-| **Frontend**       | React 19, Vite 7, Tailwind CSS, Lucide Icons         |
-| **Backend**        | Node.js (ESM), Express 5, Socket.IO 4.8              |
-| **Database**       | Better-SQLite3 (Synchronous Performance)             |
-| **Protocols**      | RCON (Persistent Pooling), WebSockets, Steam Web API |
-| **Infrastructure** | SystemInformation API, SteamCMD, Child Process Spawn |
+Unlike traditional panels, Quatrix is built on three core technical pillars that ensure stability and performance for competitive environments:
+
+### 1. The Isolation Performance Engine
+
+Quatrix uses a proprietary **Granular Symlinking Strategy**. While other panels either copy everything (wasting space) or symlink everything (breaking plugins), Quatrix:
+
+- Physically **copies** engine binaries (`cs2`, `gameinfo.gi`) to force instance root recognition.
+- **Symlinks** 99% of bulk game data (.vpk files) to save hundreds of gigabytes.
+- Keeps `addons` and `cfg` folders local to prevent cross-instance configuration leakage.
+
+### 2. Plugin Priority Orchestration
+
+Total control over the Source2 search path sequence. Quatrix automatically patches `gameinfo.gi` to ensure **Metamod** and **CounterStrikeSharp** load with absolute priority before any core game libraries, eliminating common "Unknown command" or "API Failed" errors.
+
+### 3. Smart Asset Sync
+
+Real-time map and workshop synchronization. Quatrix automatically discovers workshop map filenames and generates themed UI visuals, ensuring your dashboard always matches your server's current state.
+
+---
+
+## 🚀 Key Features
+
+| Feature                 | Description                                                                      | Status |
+| :---------------------- | :------------------------------------------------------------------------------- | :----- |
+| **Elite Dashboard**     | Real-time telemetry (CPU/RAM/Net) with millisecond-accurate delta monitoring.    | ✅     |
+| **Advanced RCON**       | High-speed console with ANSI color support and intelligent auto-scroll.          | ✅     |
+| **Player Intelligence** | Live list with Steam avatars, latency tracking, and moderated session data.      | ✅     |
+| **Plugin Pool**         | "Pool Strategy" distribution - sync any plugin (AFKManager, CSS, etc) instantly. | ✅     |
+| **Admin Manager**       | Native CounterStrikeSharp integration for real-time permission management.       | ✅     |
+| **Web Explorer**        | Integrated file manager for real-time config editing without SFTP.               | ✅     |
+| **Self-Healing**        | Auto-detects and repairs invalid file structures before server boot.             | ✅     |
+
+---
+
+## 🏗️ Technical Architecture
+
+```mermaid
+graph TD
+    User((Server Admin)) -->|Web UI| FE[React 19 / Vite 7]
+    FE -->|WebSocket/REST| BE[Node.js Orchestrator]
+    subgraph Core
+        BE -->|Better-SQLite3| DB[(Persistence Layer)]
+        BE -->|Plugin Manager| Pool[(Central Plugin Pool)]
+    end
+    subgraph "Isolation Instances"
+        Instance1[Instance 1 Cluster]
+        Instance2[Instance 2 Cluster]
+        CoreData[(Main CS2 Core - 40GB+)] ---|Granular Symlinks| Instance1
+        CoreData ---|Granular Symlinks| Instance2
+    end
+    BE -->|Process Spawn| Instance1
+    BE -->|Process Spawn| Instance2
+```
+
+---
+
+## ⚙️ Engineering Specs
+
+- **Frontend**: React 19 (Suspense Enabled), Vite 7, Tailwind CSS (Custom Design System).
+- **Backend**: Node.js 22+, Express 5 (Alpha Features), Socket.IO 4.8.
+- **Database**: Better-SQLite3 (Synchronous/High-Performance IO).
+- **Automation**: SteamCMD Integration, Automated systemd Service Provisioning.
 
 ---
 
@@ -51,98 +83,43 @@ Game server management shouldn't feel like 1999. Quatrix bridges the gap between
 
 ### 1. Prerequisites
 
-- **Node.js**: v20.6.0+ (Required for native `--env-file` support)
-- **OS**: Linux (Ubuntu 22.04+ RECOMMENDED)
-- **Linux Deps**: `lib32gcc-s1`, `lib32stdc++6`, `libc6-i386` (Required for SteamCMD)
+- **Node.js**: v20.6.0+ (Required)
+- **Linux**: Ubuntu 22.04 LTS (Recommended)
+- **SteamCMD Dependencies**: `lib32gcc-s1`, `lib32stdc++6`, `libc6-i386`
 
-### 2. Rapid Installation
-
-Quatrix features an automated "Setup Wizard":
+### 2. Rapid Deployment
 
 ```bash
-# Clone the vision
 git clone https://github.com/cspamsky/quatrix.git
 cd quatrix
-
-# Automated Setup & Dependency Resolution
-# This will: Initialize .env, Generate Secrets, and Install all Packages
-npm run setup
+npm run setup # Automated Setup Wizard
 ```
 
-### 3. Configuration
+### 3. Service Management
 
-Edit the `.env` file in the root directory:
-
-- Add your `STEAM_API_KEY` for player avatars.
-- Configure `PORT` and `VITE_PORT` if needed.
-
-### 4. Running the Hub
-
-**For Production (Recommended - Native Linux Service):**
-
-Quatrix is designed to run as a high-performance native systemd service on Linux.
+Quatrix is designed to run as a native Linux service for maximum uptime.
 
 ```bash
-# Start the service
-sudo systemctl start quatrix
-
-# Enable auto-start on boot
-sudo systemctl enable quatrix
-
-# View live logs
-journalctl -u quatrix -f
-```
-
-- **Unified Hub**: `http://your-server-ip:3001`
-- **Native Performance**: Direct access to hardware, minimal latency, and zero Docker overhead.
-
-**For Standard Development:**
-
-```bash
-# Standard Child Process Mode
-npm run dev
-
-# Or Production without Docker
-npm run build
-npm start
+sudo systemctl enable --now quatrix
+journalctl -u quatrix -f # View live orchestration logs
 ```
 
 ---
 
-## 📁 Architecture Overview
+## 🗺️ Roadmap
 
-```text
-quatrix/                     # Project Root
-├── client/                  # Frontend Hub (React 19 & Vite 7)
-│   ├── src/                 # UI Components, Hooks, and Real-time Logic
-│   └── public/              # Static Brand Assets
-├── server/                  # Backend Orchestrator (Express 5 & Socket.IO)
-│   ├── src/                 # Services (RCON, Plugin Manager, Server Logic)
-│   ├── data/                # Persistent Storage (SQLite, Game Core, Instances)
-│   └── dist/                # Production-ready Backend Build
-├── plugin_pool/             # Centralized Plugin Depository (Pool Strategy)
-├── scripts/                 # System Automation & Infrastructure Scripts
-├── assets/                  # Documentation Media & Visuals
-└── .env                     # Unified Cluster Configuration
-```
+- [x] **Core Isolation Engine**: Stable granular symlinking and instance roots.
+- [x] **Smart Admin UI**: Real-time CounterStrikeSharp permission management.
+- [x] **Metric Telemetry**: High-fidelity resource monitoring.
+- [ ] **Infrastructure Backups**: Automated snapshots of plugin configs and DB states.
+- [ ] **External DB Cluster**: Integrated MariaDB support for global ranks.
+- [ ] **Global API**: RCON pooling for 3rd party integrations.
 
 ---
-
-## 🗺️ Roadmap: The Future of Server Management
-
-- [x] **Live Player Manager**: RCON status integration, Avatars, and Moderation tools (✅ Completed).
-- [x] **Plugin Marketplace**: High-speed centralized pool with one-click install for CSS, MM, and community plugins (✅ Completed).
-- [x] **Map Configuration System**: Per-map CFG editor with automated workshop filename discovery (✅ Completed).
-- [ ] **External Database Orchestrator**: Integrated MySQL/MariaDB management for plugins like Ranks/MatchZy.
-- [ ] **Snapshot Backups**: Automated backups of configurations and plugin data.
-- [ ] **Discord Integration**: Real-time alerts for server status and player sessions.
 
 ## 🤝 Contribution & Support
 
-Quatrix is built by specialists for specialists. Whether it's a bug report, a feature request, or a PR, follow our [Contribution Guidelines](CONTRIBUTING.md).
-
-Developed with precision for Quatrix. ⚡
-
----
+Quatrix is built with precision for professional server owners. ⚡
+Developed by **cspamsky**.
 
 _License: [MIT](LICENSE)_
