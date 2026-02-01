@@ -367,7 +367,7 @@ export const pluginRegistry = {
         category: 'cssharp' as const,
         tags: ['fun', 'audio', 'quake'],
         description: 'Quake announcment sounds for kills',
-        folderName: 'cs2-quake-sounds'
+        folderName: 'QuakeSounds'
     },
     weaponspeed: {
         name: 'CS2-WeaponSpeed',

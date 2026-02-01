@@ -485,10 +485,16 @@ export class PluginManager {
     // 1. CSSharp Specific Configs
     if (info.category === "cssharp") {
       const cssConfigBase = path.join(csgoDir, "addons", "counterstrikesharp", "configs", "plugins");
+      const cssPluginBase = path.join(csgoDir, "addons", "counterstrikesharp", "plugins");
       const candidates = [pluginId, info.folderName, info.name].filter(Boolean);
       
       for (const cand of candidates) {
+        // Standard config folder
         searchPaths.push(path.join(cssConfigBase, cand!));
+        // Plugin internal folder (some newer plugins store config there)
+        searchPaths.push(path.join(cssPluginBase, cand!));
+        // Plugin internal configs folder
+        searchPaths.push(path.join(cssPluginBase, cand!, "configs"));
       }
     }
 
@@ -517,7 +523,7 @@ export class PluginManager {
         for (const item of items) {
           if (item.isFile()) {
             const ext = path.extname(item.name).toLowerCase();
-            if ([".json", ".cfg", ".txt", ".ini"].includes(ext)) {
+            if ([".json", ".cfg", ".txt", ".ini", ".toml"].includes(ext)) {
               const fullPath = path.join(searchDir, item.name);
               configs.push({
                 name: item.name,
