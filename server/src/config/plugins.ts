@@ -9,7 +9,7 @@ export const pluginRegistry = {
     },
     cssharp: {
         name: 'CounterStrikeSharp',
-        currentVersion: 'v1.0.362',
+        currentVersion: '1.0.362',
         folderName: 'counterstrikesharp',
         category: 'core' as const,
         tags: ['core', 'scripting'],
@@ -18,7 +18,7 @@ export const pluginRegistry = {
     // MetaMod Plugins
     cs2fixes: {
         name: 'CS2Fixes',
-        currentVersion: 'v1.17',
+        currentVersion: '1.17',
         category: 'metamod' as const,
         tags: ['fix', 'utility', 'performance'],
         description: 'Essential fixes and performance improvements',
@@ -26,7 +26,7 @@ export const pluginRegistry = {
     },
     playerfix: {
         name: 'ServerListPlayersFix',
-        currentVersion: 'v1.0.5',
+        currentVersion: '1.0.5',
         category: 'metamod' as const,
         tags: ['fix', 'utility'],
         description: 'Fixes players count in server browser',
@@ -34,7 +34,7 @@ export const pluginRegistry = {
     },
     movelock: {
         name: 'MovementUnlocker',
-        currentVersion: 'v1.9',
+        currentVersion: '1.9',
         category: 'metamod' as const,
         tags: ['movement', 'surf', 'bhop'],
         description: 'Removes max speed limitation (BHOP/Surf)',
@@ -42,7 +42,7 @@ export const pluginRegistry = {
     },
     addonmanager: {
         name: 'MultiAddonManager',
-        currentVersion: 'v1.4.8',
+        currentVersion: '1.4.8',
         category: 'metamod' as const,
         tags: ['utility', 'workshop'],
         description: 'Manage multiple workshop addons',
@@ -50,7 +50,7 @@ export const pluginRegistry = {
     },
     accelerator: {
         name: 'AcceleratorCS2',
-        currentVersion: 'v2.0.4',
+        currentVersion: '2.0.4',
         category: 'metamod' as const,
         tags: ['fix', 'utility', 'debug'],
         description: 'Generate crash dumps on server crash',
@@ -99,7 +99,7 @@ export const pluginRegistry = {
     },
     rtv: {
         name: 'RockTheVote',
-        currentVersion: 'v1.8.5',
+        currentVersion: '1.8.5',
         category: 'cssharp' as const,
         tags: ['utility', 'map-voting'],
         description: 'Map voting and management system',
@@ -115,7 +115,7 @@ export const pluginRegistry = {
     },
     botai: {
         name: 'BotAI',
-        currentVersion: 'V1.3',
+        currentVersion: '1.3',
         category: 'cssharp' as const,
         tags: ['bot', 'utility', 'ai'],
         description: 'Improved Bot AI (prevents knife rushing, smarter behavior)',
@@ -123,7 +123,7 @@ export const pluginRegistry = {
     },
     fixrandomspawn: {
         name: 'FixRandomSpawn',
-        currentVersion: 'v1.1.4.1',
+        currentVersion: '1.1.4.1',
         category: 'cssharp' as const,
         tags: ['fix', 'utility', 'spawn'],
         description: 'Fixes mp_randomspawn ConVar for any game mode',
@@ -131,7 +131,7 @@ export const pluginRegistry = {
     },
     execafter: {
         name: 'CS2_ExecAfter',
-        currentVersion: 'v1.0.0',
+        currentVersion: '1.0.0',
         category: 'cssharp' as const,
         tags: ['utility', 'admin', 'commands'],
         description: 'Executes commands after server events or delay',
@@ -147,7 +147,7 @@ export const pluginRegistry = {
     },
     gamemodemanager: {
         name: 'GameModeManager',
-        currentVersion: 'v1.0.63',
+        currentVersion: '1.0.63',
         category: 'cssharp' as const,
         tags: ['gamemode', 'admin', 'utility'],
         description: 'Manage game modes and map groups easily',
@@ -155,7 +155,7 @@ export const pluginRegistry = {
     },
     inventorysim: {
         name: 'Inventory Simulator',
-        currentVersion: 'v37',
+        currentVersion: '37',
         category: 'cssharp' as const,
         tags: ['fun', 'skins', 'inventory'],
         description: 'Skin changer (Skins, Gloves, Agents, etc)',
@@ -163,7 +163,7 @@ export const pluginRegistry = {
     },
     modelchanger: {
         name: 'PlayerModelChanger',
-        currentVersion: 'v1.8.6',
+        currentVersion: '1.8.6',
         category: 'cssharp' as const,
         tags: ['fun', 'skins', 'models'],
         description: 'Lightweight player model changer',
@@ -195,7 +195,7 @@ export const pluginRegistry = {
     },
     sharptimer: {
         name: 'SharpTimer',
-        currentVersion: 'v0.3.1x',
+        currentVersion: '0.3.1x',
         category: 'cssharp' as const,
         tags: ['gamemode', 'timer', 'movement', 'surf', 'bhop'],
         description: 'Timer for Surf/KZ/Bhop/MG/Deathrun',
@@ -203,7 +203,7 @@ export const pluginRegistry = {
     },
     stfixes: {
         name: 'STFixes',
-        currentVersion: 'v1.0.5',
+        currentVersion: '1.0.5',
         category: 'cssharp' as const,
         tags: ['fix', 'utility', 'movement'],
         description: 'Common fixes for SharpTimer servers',
@@ -211,7 +211,7 @@ export const pluginRegistry = {
     },
     arenas: {
         name: 'K4-Arenas',
-        currentVersion: 'v2.0.8',
+        currentVersion: '2.0.8',
         category: 'cssharp' as const,
         tags: ['gamemode', 'arenas', 'ladder'],
         description: 'Multi-arena/Ladder gamemode',
@@ -227,7 +227,7 @@ export const pluginRegistry = {
     },
     retakesallocator: {
         name: 'CS2 Retakes Allocator',
-        currentVersion: 'v2.4.2',
+        currentVersion: '2.4.2',
         category: 'cssharp' as const,
         tags: ['gamemode', 'retakes', 'weapons'],
         description: 'Advanced weapon allocator for Retakes',
@@ -251,7 +251,7 @@ export const pluginRegistry = {
     },
     advertisement: {
         name: 'CS2 Advertisement',
-        currentVersion: 'v1.0.8-recompile',
+        currentVersion: '1.0.8-recompile',
         category: 'cssharp' as const,
         tags: ['utility', 'ads'],
         description: 'Show ads in chat/center/panel',
@@ -259,7 +259,7 @@ export const pluginRegistry = {
     },
     deathmatch: {
         name: 'CS2 Deathmatch',
-        currentVersion: 'v1.3.0',
+        currentVersion: '1.3.0',
         category: 'cssharp' as const,
         tags: ['gamemode', 'deathmatch'],
         description: 'Custom Deathmatch with gun selection',
@@ -267,7 +267,7 @@ export const pluginRegistry = {
     },
     prefireprac: {
         name: 'OpenPrefirePrac',
-        currentVersion: 'v0.1.47',
+        currentVersion: '0.1.47',
         category: 'cssharp' as const,
         tags: ['gamemode', 'practice', 'prefire'],
         description: 'Prefire practice on competitive maps',
@@ -275,7 +275,7 @@ export const pluginRegistry = {
     },
     customvotes: {
         name: 'CS2-CustomVotes',
-        currentVersion: 'v1.1.4',
+        currentVersion: '1.1.4',
         category: 'cssharp' as const,
         tags: ['utility', 'votes', 'admin'],
         description: 'Create custom votes for settings',
@@ -283,7 +283,7 @@ export const pluginRegistry = {
     },
     deathrun: {
         name: 'deathrun-manager',
-        currentVersion: 'V0.5.1',
+        currentVersion: '0.5.1',
         category: 'cssharp' as const,
         tags: ['gamemode', 'deathrun'],
         description: 'Deathrun gamemode manager',
@@ -291,7 +291,7 @@ export const pluginRegistry = {
     },
     announcement: {
         name: 'AnnouncementBroadcaster',
-        currentVersion: 'v0.5',
+        currentVersion: '0.5',
         category: 'cssharp' as const,
         tags: ['utility', 'announcement', 'chat'],
         description: 'Conditional messages and timer broadcasts',
@@ -299,7 +299,7 @@ export const pluginRegistry = {
     },
     gamemodifiers: {
         name: 'CS2-GameModifiers',
-        currentVersion: 'v1.0.4',
+        currentVersion: '1.0.4',
         category: 'cssharp' as const,
         tags: ['fun', 'gamemode'],
         description: 'Random gameplay modifiers every round',
@@ -307,7 +307,7 @@ export const pluginRegistry = {
     },
     funmatch: {
         name: 'CS2FunMatchPlugin',
-        currentVersion: 'v1.1.1',
+        currentVersion: '1.1.1',
         category: 'cssharp' as const,
         tags: ['fun', 'gamemode'],
         description: 'Fun round modes (gravity, speed, etc)',
@@ -323,7 +323,7 @@ export const pluginRegistry = {
     },
     mutualscoring: {
         name: 'CS2-MutualScoringPlayers',
-        currentVersion: 'v1.0.3',
+        currentVersion: '1.0.3',
         category: 'cssharp' as const,
         tags: ['utility', 'combat', 'scoring'],
         description: 'Track head-to-head kills between players',
@@ -339,7 +339,7 @@ export const pluginRegistry = {
     },
     advancedweapon: {
         name: 'CS2 Advanced Weapon System',
-        currentVersion: 'v1.11',
+        currentVersion: '1.11',
         category: 'cssharp' as const,
         tags: ['utility', 'combat', 'weapons'],
         description: 'Advanced weapon attribute control',
@@ -363,7 +363,7 @@ export const pluginRegistry = {
     },
     weaponspeed: {
         name: 'CS2-WeaponSpeed',
-        currentVersion: 'v1.3',
+        currentVersion: '1.3',
         category: 'cssharp' as const,
         tags: ['fun', 'utility', 'speed'],
         description: 'Speed boost when firing specific weapons',
@@ -371,7 +371,7 @@ export const pluginRegistry = {
     },
     spectatorlist: {
         name: 'SpectatorList-CS2',
-        currentVersion: 'v1.0.5',
+        currentVersion: '1.0.5',
         category: 'cssharp' as const,
         tags: ['utility', 'hud', 'spectator'],
         description: 'Shows real-time spectators on screen',
@@ -379,7 +379,7 @@ export const pluginRegistry = {
     },
     football: {
         name: 'SLAYER_Football',
-        currentVersion: 'v1.1',
+        currentVersion: '1.1',
         category: 'cssharp' as const,
         tags: ['gamemode', 'fun', 'football'],
         description: 'Football game mode for CS2',
@@ -387,7 +387,7 @@ export const pluginRegistry = {
     },
     revive: {
         name: 'SLAYER_Revive',
-        currentVersion: 'v1.3.2',
+        currentVersion: '1.3.2',
         category: 'cssharp' as const,
         tags: ['gamemode', 'utility', 'revive'],
         description: 'Revive teammates in-game',
@@ -395,7 +395,7 @@ export const pluginRegistry = {
     },
     teleportkill: {
         name: 'CS2-TeleportKill',
-        currentVersion: 'v1.0.1',
+        currentVersion: '1.0.1',
         category: 'cssharp' as const,
         tags: ['fun', 'utility', 'teleport'],
         description: 'Teleport to victim position on kill',
@@ -424,6 +424,14 @@ export const pluginRegistry = {
         tags: ['library', 'utility', 'core'],
         description: 'Base library for NickFox007 plugins',
         folderName: 'AnyBaseLib'
+    },
+    afkmanager: {
+        name: 'AFKManager',
+        currentVersion: '0.2.8',
+        category: 'cssharp' as const,
+        tags: ['utility', 'afk', 'management'],
+        description: 'Detects and manages AFK players (kick/move to spec)',
+        folderName: 'AFKManager'
     }
 } as const;
 
