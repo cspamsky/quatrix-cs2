@@ -94,19 +94,19 @@ const Dashboard = () => {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-end mb-8">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-8">
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight">Welcome back, {firstName}</h2>
           <p className="text-sm text-gray-400 mt-1">CS2 Server Panel - Manage your competitive battlefield with ease</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex shrink-0">
           {isConnected ? (
-            <div className="flex gap-2 items-center bg-green-500/10 text-green-500 px-4 py-2 rounded-xl text-sm font-medium border border-green-500/20">
+            <div className="flex gap-2 items-center bg-green-500/10 text-green-500 px-4 py-2 rounded-xl text-sm font-medium border border-green-500/20 w-full md:w-auto justify-center">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
               WebSocket Connected
             </div>
           ) : (
-            <div className="flex gap-2 items-center bg-red-500/10 text-red-500 px-4 py-2 rounded-xl text-sm font-medium border border-red-500/20">
+            <div className="flex gap-2 items-center bg-red-500/10 text-red-500 px-4 py-2 rounded-xl text-sm font-medium border border-red-500/20 w-full md:w-auto justify-center">
               <span className="w-2 h-2 bg-red-500 rounded-full"></span>
               WebSocket Disconnected
             </div>
