@@ -464,6 +464,14 @@ export const pluginRegistry = {
         tags: ['utility', 'ads', 'visual'],
         description: 'Create billboard-type advertisements on map props',
         folderName: 'CS2-Poor-MapPropAds'
+    },
+    quatrixmapconfig: {
+        name: 'QuatrixMapConfig',
+        currentVersion: '1.0.8',
+        category: 'cssharp' as const,
+        tags: ['utility', 'map-config', 'automation'],
+        description: 'Advanced map-specific configuration loader for Quatrix',
+        folderName: 'QuatrixMapConfig'
     }
 } as const;
 
