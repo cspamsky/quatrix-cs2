@@ -342,8 +342,9 @@ export class PluginManager {
           await walk(fullPath);
         } else if (item.isFile()) {
           const lowerName = item.name.toLowerCase();
-          if (lowerName.includes(".example.") || lowerName.includes(".examle.")) {
-            const newName = item.name.replace(/\.(example|examle)\./i, ".");
+          // Support .example. .examle. -example. -examle.
+          if (/[.-](example|examle)\./i.test(lowerName)) {
+            const newName = item.name.replace(/[.-](example|examle)\./i, ".");
             const newPath = path.join(dir, newName);
 
             if (!fs.existsSync(newPath)) {
