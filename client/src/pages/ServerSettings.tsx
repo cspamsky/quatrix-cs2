@@ -1,7 +1,8 @@
 import { apiFetch } from '../utils/api'
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Server, MapPin, Users, Lock, Key, Shield } from 'lucide-react'
+import { ArrowLeft, Save, Server, MapPin, Users, Lock, Key, Shield, Globe } from 'lucide-react'
+import { SERVER_REGIONS } from '../config/regions'
 import toast from 'react-hot-toast'
 
 interface ServerData {
@@ -22,6 +23,7 @@ interface ServerData {
   validate_files: number
   additional_args?: string
   tickrate: number
+  region: number
 }
 
 const ServerSettings = () => {
@@ -225,6 +227,24 @@ const ServerSettings = () => {
                     onChange={(e) => setServer({ ...server, tickrate: parseInt(e.target.value) })}
                     className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-400">
+                    Server Region
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
+                    <select
+                      value={server.region || 3}
+                      onChange={(e) => setServer({ ...server, region: parseInt(e.target.value) })}
+                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer"
+                    >
+                      {SERVER_REGIONS.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-2">

@@ -204,6 +204,9 @@ class ServerManager {
     };
     cfgContent = updateLine(cfgContent, "sv_password", options.password || "");
     cfgContent = updateLine(cfgContent, "rcon_password", options.rcon_password || "secret");
+    // Use the region setting from database, default to 3 (Europe)
+    const region = mergedOptions.region !== undefined ? mergedOptions.region : "3";
+    cfgContent = updateLine(cfgContent, "sv_region", region.toString());
     await fs.promises.writeFile(serverCfgPath, cfgContent);
 
     // 2. Start via RuntimeService

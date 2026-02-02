@@ -164,6 +164,10 @@ try {
   db.exec(`ALTER TABLE servers ADD COLUMN additional_args TEXT`);
 } catch (error) {}
 
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN region INTEGER DEFAULT 3`);
+} catch (error) {}
+
 // Create settings table
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (

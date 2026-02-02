@@ -240,6 +240,8 @@ export class PluginManager {
     const assetFolders = ["cfg", "materials", "models", "particles", "sound", "soundevents", "translations", "maps", "scripts"];
     const assetFound = (await Promise.all(assetFolders.map(f => fs.promises.access(path.join(poolPath, f)).then(() => true).catch(() => false)))).some(x => x);
 
+    const pluginFolderName = pluginInfo.folderName || pluginId;
+    
     if (hasGameDir) {
       // Merge into instance root
       await fs.promises.cp(poolPath, path.dirname(path.dirname(csgoDir)), { recursive: true });
@@ -250,12 +252,41 @@ export class PluginManager {
       // Merge into game/csgo/addons (contains counterstrikesharp/)
       await fs.promises.cp(poolPath, path.join(csgoDir, "addons"), { recursive: true });
     } else {
-      // Non-standard or single-file plugin
+      // "Smart Sync": Non-standard structure, distribute by file type
       if (pluginInfo.category === "cssharp") {
-        const folderName = pluginInfo.folderName || pluginId;
-        const dest = path.join(csgoDir, "addons", "counterstrikesharp", "plugins", folderName);
-        await fs.promises.mkdir(dest, { recursive: true });
-        await fs.promises.cp(poolPath, dest, { recursive: true });
+        const cssBase = path.join(csgoDir, "addons", "counterstrikesharp");
+        const pluginDest = path.join(cssBase, "plugins", pluginFolderName);
+        const configDest = path.join(cssBase, "configs", "plugins", pluginFolderName);
+        const transDest = path.join(cssBase, "translations", pluginFolderName);
+
+        await fs.promises.mkdir(pluginDest, { recursive: true });
+        
+        const items = await fs.promises.readdir(poolPath, { withFileTypes: true });
+        for (const item of items) {
+          const src = path.join(poolPath, item.name);
+          const lowerName = item.name.toLowerCase();
+
+          if (lowerName.endsWith(".dll") || lowerName.endsWith(".deps.json") || lowerName.endsWith(".pdb")) {
+            await fs.promises.cp(src, path.join(pluginDest, item.name), { recursive: true });
+          } else if (lowerName.endsWith(".json") || lowerName.endsWith(".toml") || lowerName.endsWith(".cfg") || lowerName.endsWith(".ini")) {
+             await fs.promises.mkdir(configDest, { recursive: true });
+             await fs.promises.cp(src, path.join(configDest, item.name), { recursive: true });
+          } else if (lowerName.endsWith(".txt") || item.isDirectory()) {
+             // Heuristic: folders in root of a CSS plugin are usually configs or translations
+             if (lowerName === "configs" || lowerName === "cfg") {
+                await fs.promises.mkdir(configDest, { recursive: true });
+                await fs.promises.cp(src, configDest, { recursive: true });
+             } else if (lowerName === "translations" || lowerName === "lang") {
+                await fs.promises.mkdir(transDest, { recursive: true });
+                await fs.promises.cp(src, transDest, { recursive: true });
+             } else {
+                // Default to plugin folder
+                await fs.promises.cp(src, path.join(pluginDest, item.name), { recursive: true });
+             }
+          } else {
+            await fs.promises.cp(src, path.join(pluginDest, item.name), { recursive: true });
+          }
+        }
       } else if (pluginInfo.category === "metamod") {
         await fs.promises.cp(poolPath, path.join(csgoDir, "addons"), { recursive: true });
       } else {

@@ -7,8 +7,10 @@ import {
   Settings2, 
   ChevronRight, 
   ChevronLeft, 
-  Rocket
+  Rocket,
+  Globe
 } from 'lucide-react'
+import { SERVER_REGIONS } from '../config/regions'
 
 const CreateInstance = () => {
   const navigate = useNavigate()
@@ -30,7 +32,8 @@ const CreateInstance = () => {
     gameAlias: 'competitive', // Default to Competitive alias
     hibernate: true,
     validateFiles: false,
-    additionalArgs: ''
+    additionalArgs: '',
+    region: 3 // Default to Europe
   })
 
   const nextStep = () => setStep(s => Math.min(s + 1, 3))
@@ -67,7 +70,8 @@ const CreateInstance = () => {
           hibernate: formData.hibernate ? 1 : 0,
           validate_files: formData.validateFiles ? 1 : 0,
           additional_args: formData.additionalArgs || null,
-          auto_start: formData.autoStart
+          auto_start: formData.autoStart,
+          region: formData.region
         }),
       })
 
@@ -169,6 +173,24 @@ const CreateInstance = () => {
                       onChange={handleInputChange}
                       className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" 
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="region" className="block text-sm font-bold text-gray-400">Server Region</label>
+                    <div className="relative">
+                      <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
+                      <select 
+                        id="region"
+                        name="region"
+                        value={formData.region}
+                        onChange={handleInputChange}
+                        className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
+                      >
+                        {SERVER_REGIONS.map(r => (
+                          <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
               </div>
