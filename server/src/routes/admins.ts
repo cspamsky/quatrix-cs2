@@ -11,6 +11,7 @@ const router = Router();
 router.use(authenticateToken);
 
 const ADMINS_FILE_PATH = "addons/counterstrikesharp/configs/admins.json";
+// Ensure all path parts are lowercase for Linux consistency
 
 // GET /api/servers/:id/admins
 router.get("/:id/admins", async (req: any, res) => {

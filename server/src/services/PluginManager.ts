@@ -433,32 +433,49 @@ export class PluginManager {
 
     console.log(`[PLUGIN] Uninstalling ${info.name}...`);
     const folderName = info.folderName || info.name.replace(/[^a-zA-Z0-9]/g, "");
+    const lowerPluginId = pluginId.toLowerCase();
+    const lowerFolderName = folderName.toLowerCase();
+    
     const pathsToDelete: Set<string> = new Set();
     const searchDirs = [
-      addonsDir, csgoDir,
+      addonsDir, 
+      csgoDir,
       path.join(addonsDir, "counterstrikesharp", "plugins"),
       path.join(addonsDir, "counterstrikesharp", "configs", "plugins"),
-      path.join(csgoDir, "cfg"), path.join(csgoDir, "configs"),
-      path.join(csgoDir, "materials"), path.join(csgoDir, "models"),
-      path.join(csgoDir, "particles"), path.join(csgoDir, "sound"),
-      path.join(csgoDir, "soundevents"), path.join(csgoDir, "translations")
+      path.join(addonsDir, "counterstrikesharp", "translations"),
+      path.join(csgoDir, "cfg"), 
+      path.join(csgoDir, "configs"),
+      path.join(csgoDir, "materials"), 
+      path.join(csgoDir, "models"),
+      path.join(csgoDir, "particles"), 
+      path.join(csgoDir, "sound"),
+      path.join(csgoDir, "soundevents"), 
+      path.join(csgoDir, "translations")
     ];
 
     await Promise.all(searchDirs.map(async (dir) => {
+      if (!fs.existsSync(dir)) return;
       try {
         const items = await fs.promises.readdir(dir);
         for (const item of items) {
           const lowerItem = item.toLowerCase();
-          const lowerPluginId = pluginId.toLowerCase();
-          const lowerFolderName = folderName.toLowerCase();
-          const isMatch = lowerItem === lowerPluginId || lowerItem === lowerFolderName ||
-                          lowerItem === lowerPluginId + ".vdf" || lowerItem === lowerFolderName + ".vdf" ||
-                          lowerItem === lowerPluginId + ".dll" || lowerItem === lowerFolderName + ".dll" ||
+          const isMatch = lowerItem === lowerPluginId || 
+                          lowerItem === lowerFolderName ||
+                          lowerItem === lowerPluginId + ".vdf" || 
+                          lowerItem === lowerFolderName + ".vdf" ||
+                          lowerItem === lowerPluginId + ".dll" || 
+                          lowerItem === lowerFolderName + ".dll" ||
                           (lowerPluginId.length > 3 && lowerItem.includes(lowerPluginId)) ||
                           (lowerFolderName.length > 3 && lowerItem.includes(lowerFolderName));
-          if (isMatch) pathsToDelete.add(path.join(dir, item));
+          
+          if (isMatch) {
+            const fullPath = path.join(dir, item);
+            pathsToDelete.add(fullPath);
+          }
         }
-      } catch {}
+      } catch (err) {
+        // Directory might not exist or be inaccessible
+      }
     }));
 
     for (const p of pathsToDelete) {
@@ -520,12 +537,16 @@ export class PluginManager {
 
     // 1. CSSharp Specific Configs
     if (info.category === "cssharp") {
+      // On Linux, paths are case-sensitive. Standard CSS uses lowercase for addons/counterstrikesharp
       const cssConfigBase = path.join(csgoDir, "addons", "counterstrikesharp", "configs", "plugins");
       const cssPluginBase = path.join(csgoDir, "addons", "counterstrikesharp", "plugins");
       const candidates = [pluginId, info.folderName, info.name].filter(Boolean);
       
+      // Add the global admins.json path
+      searchPaths.push(path.join(csgoDir, "addons", "counterstrikesharp", "configs"));
+
       for (const cand of candidates) {
-        // Standard config folder
+        // Standard plugin-specific config folder
         searchPaths.push(path.join(cssConfigBase, cand!));
         // Plugin internal folder (some newer plugins store config there)
         searchPaths.push(path.join(cssPluginBase, cand!));
