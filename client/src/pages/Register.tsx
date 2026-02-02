@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { UserPlus, User, Lock, Eye, EyeOff } from 'lucide-react'
 import { apiFetch } from '../utils/api'
-import Logo from '../components/Logo'
+
 
 
 const Register = () => {
@@ -54,7 +54,7 @@ const Register = () => {
 
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-xl mb-4 shadow-lg shadow-primary/10">
-            <Logo size={48} className="text-white" />
+            <img src="/favicon.svg" alt="Quatrix Logo" className="w-12 h-12" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Quatrix Manager</h1>
           <p className="text-gray-400 mt-1">Create your account</p>

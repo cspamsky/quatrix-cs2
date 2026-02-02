@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { User, Lock, Eye, EyeOff, LogIn } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { apiFetch } from '../utils/api'
-import Logo from '../components/Logo'
+
 
 
 const Login = () => {
@@ -75,7 +75,7 @@ const Login = () => {
 
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center p-3 rounded-xl bg-primary/10 mb-4 shadow-lg shadow-primary/10">
-            <Logo size={48} className="text-white" />
+            <img src="/favicon.svg" alt="Quatrix Logo" className="w-12 h-12" />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Quatrix Manager</h1>
 
