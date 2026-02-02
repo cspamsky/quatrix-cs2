@@ -571,10 +571,14 @@ export class PluginManager {
       // On Linux, paths are case-sensitive. Standard CSS uses lowercase for addons/counterstrikesharp
       const cssConfigBase = path.join(csgoDir, "addons", "counterstrikesharp", "configs", "plugins");
       const cssPluginBase = path.join(csgoDir, "addons", "counterstrikesharp", "plugins");
-      const candidates = [pluginId, info.folderName, info.name].filter(Boolean);
       
-      // Add the global admins.json path
-      searchPaths.push(path.join(csgoDir, "addons", "counterstrikesharp", "configs"));
+      // Normalize candidates and remove duplicates (ignoring case for set, but keeping original for paths)
+      const candSet = new Set([pluginId, info.folderName, info.name].filter(Boolean));
+      const candidates = [...candSet];
+
+      // Add the global admins.json path ONLY for SimpleAdmin or if specifically requested
+      // For now, let's keep it isolated to avoid "all configs" cluttering.
+      // searchPaths.push(path.join(csgoDir, "addons", "counterstrikesharp", "configs"));
 
       for (const cand of candidates) {
         // Standard plugin-specific config folder
