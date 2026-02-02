@@ -42,6 +42,7 @@ Real-time map and workshop synchronization. Quatrix automatically discovers work
 | **Advanced RCON**       | High-speed console with ANSI color support and intelligent auto-scroll.          | ✅     |
 | **Player Intelligence** | Live list with Steam avatars, latency tracking, and moderated session data.      | ✅     |
 | **Plugin Pool**         | "Pool Strategy" distribution - sync any plugin (AFKManager, CSS, etc) instantly. | ✅     |
+| **Config Editor**       | Integrated modal to edit plugin `.json`, `.cfg`, `.toml`, `.txt` configs live.   | ✅     |
 | **Admin Manager**       | Native CounterStrikeSharp integration for real-time permission management.       | ✅     |
 | **Web Explorer**        | Integrated file manager for real-time config editing without SFTP.               | ✅     |
 | **Self-Healing**        | Auto-detects and repairs invalid file structures before server boot.             | ✅     |
@@ -73,35 +74,36 @@ graph TD
 ## ⚙️ Engineering Specs
 
 - **Frontend**: React 19 (Suspense Enabled), Vite 7, Tailwind CSS (Custom Design System).
-- **Backend**: Node.js 22+, Express 5 (Alpha Features), Socket.IO 4.8.
+- **Backend**: Node.js 20+ (LTS), Express 5 (Alpha Features), Socket.IO 4.8.
 - **Database**: Better-SQLite3 (Synchronous/High-Performance IO).
-- **Automation**: SteamCMD Integration, Automated systemd Service Provisioning.
+- **Automation**: SteamCMD Integration, Automated systemd Service Provisioning, Unified Linux Installer.
 
 ---
 
-## 🏃 Quick Start
+## 🏃 Quick Start (Linux)
 
-### 1. Prerequisites
+The fastest way to deploy Quatrix on a fresh Ubuntu/Debian VDS:
 
-- **Node.js**: v20.6.0+ (Required)
-- **Linux**: Ubuntu 22.04 LTS (Recommended)
-- **SteamCMD Dependencies**: `lib32gcc-s1`, `lib32stdc++6`, `libc6-i386`
-
-### 2. Rapid Deployment
+### ⚡ One-Liner Installation
 
 ```bash
-git clone https://github.com/cspamsky/quatrix.git
-cd quatrix
-npm run setup # Automated Setup Wizard
+curl -sSL https://raw.githubusercontent.com/cspamsky/quatrix/main/install.sh | sudo bash
 ```
 
-### 3. Service Management
+This command automatically:
 
-Quatrix is designed to run as a native Linux service for maximum uptime.
+1. Installs all dependencies (Node.js 20, .NET 8, 32-bit libs).
+2. Creates a dedicated `quatrix` user for security.
+3. Clones the project into `/home/quatrix/quatrix`.
+4. Configures a `systemd` service with `KillMode=process` (Zero-downtime restarts).
+5. Optimizes the `UFW` firewall for CS2 traffic.
+
+### 🛠️ Service Management
 
 ```bash
-sudo systemctl enable --now quatrix
-journalctl -u quatrix -f # View live orchestration logs
+sudo systemctl start quatrix     # Start the engine
+sudo systemctl status quatrix    # Check health
+sudo journalctl -u quatrix -f    # Live orchestration logs
 ```
 
 ---

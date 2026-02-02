@@ -1,0 +1,159 @@
+#!/bin/bash
+
+# ==============================================================================
+# QUATRIX - UNIFIED LINUX INSTALLATION SCRIPT
+# ==============================================================================
+# This script automates the entire Quatrix setup process:
+# 1. System Dependencies (Node.js 20, 32-bit libs, .NET 8)
+# 2. Service User Creation (quatrix)
+# 3. Environment Configuration (.env & JWT generation)
+# 4. Node.js Dependency Installation & Production Build
+# 5. Systemd Service Deployment (KillMode=process)
+# 6. Firewall Configuration (UFW)
+# ==============================================================================
+
+set -e
+
+# ANSI Colors for beautiful output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+YELLOW='\033[1;33m'
+BRIGHT='\033[1m'
+NC='\033[0m'
+
+# Logger functions
+log() { echo -e "${BLUE}${BRIGHT}[QUATRIX]${NC} $1"; }
+info() { echo -e "${CYAN}[INFO]${NC} $1"; }
+success() { echo -e "${GREEN}${BRIGHT}[SUCCESS]${NC} $1"; }
+warn() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+clear
+echo -e "${CYAN}${BRIGHT}============================================================${NC}"
+echo -e "${BLUE}${BRIGHT}          QUATRIX - ZERO-TOUCH INSTALLATION WIZARD${NC}"
+echo -e "${CYAN}${BRIGHT}============================================================${NC}\n"
+
+# 1. Root Check
+if [ "$EUID" -ne 0 ]; then
+  error "Please run as root (use sudo bash install.sh)"
+  exit 1
+fi
+
+REPO_URL="https://github.com/cspamsky/quatrix.git"
+INSTALL_DIR="/home/quatrix/quatrix"
+
+# 2. Git & Basic Tool Installation
+info "Updating system packages and checking for Git..."
+apt-get update
+apt-get install -y curl git build-essential ufw sudo 
+
+# 3. Dedicated User Setup
+if id "quatrix" &>/dev/null; then
+    info "User 'quatrix' already exists."
+else
+    info "Creating dedicated 'quatrix' service user..."
+    useradd -m -s /bin/bash quatrix
+    usermod -aG sudo quatrix
+    success "User 'quatrix' created."
+fi
+
+# 4. Project Retrieval / Update
+mkdir -p "$INSTALL_DIR"
+chown -R quatrix:quatrix /home/quatrix
+
+if [ -d "$INSTALL_DIR/.git" ]; then
+    info "Existing Quatrix repository detected in $INSTALL_DIR. Updating..."
+    cd "$INSTALL_DIR"
+    sudo -u quatrix git pull origin main || warn "Could not pull latest changes. Continuing with local files."
+else
+    info "Cloning Quatrix from GitHub into $INSTALL_DIR..."
+    # Clone as root into the directory, then fix perms
+    git clone $REPO_URL "$INSTALL_DIR"
+    chown -R quatrix:quatrix "$INSTALL_DIR"
+    cd "$INSTALL_DIR"
+    success "Project cloned successfully."
+fi
+
+info "Current Working Directory: ${BRIGHT}$(pwd)${NC}"
+
+# Install Node.js 20.x
+if ! command -v node &> /dev/null || [[ $(node -v) != v20* ]]; then
+    info "Installing Node.js 20.x (LTS)..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt-get install -y nodejs
+fi
+
+# Install SteamCMD & CounterStrikeSharp Requirements
+info "Installing 32-bit libraries and .NET 8 Runtime..."
+dpkg --add-architecture i386 || true
+apt-get update
+apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1 libicu-dev libkrb5-3 zlib1g libssl-dev dotnet-runtime-8.0
+
+# 5. Environment Automation
+if [ ! -f .env ]; then
+    info "Generating .env from template..."
+    cp .env.example .env
+    # Generate a unique 64-character hex secret for JWT
+    JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+    sed -i "s/your_super_secret_jwt_key_here_change_this_in_production/$JWT_SECRET/" .env
+    chown quatrix:quatrix .env
+    success "Secure .env generated."
+else
+    warn ".env already exists. Keeping current configuration."
+fi
+
+# 6. Dependency Installation (Running as quatrix)
+info "Installing Node.js modules for all components..."
+sudo -u quatrix npm install
+sudo -u quatrix npm install --prefix server
+sudo -u quatrix npm install --prefix client
+
+# 7. Production Build (Frontend & Backend)
+info "Compiling project for production..."
+sudo -u quatrix npm run build
+
+# 8. Systemd Service Deployment
+info "Installing systemd service unit..."
+cat <<EOF > /etc/systemd/system/quatrix.service
+[Unit]
+Description=Quatrix Game Server Manager
+After=network.target
+
+[Service]
+Type=simple
+User=quatrix
+WorkingDirectory=$INSTALL_DIR
+ExecStart=/usr/bin/node --env-file=$INSTALL_DIR/.env $INSTALL_DIR/server/dist/index.js
+Restart=always
+KillMode=process
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable quatrix
+success "Quatrix service installed and enabled (KillMode=process)."
+
+# 9. Firewall Configuration
+info "Configuring UFW firewall rules..."
+ufw allow 22/tcp   # SSH
+ufw allow 80/tcp   # Web (mapped)
+ufw allow 3001/tcp # API/WS
+ufw allow 27015:27050/udp # CS2 Game Traffic
+ufw allow 27015:27050/tcp # CS2 RCON/TV
+ufw --force enable
+success "Firewall optimized for CS2."
+
+# Final Output
+echo -e "\n${GREEN}${BRIGHT}============================================================${NC}"
+success "INSTALLATION COMPLETE!"
+info "Start Panel:   ${YELLOW}sudo systemctl start quatrix${NC}"
+info "Check Status:  ${YELLOW}sudo systemctl status quatrix${NC}"
+info "View Logs:     ${YELLOW}sudo journalctl -u quatrix -f${NC}"
+info "Dashboard:     ${BRIGHT}${MAGENTA}http://$(curl -s https://api.ipify.org)${NC}"
+echo -e "${GREEN}${BRIGHT}============================================================${NC}\n"
