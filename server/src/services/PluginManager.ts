@@ -263,7 +263,14 @@ export class PluginManager {
       }
     }
 
-    // 3. Record in DB
+    // 3. Process .example and .examle configurations
+    const searchDir = hasGameDir 
+      ? path.dirname(path.dirname(csgoDir)) 
+      : (hasAddonsDir || assetFound ? csgoDir : (hasCSSDir ? path.join(csgoDir, "addons") : csgoDir));
+    
+    await this.processExampleConfigs(searchDir);
+
+    // 4. Record in DB
     try {
       db.prepare(`
         INSERT INTO server_plugins (server_id, plugin_id, version) 
@@ -322,6 +329,34 @@ export class PluginManager {
 
     const found = await walk(searchDir);
     return found || searchDir;
+  }
+
+  private async processExampleConfigs(targetDir: string) {
+    if (!fs.existsSync(targetDir)) return;
+
+    const walk = async (dir: string) => {
+      const items = await fs.promises.readdir(dir, { withFileTypes: true });
+      for (const item of items) {
+        const fullPath = path.join(dir, item.name);
+        if (item.isDirectory()) {
+          await walk(fullPath);
+        } else if (item.isFile()) {
+          const lowerName = item.name.toLowerCase();
+          if (lowerName.includes(".example.") || lowerName.includes(".examle.")) {
+            const newName = item.name.replace(/\.(example|examle)\./i, ".");
+            const newPath = path.join(dir, newName);
+
+            if (!fs.existsSync(newPath)) {
+              console.log(`[PLUGIN] Activating config: ${item.name} -> ${newName}`);
+              await fs.promises.copyFile(fullPath, newPath);
+              await fs.promises.unlink(fullPath).catch(() => {});
+            }
+          }
+        }
+      }
+    };
+
+    await walk(targetDir).catch(err => console.error(`[PLUGIN] Example config processing failed:`, err));
   }
 
   private async configureMetamod(csgoDir: string) {
