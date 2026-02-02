@@ -87,7 +87,7 @@ The fastest way to deploy Quatrix on a fresh Ubuntu/Debian VDS:
 ### ⚡ One-Liner Installation
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/cspamsky/quatrix/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/cspamsky/quatrix/main/install.sh | sudo bash
 ```
 
 This command automatically:
