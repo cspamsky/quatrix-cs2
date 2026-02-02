@@ -346,12 +346,12 @@ export const pluginRegistry = {
         folderName: 'warcraft-plugin'
     },
     advancedweapon: {
-        name: 'CS2 Advanced Weapon System',
+        name: 'Advanced Weapon System',
         currentVersion: '1.11',
         category: 'cssharp' as const,
         tags: ['utility', 'combat', 'weapons'],
         description: 'Advanced weapon attribute control',
-        folderName: 'AdvancedWeaponSystem'
+        folderName: 'cs2-advanced-weapon-system'
     },
     oneinthechamber: {
         name: 'CS2 One In The Chamber',
