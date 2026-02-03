@@ -65,6 +65,7 @@ export class PluginManager {
     const poolItems = await fs.promises.readdir(POOL_DIR).catch(() => []);
     const poolItemsLower = poolItems.map(i => i.toLowerCase());
 
+    // 1. Process static registry
     for (const [id, info] of Object.entries(this.pluginRegistry)) {
       const candidateNames = [
         id.toLowerCase(),
@@ -81,10 +82,58 @@ export class PluginManager {
         category: info.category,
         description: (info as any).description || "",
         folderName: (info as any).folderName,
-        inPool: inPool
+        inPool: inPool,
+        isCustom: false
       };
     }
+
+    // 2. Process dynamic pool folders
+    for (const item of poolItems) {
+        const itemLower = item.toLowerCase();
+        // Skip if already in manifest (by static registry)
+        const isKnown = Object.values(manifest).some((m: any) => 
+            (m.folderName && m.folderName.toLowerCase() === itemLower) || 
+            (m.name && m.name.toLowerCase().replace(/[^a-z0-9]/g, "") === itemLower)
+        );
+        
+        if (!isKnown) {
+            // New discovered plugin
+            const fullPath = path.join(POOL_DIR, item);
+            const stats = await fs.promises.stat(fullPath);
+            if (stats.isDirectory()) {
+                const category = await this.detectPoolFolderCategory(fullPath);
+                manifest[itemLower] = {
+                   name: item,
+                   version: "latest",
+                   category: category,
+                   description: "Manually added or discovered plugin",
+                   folderName: item,
+                   inPool: true,
+                   isCustom: true
+                };
+            }
+        }
+    }
+
     return manifest;
+  }
+
+  private async detectPoolFolderCategory(dir: string): Promise<'metamod' | 'cssharp' | 'core'> {
+      const items = await fs.promises.readdir(dir).catch(() => []);
+      const itemsLower = items.map(i => i.toLowerCase());
+
+      if (itemsLower.includes('counterstrikesharp')) return 'cssharp';
+      if (itemsLower.includes('addons')) {
+          const addonsContent = await fs.promises.readdir(path.join(dir, 'addons')).catch(() => []);
+          if (addonsContent.some(c => c.toLowerCase() === 'counterstrikesharp')) return 'cssharp';
+          return 'metamod';
+      }
+      
+      // Look for signatures deeper
+      const hasDLL = itemsLower.some(i => i.endsWith('.dll'));
+      if (hasDLL) return 'cssharp'; // Most dynamic uploads for CS2 are CSS plugins
+
+      return 'cssharp'; // Default to CS#
   }
 
   async getPluginStatus(
@@ -197,12 +246,12 @@ export class PluginManager {
    * Validates that the plugin exists in the central pool.
    * Downloads are disabled; the pool must be populated manually.
    */
-  async ensurePluginInPool(pluginId: PluginId): Promise<string> {
+  async ensurePluginInPool(pluginId: string): Promise<string> {
     const info = (this.pluginRegistry as any)[pluginId];
     const candidateNames = new Set([
         pluginId.toLowerCase(),
-        (info.folderName || "").toLowerCase(),
-        (info.name || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+        ((info?.folderName) || "").toLowerCase(),
+        ((info?.name) || "").toLowerCase().replace(/[^a-z0-9]/g, "")
     ].filter(Boolean));
 
     // List the pool directory once
@@ -222,19 +271,15 @@ export class PluginManager {
         }
     }
 
-    const expectedPath = path.join(POOL_DIR, info.folderName || pluginId);
+    const expectedName = info?.folderName || pluginId;
+    const expectedPath = path.join(POOL_DIR, expectedName);
     throw new Error(
       `Plugin "${pluginId}" not found in local pool. Please upload it via the dashboard or add its files to: ${expectedPath}`,
     );
   }
 
-  async uploadToPool(pluginId: PluginId, zipPath: string): Promise<void> {
-    const info = (this.pluginRegistry as any)[pluginId];
-    if (!info) throw new Error("Invalid plugin ID");
-
-    const tempExtractDir = path.join(POOL_DIR, `.temp_${pluginId}_${Date.now()}`);
-    const finalFolderName = info.folderName || pluginId;
-    const targetPoolPath = path.join(POOL_DIR, finalFolderName);
+  async uploadToPool(pluginId: string, zipPath: string): Promise<void> {
+    const tempExtractDir = path.join(POOL_DIR, `.temp_upload_${Date.now()}`);
 
     try {
       await fs.promises.mkdir(tempExtractDir, { recursive: true });
@@ -244,15 +289,20 @@ export class PluginManager {
 
       // Find the actual content root (smart flatten)
       const contentRoot = await this.findContentRoot(tempExtractDir);
+      
+      // Detect metadata from extracted files
+      const metadata = await this.detectPluginMetadata(contentRoot, pluginId);
+      const finalFolderName = metadata.folderName;
+      const targetPoolPath = path.join(POOL_DIR, finalFolderName);
 
       if (fs.existsSync(targetPoolPath)) {
         await fs.promises.rm(targetPoolPath, { recursive: true, force: true });
       }
 
       await fs.promises.rename(contentRoot, targetPoolPath);
-      console.log(`[POOL] Plugin ${pluginId} successfully uploaded and extracted to ${targetPoolPath}`);
+      console.log(`[POOL] Plugin ${metadata.name} (${metadata.category}) successfully uploaded to ${targetPoolPath}`);
     } catch (error: any) {
-      console.error(`[POOL] Upload failed for ${pluginId}:`, error);
+      console.error(`[POOL] Upload failed:`, error);
       throw new Error(`Failed to process plugin ZIP: ${error.message}`);
     } finally {
       // Cleanup temp dirs
@@ -261,15 +311,57 @@ export class PluginManager {
     }
   }
 
+  private async detectPluginMetadata(dir: string, suggestedId?: string): Promise<{ name: string, category: 'cssharp' | 'metamod' | 'core', folderName: string }> {
+      const items = await fs.promises.readdir(dir, { withFileTypes: true });
+      const itemsLower = items.map(i => i.name.toLowerCase());
+
+      // 1. Check for CS# structure: addons/counterstrikesharp/plugins/Name
+      if (itemsLower.includes("addons")) {
+          const addonsPath = path.join(dir, "addons");
+          const addonsItems = await fs.promises.readdir(addonsPath).catch(() => []);
+          const hasCSS = addonsItems.some(i => i.toLowerCase() === "counterstrikesharp");
+          if (hasCSS) {
+              const pluginsPath = path.join(addonsPath, "counterstrikesharp", "plugins");
+              const cssPlugins = await fs.promises.readdir(pluginsPath).catch(() => []);
+              if (cssPlugins.length > 0) {
+                  const pName = cssPlugins[0] || suggestedId || "UnknownCS";
+                  return { name: pName, category: 'cssharp', folderName: pName };
+              }
+              const defName = suggestedId || "UnknownCS";
+              return { name: defName, category: 'cssharp', folderName: defName };
+          }
+          const mmName = suggestedId || addonsItems[0] || "UnknownMM";
+          return { name: mmName, category: 'metamod', folderName: mmName };
+      }
+
+      // 2. Check for naked CS# plugin (just dlls/configs)
+      const dllFiles = items.filter(i => i.isFile() && i.name.toLowerCase().endsWith(".dll"));
+      if (dllFiles.length > 0) {
+          const mainDll = dllFiles.find(f => !f.name.toLowerCase().includes("native")) || dllFiles[0];
+          if (mainDll) {
+            const name = mainDll.name.replace(".dll", "");
+            return { name: name, category: 'cssharp', folderName: name };
+          }
+      }
+
+      // Fallback
+      const fallbackName = suggestedId || path.basename(dir);
+      return { name: fallbackName, category: 'cssharp', folderName: fallbackName };
+  }
+
   async installPlugin(
     installDir: string,
     instanceId: string | number,
-    pluginId: PluginId,
+    pluginId: string,
   ): Promise<void> {
     const csgoDir = path.join(installDir, instanceId.toString(), "game", "csgo");
-    const pluginInfo = this.pluginRegistry[pluginId] as any;
+    const registry = await this.getRegistry(instanceId);
+    const pluginInfo = registry[pluginId];
     
-    if (!pluginInfo) return;
+    if (!pluginInfo) {
+        console.error(`[PLUGIN] Attempted to install unknown plugin: ${pluginId}`);
+        return;
+    }
 
     // 1. Ensure plugin is in our central pool
     const poolPath = await this.ensurePluginInPool(pluginId);
@@ -491,20 +583,21 @@ export class PluginManager {
     }
   }
 
-  async updatePlugin(installDir: string, instanceId: string | number, pluginId: PluginId): Promise<void> {
+  async updatePlugin(installDir: string, instanceId: string | number, pluginId: string): Promise<void> {
     // Force a fresh copy from pool, ensurePluginInPool will handle if it needs re-downloading
     // For a real 'update' that bypasses pool, we'd need to clear the pool item first.
     await this.installPlugin(installDir, instanceId, pluginId);
   }
 
-  async uninstallPlugin(installDir: string, instanceId: string | number, pluginId: PluginId): Promise<void> {
+  async uninstallPlugin(installDir: string, instanceId: string | number, pluginId: string): Promise<void> {
     const csgoDir = path.join(installDir, instanceId.toString(), "game", "csgo");
     const addonsDir = path.join(csgoDir, "addons");
 
-    if (pluginId === ("metamod" as any)) return this.uninstallMetamod(installDir, instanceId);
-    if (pluginId === ("cssharp" as any)) return this.uninstallCounterStrikeSharp(installDir, instanceId);
+    if (pluginId === "metamod") return this.uninstallMetamod(installDir, instanceId);
+    if (pluginId === "cssharp") return this.uninstallCounterStrikeSharp(installDir, instanceId);
 
-    const info = this.pluginRegistry[pluginId] as any;
+    const registry = await this.getRegistry(instanceId);
+    const info = registry[pluginId];
     if (!info) return;
 
     console.log(`[PLUGIN] Uninstalling ${info.name}...`);
@@ -600,12 +693,13 @@ export class PluginManager {
   async getPluginConfigFiles(
     installDir: string,
     instanceId: string | number,
-    pluginId: PluginId
+    pluginId: string
   ): Promise<{ name: string; path: string }[]> {
     const id = instanceId.toString();
     const serverPath = path.join(installDir, id);
     const csgoDir = path.join(serverPath, "game", "csgo");
-    const info = (this.pluginRegistry as any)[pluginId];
+    const registry = await this.getRegistry(instanceId);
+    const info = registry[pluginId];
     if (!info) return [];
 
     const configs: { name: string; path: string }[] = [];
@@ -678,6 +772,18 @@ export class PluginManager {
     }
 
     return configs;
+  }
+
+  async deleteFromPool(pluginId: string): Promise<void> {
+      const registry = await this.getRegistry();
+      const info = registry[pluginId];
+      if (!info || !info.inPool) throw new Error("Plugin not found in pool");
+
+      const poolPath = path.join(POOL_DIR, info.folderName || pluginId);
+      if (fs.existsSync(poolPath)) {
+          await fs.promises.rm(poolPath, { recursive: true, force: true });
+          console.log(`[POOL] Plugin ${pluginId} deleted from central repository.`);
+      }
   }
 }
 

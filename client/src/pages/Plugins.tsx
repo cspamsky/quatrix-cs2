@@ -37,6 +37,7 @@ interface PluginInfo {
     description?: string;
     tags?: string[];
     inPool: boolean;
+    isCustom?: boolean;
 }
 
 const Plugins = () => {
@@ -147,11 +148,11 @@ const Plugins = () => {
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadModalPlugin || !selectedFile) return;
+    if (!selectedFile) return;
 
     setIsUploading(true);
     const formData = new FormData();
-    formData.append('pluginId', uploadModalPlugin.id);
+    formData.append('pluginId', uploadModalPlugin?.id || 'unknown');
     formData.append('pluginZip', selectedFile);
 
     try {
@@ -165,7 +166,7 @@ const Plugins = () => {
         const data = await response.json();
 
         if (response.ok) {
-            toast.success('Plugin uploaded to pool successfully!');
+            toast.success('Plugin processed and added to pool!');
             setUploadModalPlugin(null);
             setSelectedFile(null);
             queryClient.invalidateQueries({ queryKey: ['plugin-registry'] });
@@ -177,6 +178,29 @@ const Plugins = () => {
     } finally {
         setIsUploading(false);
     }
+  };
+
+  const handleDeletePool = async (pluginId: string) => {
+      const confirmed = await showConfirm({
+          title: "Remove from pool?",
+          message: `Are you sure you want to remove ${pluginId} from the central repository? Installed instances will NOT be affected, but you won't be able to reinstall it until you upload it again.`,
+          confirmText: "Delete Now",
+          type: "danger"
+      });
+      if (!confirmed) return;
+
+      try {
+          const response = await apiFetch(`/api/servers/plugins/pool/${pluginId}`, { method: 'DELETE' });
+          if (response.ok) {
+              toast.success(`${pluginId} removed from pool`);
+              queryClient.invalidateQueries({ queryKey: ['plugin-registry'] });
+          } else {
+              const data = await response.json();
+              toast.error(data.message || 'Deletion failed');
+          }
+      } catch (error) {
+          toast.error('Connection error');
+      }
   };
 
   const allPlugins = useMemo(() => 
@@ -411,8 +435,13 @@ const Plugins = () => {
                             <div>
                               <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">{info.name}</div>
                               <span className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 inline-block ${isInstalled ? 'bg-green-500/10 text-green-500' : 'bg-gray-800/60 text-gray-500'}`}>
-                                {isInstalled ? 'Installed' : 'Not Loaded'}
+                              {isInstalled ? 'Installed' : 'Not Loaded'}
                               </span>
+                              {info.isCustom && (
+                                <span className="text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 ml-1 inline-block bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                                  Custom
+                                </span>
+                              )}
                               {!info.inPool && (
                                 <span className="text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 ml-1 inline-block bg-orange-500/10 text-orange-500 border border-orange-500/20">
                                   Missing in Pool
@@ -479,6 +508,15 @@ const Plugins = () => {
                               </>
                             ) : (
                               <div className="flex items-center gap-2">
+                                {info.inPool && (
+                                  <button 
+                                    onClick={() => handleDeletePool(pid)}
+                                    className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all ml-auto"
+                                    title="Delete from Pool"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                                 {!info.inPool && (
                                   <button 
                                     onClick={() => setUploadModalPlugin({ id: pid, name: info.name })}
@@ -563,20 +601,30 @@ const Plugins = () => {
             <p className="text-sm text-gray-400 mt-1">One-click deployment for professional CS2 server environments</p>
         </div>
         
-        <div className="flex flex-col items-end">
-          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
-          <div className="relative group">
-            <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <select 
-              className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm min-w-[200px]"
-              value={selectedServer || ''}
-              onChange={(e) => setSelectedServer(e.target.value)}
-            >
-              <option value="" disabled>Select server...</option>
-              {instances.map((inst: Instance) => (
-                <option key={inst.id} value={inst.id} className="bg-[#0c1424]">{inst.name}</option>
-              ))}
-            </select>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setUploadModalPlugin({ id: 'unknown', name: 'New Custom Plugin' })}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 text-orange-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-orange-500/20 transition-all border border-orange-500/20"
+          >
+            <Layers size={14} />
+            Upload ZIP
+          </button>
+          
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
+            <div className="relative group">
+              <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+              <select 
+                className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm min-w-[200px]"
+                value={selectedServer || ''}
+                onChange={(e) => setSelectedServer(e.target.value)}
+              >
+                <option value="" disabled>Select server...</option>
+                {instances.map((inst: Instance) => (
+                  <option key={inst.id} value={inst.id} className="bg-[#0c1424]">{inst.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
       </header>
@@ -677,7 +725,9 @@ const Plugins = () => {
                   <Layers size={20} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Upload to Pool</h3>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                    {uploadModalPlugin.id === 'unknown' ? 'Global Plugin Upload' : 'Upload to Pool'}
+                  </h3>
                   <p className="text-[10px] text-gray-500 font-mono tracking-tight mt-0.5">{uploadModalPlugin.name}</p>
                 </div>
               </div>

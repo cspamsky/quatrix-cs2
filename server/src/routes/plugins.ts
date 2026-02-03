@@ -67,7 +67,7 @@ router.get("/:id/plugins/:plugin/configs", async (req: any, res) => {
         const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
         if (!server) return res.status(404).json({ message: "Server not found" });
 
-        const configs = await serverManager.getPluginConfigFiles(id, plugin as PluginId);
+        const configs = await serverManager.getPluginConfigFiles(id, plugin);
         res.json(configs);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -95,14 +95,14 @@ router.post("/:id/plugins/:plugin/:action", async (req: any, res) => {
         }
 
         if (action === 'install') {
-            await serverManager.installPlugin(id, pluginId);
+            await serverManager.installPlugin(id, plugin);
         } else if (action === 'uninstall') {
-            await serverManager.uninstallPlugin(id, pluginId);
+            await serverManager.uninstallPlugin(id, plugin);
         } else if (action === 'update') {
-            await serverManager.updatePlugin(id, pluginId);
+            await serverManager.updatePlugin(id, plugin);
         }
 
-        res.json({ message: `${registry[pluginId].name} ${action}ed successfully` });
+        res.json({ message: `${registry[plugin]?.name || plugin} ${action}ed successfully` });
     } catch (error: any) {
         console.error(`Plugin ${action} error:`, error);
         res.status(500).json({ message: error.message });
@@ -110,27 +110,29 @@ router.post("/:id/plugins/:plugin/:action", async (req: any, res) => {
 });
 
 // POST /api/servers/plugins/pool/upload
-router.post("/pool/upload", upload.single('pluginZip'), async (req: any, res) => {
+router.post("/plugins/pool/upload", upload.single('pluginZip'), async (req: any, res) => {
     const { pluginId } = req.body;
     
     if (!req.file) {
         return res.status(400).json({ message: "No ZIP file uploaded" });
     }
 
-    if (!pluginId) {
-        return res.status(400).json({ message: "Missing pluginId" });
-    }
-
     try {
-        const registry = await serverManager.getPluginRegistry();
-        if (!registry[pluginId as PluginId]) {
-            return res.status(400).json({ message: "Invalid pluginId" });
-        }
-
-        await serverManager.pluginManager.uploadToPool(pluginId as PluginId, req.file.path);
-        res.json({ message: `Plugin ${pluginId} uploaded to pool successfully` });
+        await serverManager.pluginManager.uploadToPool(pluginId || "unknown", req.file.path);
+        res.json({ message: "Plugin uploaded and processed successfully" });
     } catch (error: any) {
         console.error("[POOL] Upload error:", error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// DELETE /api/servers/plugins/pool/:pluginId
+router.delete("/plugins/pool/:pluginId", async (req, res) => {
+    const { pluginId } = req.params;
+    try {
+        await serverManager.pluginManager.deleteFromPool(pluginId);
+        res.json({ message: "Plugin removed from pool" });
+    } catch (error: any) {
         res.status(500).json({ message: error.message });
     }
 });
