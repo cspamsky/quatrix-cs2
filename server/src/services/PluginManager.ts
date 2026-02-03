@@ -199,8 +199,9 @@ export class PluginManager {
       });
     };
 
-    const checks = Object.keys(this.pluginRegistry).map(async (pid) => {
-      const info = (this.pluginRegistry as any)[pid];
+    const registry = await this.getRegistry(instanceId);
+    const checks = Object.keys(registry).map(async (pid) => {
+      const info = registry[pid];
       if (info.category === "core") {
         if (!status[pid]) status[pid] = { installed: false, hasConfigs: false };
         return;
@@ -231,7 +232,7 @@ export class PluginManager {
 
       let hasConfigs = false;
       if (installed) {
-        const configs = await this.getPluginConfigFiles(installDir, instanceId, pid as PluginId);
+        const configs = await this.getPluginConfigFiles(installDir, instanceId, pid);
         hasConfigs = configs.length > 0;
       }
 
