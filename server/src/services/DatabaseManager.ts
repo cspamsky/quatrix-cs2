@@ -143,16 +143,44 @@ export class DatabaseManager {
         const dbUser = `quatrix_u_${id}`;
 
         try {
+            console.log(`[DB] Dropping database ${dbName} and user ${dbUser}...`);
             await this.pool.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
             await this.pool.query(`DROP USER IF EXISTS '${dbUser}'@'%'`);
             
             const all = await this.loadAllCredentials();
-            delete all[id];
-            await fs.promises.writeFile(this.credsFile, JSON.stringify(all, null, 2));
+            if (all[id]) {
+                delete all[id];
+                await fs.promises.writeFile(this.credsFile, JSON.stringify(all, null, 2));
+            }
             
-            console.log(`[DB] Database ${dbName} and user ${dbUser} dropped.`);
+            console.log(`[DB] Database ${dbName} cleaned up for server ${id}.`);
         } catch (error: any) {
-            console.error(`[DB] Failed to drop database for server ${id}:`, error.message);
+            console.warn(`[DB] Failed to drop database for server ${id} (Non-critical):`, error.message);
+        }
+    }
+
+    /**
+     * Gets statistics for a specific database (size in MB and table count).
+     */
+    async getDatabaseStats(serverId: string | number) {
+        if (!this.pool) return null;
+        const dbName = `quatrix_srv_${serverId}`;
+        
+        try {
+            const [rows]: any = await this.pool.query(`
+                SELECT 
+                    ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb,
+                    COUNT(*) AS table_count
+                FROM information_schema.tables 
+                WHERE table_schema = ?
+            `, [dbName]);
+
+            return {
+                size: rows[0]?.size_mb || 0,
+                tables: rows[0]?.table_count || 0
+            };
+        } catch (error) {
+            return { size: 0, tables: 0 };
         }
     }
 }

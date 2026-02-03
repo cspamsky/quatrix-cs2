@@ -15,6 +15,7 @@ interface ServerWithDB {
   id: number
   name: string
   db: DatabaseInfo | null
+  stats?: { size: number; tables: number }
 }
 
 const DatabasePage = () => {
@@ -23,6 +24,7 @@ const DatabasePage = () => {
   const [provisioning, setProvisioning] = useState<number | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [globalStatus, setGlobalStatus] = useState<'ONLINE' | 'OFFLINE' | 'CHECKING'>('CHECKING')
   const [manualForm, setManualForm] = useState({
     host: '',
     port: '3306',
@@ -37,6 +39,15 @@ const DatabasePage = () => {
 
   const fetchData = async () => {
     try {
+      // Check MariaDB Status
+      const statusRes = await apiFetch('/api/servers/database/status')
+      if (statusRes.ok) {
+        const statusData = await statusRes.json()
+        setGlobalStatus(statusData.status)
+      } else {
+        setGlobalStatus('OFFLINE')
+      }
+
       const response = await apiFetch('/api/servers')
       if (response.ok) {
         const serverList = await response.json()
@@ -48,7 +59,8 @@ const DatabasePage = () => {
           return {
             id: srv.id,
             name: srv.name,
-            db: dbData?.credentials || null
+            db: dbData?.credentials || null,
+            stats: dbData?.stats || { size: 0, tables: 0 }
           }
         }))
         
@@ -57,6 +69,7 @@ const DatabasePage = () => {
     } catch (error) {
       console.error('Failed to fetch data:', error)
       toast.error('Failed to load database information')
+      setGlobalStatus('OFFLINE')
     } finally {
       setLoading(false)
     }
@@ -134,15 +147,34 @@ const DatabasePage = () => {
 
   return (
     <div className="p-6 min-h-screen flex flex-col">
-      <header className="mb-10 text-left">
-        <h2 className="text-3xl font-bold text-white tracking-tight flex items-center justify-start gap-3">
-          <Database className="w-8 h-8 text-primary" />
-          Database Management
-        </h2>
-        <p className="text-gray-400 mt-2 max-w-2xl text-left">
-          Provision automated local databases or manually configure external MySQL connections. 
-          Credentials are automatically synced to supported plugins.
-        </p>
+      <header className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div className="text-left">
+          <div className="flex items-center gap-3 mb-2">
+            <h2 className="text-3xl font-bold text-white tracking-tight flex items-center justify-start gap-3">
+              <Database className="w-8 h-8 text-primary" />
+              Database Management
+            </h2>
+            <div className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${
+              globalStatus === 'ONLINE' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 
+              globalStatus === 'OFFLINE' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 
+              'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${globalStatus === 'ONLINE' ? 'bg-green-500 animate-pulse' : 'bg-current'}`}></span>
+              MariaDB: {globalStatus}
+            </div>
+          </div>
+          <p className="text-gray-400 max-w-2xl text-left">
+            Provision automated local databases or manually configure external MySQL connections. 
+            Credentials are automatically synced to supported plugins.
+          </p>
+        </div>
+        <button 
+          onClick={fetchData}
+          className="lg:mb-1 p-3 bg-[#111827] border border-gray-800 hover:border-primary/50 text-gray-400 hover:text-primary rounded-2xl transition-all shadow-xl group"
+          title="Refresh stats"
+        >
+          <RefreshCw className={`w-5 h-5 group-active:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin text-primary' : ''}`} />
+        </button>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -281,6 +313,16 @@ const DatabasePage = () => {
                       </div>
                     </div>
                   ))}
+                  <div className="col-span-2 mt-2 pt-4 border-t border-gray-800/30 grid grid-cols-2 gap-4 text-center">
+                    <div className="bg-white/[0.02] p-3 rounded-2xl border border-white/[0.02]">
+                       <div className="text-[9px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">Storage Size</div>
+                       <div className="text-lg font-bold text-white font-mono">{server.stats?.size || 0} <span className="text-[10px] text-gray-500">MB</span></div>
+                    </div>
+                    <div className="bg-white/[0.02] p-3 rounded-2xl border border-white/[0.02]">
+                       <div className="text-[9px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">Total Tables</div>
+                       <div className="text-lg font-bold text-white font-mono">{server.stats?.tables || 0}</div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">

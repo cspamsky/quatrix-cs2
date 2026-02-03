@@ -11,6 +11,12 @@ import { databaseManager } from "../services/DatabaseManager.js";
 
 const router = Router();
 
+// GET /api/servers/database/status (Global MariaDB Status)
+router.get("/database/status", authenticateToken, async (req: any, res) => {
+    const available = await databaseManager.isAvailable();
+    res.json({ status: available ? "ONLINE" : "OFFLINE" });
+});
+
 // GET /api/servers/:id/database
 router.get("/:id/database", authenticateToken, async (req: any, res) => {
   try {
@@ -18,7 +24,8 @@ router.get("/:id/database", authenticateToken, async (req: any, res) => {
     if (!creds) {
       return res.json({ message: "No database provisioned yet.", credentials: null });
     }
-    res.json({ credentials: creds });
+    const stats = await databaseManager.getDatabaseStats(req.params.id);
+    res.json({ credentials: creds, stats });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch database credentials" });
   }
@@ -149,6 +156,9 @@ router.delete("/:id", async (req: any, res) => {
 
     // Physically delete server folder
     await fileSystemService.deleteInstance(server.id);
+
+    // Drop associated database and user
+    await databaseManager.dropDatabase(server.id);
 
     db.prepare("DELETE FROM servers WHERE id = ?").run(req.params.id);
     res.json({ message: "Server deleted successfully" });
