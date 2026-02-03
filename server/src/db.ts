@@ -289,4 +289,21 @@ db.exec(`
 db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_logs_server_id ON chat_logs(server_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_chat_logs_created_at ON chat_logs(created_at)`);
 
+// Create join_logs table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS join_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    server_id INTEGER NOT NULL,
+    player_name TEXT NOT NULL,
+    steam_id TEXT,
+    event_type TEXT NOT NULL, -- 'join' or 'leave'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+  )
+`);
+
+// Create index for join logs
+db.exec(`CREATE INDEX IF NOT EXISTS idx_join_logs_server_id ON join_logs(server_id)`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_join_logs_created_at ON join_logs(created_at)`);
+
 export default db;

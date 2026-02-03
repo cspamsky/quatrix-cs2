@@ -46,6 +46,10 @@ class ServerManager {
     INSERT INTO chat_logs (server_id, player_name, steam_id, message, type)
     VALUES (?, ?, ?, ?, ?)
   `);
+  private joinLogInsertStmt = db.prepare(`
+    INSERT INTO join_logs (server_id, player_name, steam_id, event_type)
+    VALUES (?, ?, ?, ?)
+  `);
 
   constructor() {
     this.installDir = "";
@@ -315,6 +319,37 @@ class ServerManager {
               console.error(`[SERVER:${id}] Failed to save chat message:`, e);
           }
       }
+
+    // Join/Leave Tracking
+    // Example join: "PlayerName<1><[U:1:123456789]><>" entered the game
+    // Example leave: "PlayerName<1><[U:1:123456789]><>" disconnected (reason "Disconnect")
+    const joinMatch = line.match(/^"(.+?)<\d+><(.+?)><.*?>" entered the game$/);
+    const leaveMatch = line.match(/^"(.+?)<\d+><(.+?)><.*?>" disconnected/);
+
+    if (joinMatch || leaveMatch) {
+        const match = joinMatch || leaveMatch;
+        if (match) {
+            const [, name, steamId] = match;
+            const eventType = joinMatch ? 'join' : 'leave';
+            const steamId64 = steamId === "Console" ? "0" : steamId;
+
+            try {
+                this.joinLogInsertStmt.run(id, name, steamId64, eventType);
+                
+                if (this.io) {
+                    this.io.emit('player_event', {
+                        serverId: id,
+                        name,
+                        steamId: steamId64,
+                        eventType,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            } catch (e) {
+                console.error(`[SERVER:${id}] Failed to save join log:`, e);
+            }
+        }
+    }
   }
 
   public async flushPlayerIdentities() {

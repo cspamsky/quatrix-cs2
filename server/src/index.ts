@@ -22,6 +22,7 @@ import mapsRouter from "./routes/maps.js";
 import bansRouter from "./routes/bans.js";
 import adminsRouter from "./routes/admins.js";
 import chatRouter from "./routes/chat.js";
+import logsRouter from "./routes/logs.js";
 
 // Environment variables are loaded via --env-file in package.json dev script
 const __filename = fileURLToPath(import.meta.url);
@@ -71,6 +72,7 @@ app.use('/api/servers', commandsRouter); // /api/servers/:id/start, etc.
 app.use('/api/servers', playersRouter); // /api/servers/:id/players
 app.use('/api/servers', bansRouter); // /api/servers/:id/bans
 app.use('/api/servers', adminsRouter); // /api/servers/:id/admins
+app.use('/api/logs', logsRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/maps', mapsRouter);
 
