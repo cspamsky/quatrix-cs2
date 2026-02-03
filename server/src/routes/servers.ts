@@ -34,6 +34,24 @@ router.post("/:id/database/provision", authenticateToken, async (req: any, res) 
     }
 });
 
+// POST /api/servers/:id/database
+router.post("/:id/database", authenticateToken, async (req: any, res) => {
+  try {
+    const { host, port, user, password, database } = req.body;
+    if (!host || !port || !user || !database) {
+      return res.status(400).json({ message: "Missing required database fields" });
+    }
+    
+    const creds = { host, port: Number(port), user, password, database };
+    await databaseManager.saveCredentials(req.params.id, creds);
+    
+    res.json({ message: "Database credentials saved successfully", credentials: creds });
+  } catch (error) {
+    console.error("[API] Save credentials error:", error);
+    res.status(500).json({ message: "Failed to save database credentials" });
+  }
+});
+
 // Schema for validation
 export const createServerSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters").max(50, "Name must be less than 50 characters"),

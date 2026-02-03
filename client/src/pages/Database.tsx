@@ -22,6 +22,14 @@ const DatabasePage = () => {
   const [loading, setLoading] = useState(true)
   const [provisioning, setProvisioning] = useState<number | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [manualForm, setManualForm] = useState({
+    host: '',
+    port: '3306',
+    database: '',
+    user: '',
+    password: ''
+  })
 
   useEffect(() => {
     fetchData()
@@ -72,11 +80,48 @@ const DatabasePage = () => {
     }
   }
 
+  const handleSaveManual = async (serverId: number) => {
+    try {
+      const res = await apiFetch(`/api/servers/${serverId}/database`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(manualForm)
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setServers(prev => prev.map(s => s.id === serverId ? { ...s, db: data.credentials } : s))
+        setEditingId(null)
+        toast.success('Manual credentials saved')
+      } else {
+        const err = await res.json()
+        toast.error(err.message || 'Failed to save credentials')
+      }
+    } catch (error) {
+      toast.error('Connection error')
+    }
+  }
+
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text)
     setCopiedKey(key)
     setTimeout(() => setCopiedKey(null), 2000)
     toast.success('Copied to clipboard')
+  }
+
+  const openManualEntry = (server: ServerWithDB) => {
+    setEditingId(server.id)
+    if (server.db) {
+      setManualForm({
+        host: server.db.host,
+        port: String(server.db.port),
+        database: server.db.database,
+        user: server.db.user,
+        password: server.db.password || ''
+      })
+    } else {
+      setManualForm({ host: '', port: '3306', database: '', user: '', password: '' })
+    }
   }
 
   if (loading) {
@@ -89,81 +134,174 @@ const DatabasePage = () => {
 
   return (
     <div className="p-8 max-w-7xl mx-auto w-full">
-      <header className="mb-10">
-        <h2 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
+      <header className="mb-10 text-center lg:text-left">
+        <h2 className="text-3xl font-bold text-white tracking-tight flex items-center justify-center lg:justify-start gap-3">
           <Database className="w-8 h-8 text-primary" />
-          MySQL Database Management
+          Database Management
         </h2>
-        <p className="text-gray-400 mt-2 max-w-2xl">
-          Manage isolated MySQL databases for your game server instances. 
-          Credentials are automatically injected into supported plugins like LevelsRanks and SkyboxChanger.
+        <p className="text-gray-400 mt-2 max-w-2xl mx-auto lg:mx-0">
+          Provision automated local databases or manually configure external MySQL connections. 
+          Credentials are automatically synced to supported plugins.
         </p>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {servers.map((server) => (
-          <div key={server.id} className="bg-[#111827] rounded-2xl border border-gray-800 overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-800 flex items-center justify-between bg-white/[0.02]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                  <Server className="w-5 h-5" />
+          <div key={server.id} className="bg-[#111827]/50 backdrop-blur-xl rounded-3xl border border-gray-800/50 overflow-hidden flex flex-col shadow-2xl transition-all hover:border-primary/20">
+            <div className="p-6 border-b border-gray-800/50 flex items-center justify-between bg-white/[0.01]">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+                  <Server className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white">{server.name}</h3>
-                  <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Instance ID: {server.id}</span>
+                  <h3 className="font-bold text-lg text-white group-hover:text-primary transition-colors">{server.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">ID:{server.id}</span>
+                    <div className={`w-1.5 h-1.5 rounded-full ${server.db ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-gray-600'}`}></div>
+                  </div>
                 </div>
               </div>
               
-              {!server.db && (
-                <button
-                  onClick={() => handleProvision(server.id)}
-                  disabled={provisioning === server.id}
-                  className="px-4 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
-                >
-                  {provisioning === server.id ? 'Provisioning...' : 'Provision DB'}
-                </button>
-              )}
+              <div className="flex gap-2">
+                {!server.db && !editingId && (
+                  <>
+                    <button
+                      onClick={() => handleProvision(server.id)}
+                      disabled={provisioning === server.id}
+                      className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+                    >
+                      {provisioning === server.id ? 'Provisioning...' : 'Auto-Provision'}
+                    </button>
+                    <button
+                      onClick={() => openManualEntry(server)}
+                      className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl text-xs font-bold transition-all"
+                    >
+                      Manual
+                    </button>
+                  </>
+                )}
+                {server.db && editingId !== server.id && (
+                  <button
+                    onClick={() => openManualEntry(server)}
+                    className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 rounded-xl transition-all"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="p-6 flex-1">
-              {server.db ? (
-                <div className="grid grid-cols-2 gap-4">
+            <div className="p-8 flex-1">
+              {editingId === server.id ? (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Host</label>
+                      <input 
+                        className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
+                        value={manualForm.host}
+                        onChange={e => setManualForm({...manualForm, host: e.target.value})}
+                        placeholder="localhost"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Port</label>
+                      <input 
+                        className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
+                        value={manualForm.port}
+                        onChange={e => setManualForm({...manualForm, port: e.target.value})}
+                        placeholder="3306"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Database Name</label>
+                    <input 
+                      className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
+                      value={manualForm.database}
+                      onChange={e => setManualForm({...manualForm, database: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Username</label>
+                      <input 
+                        className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
+                        value={manualForm.user}
+                        onChange={e => setManualForm({...manualForm, user: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Password</label>
+                      <input 
+                        type="password"
+                        className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
+                        value={manualForm.password}
+                        onChange={e => setManualForm({...manualForm, password: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 pt-4">
+                    <button 
+                      onClick={() => handleSaveManual(server.id)}
+                      className="flex-1 py-2.5 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                    >
+                      Save Configuration
+                    </button>
+                    <button 
+                      onClick={() => setEditingId(null)}
+                      className="px-6 py-2.5 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 transition-all"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : server.db ? (
+                <div className="grid grid-cols-2 gap-6 animate-in fade-in duration-500">
                   {[
                     { label: 'Host', value: `${server.db.host}:${server.db.port}`, key: `host-${server.id}` },
                     { label: 'Database', value: server.db.database, key: `db-${server.id}` },
                     { label: 'User', value: server.db.user, key: `user-${server.id}` },
                     { label: 'Password', value: server.db.password || '********', key: `pass-${server.id}` }
                   ].map((field) => (
-                    <div key={field.key} className="space-y-1.5 group">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{field.label}</label>
+                    <div key={field.key} className="space-y-2 group">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-extrabold text-gray-600 uppercase tracking-widest">{field.label}</label>
+                      </div>
                       <div 
                         onClick={() => copyToClipboard(field.value, field.key)}
-                        className="flex items-center justify-between px-3 py-2 bg-black/40 border border-gray-800 rounded-lg group-hover:border-primary/50 transition-all cursor-pointer"
+                        className="flex items-center justify-between px-4 py-3 bg-black/30 border border-gray-800/40 rounded-2xl group-hover:border-primary/40 group-hover:bg-primary/[0.02] transition-all cursor-pointer overflow-hidden"
                       >
                         <span className="text-xs text-gray-300 font-mono truncate mr-2">{field.value}</span>
                         {copiedKey === field.key ? (
-                          <Check className="w-3 h-3 text-green-500 shrink-0" />
+                          <Check className="w-4 h-4 text-green-500 shrink-0" />
                         ) : (
-                          <Copy className="w-3 h-3 text-gray-600 group-hover:text-primary transition-colors shrink-0" />
+                          <Copy className="w-4 h-4 text-gray-600 group-hover:text-primary transition-colors shrink-0" />
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <Database className="w-10 h-10 text-gray-800 mb-3" />
-                  <p className="text-xs text-gray-500 font-medium max-w-[200px]">
-                    No database linked to this instance.
+                <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
+                  <Database className="w-16 h-16 text-gray-700 mb-4 stroke-1" />
+                  <h4 className="text-white font-bold mb-1">Database Offline</h4>
+                  <p className="text-xs text-gray-500 max-w-[240px]">
+                    No database active for this instance. Choose a method above to get started.
                   </p>
                 </div>
               )}
             </div>
             
-            {server.db && (
-              <div className="px-6 py-4 bg-primary/5 border-t border-gray-800/50 flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
-                <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Connected & Ready</span>
+            {server.db && editingId !== server.id && (
+              <div className="px-8 py-4 bg-primary/[0.03] border-t border-gray-800/30 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
+                  <span className="text-[11px] font-black text-primary uppercase tracking-[0.2em]">Synchronized</span>
+                </div>
+                <div className="text-[10px] text-gray-500 font-medium italic">
+                  Injecting credentials to plugin configs...
+                </div>
               </div>
             )}
           </div>

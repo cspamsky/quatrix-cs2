@@ -114,7 +114,7 @@ export class DatabaseManager {
         }
     }
 
-    private async saveCredentials(serverId: string, creds: any) {
+    async saveCredentials(serverId: string, creds: any) {
         const all = await this.loadAllCredentials();
         all[serverId] = creds;
         const dir = path.dirname(this.credsFile);
