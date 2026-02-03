@@ -133,13 +133,13 @@ const DatabasePage = () => {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto w-full">
-      <header className="mb-10 text-center lg:text-left">
-        <h2 className="text-3xl font-bold text-white tracking-tight flex items-center justify-center lg:justify-start gap-3">
+    <div className="p-6 min-h-screen flex flex-col">
+      <header className="mb-10 text-left">
+        <h2 className="text-3xl font-bold text-white tracking-tight flex items-center justify-start gap-3">
           <Database className="w-8 h-8 text-primary" />
           Database Management
         </h2>
-        <p className="text-gray-400 mt-2 max-w-2xl mx-auto lg:mx-0">
+        <p className="text-gray-400 mt-2 max-w-2xl text-left">
           Provision automated local databases or manually configure external MySQL connections. 
           Credentials are automatically synced to supported plugins.
         </p>
