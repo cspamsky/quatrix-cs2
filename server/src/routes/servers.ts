@@ -7,7 +7,22 @@ import { createServerLimiter } from "../middleware/rateLimiter.js";
 import { runtimeService } from "../services/RuntimeService.js";
 import { fileSystemService } from "../services/FileSystemService.js";
 
+import { databaseManager } from "../services/DatabaseManager.js";
+
 const router = Router();
+
+// GET /api/servers/:id/database
+router.get("/:id/database", authenticateToken, async (req: any, res) => {
+  try {
+    const creds = await databaseManager.getDatabaseCredentials(req.params.id);
+    if (!creds) {
+      return res.json({ message: "No database provisioned yet.", credentials: null });
+    }
+    res.json({ credentials: creds });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch database credentials" });
+  }
+});
 
 // Schema for validation
 export const createServerSchema = z.object({

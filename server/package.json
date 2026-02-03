@@ -29,6 +29,7 @@
     "gamedig": "^5.3.2",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
+    "mysql2": "^3.16.3",
     "quatrix-root": "file:..",
     "rcon-client": "^4.2.5",
     "socket.io": "^4.8.3",

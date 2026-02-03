@@ -23,6 +23,7 @@ import bansRouter from "./routes/bans.js";
 import adminsRouter from "./routes/admins.js";
 import chatRouter from "./routes/chat.js";
 import logsRouter from "./routes/logs.js";
+import { databaseManager } from "./services/DatabaseManager.js";
 
 // Environment variables are loaded via --env-file in package.json dev script
 const __filename = fileURLToPath(import.meta.url);
@@ -48,6 +49,11 @@ if (serverManager && typeof serverManager.setSocketIO === 'function') {
 
 const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
+
+// Initialize Services
+(async () => {
+    await databaseManager.init();
+})();
 
 app.use(cors());
 app.use(express.json());

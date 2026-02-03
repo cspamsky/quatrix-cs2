@@ -8,6 +8,7 @@ import { fileURLToPath } from "url";
 import db from "../db.js";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { databaseManager } from "./DatabaseManager.js";
 
 const execAsync = promisify(exec);
 
@@ -439,7 +440,12 @@ export class PluginManager {
     
     await this.processExampleConfigs(searchDir);
 
-    // 4. Record in DB
+    // 4. Inject MySQL Credentials if needed
+    await this.injectMySQLCredentials(instanceId, searchDir).catch(err => 
+        console.error(`[PLUGIN] MySQL Injection failed for ${pluginId}:`, err)
+    );
+
+    // 5. Record in DB
     try {
       db.prepare(`
         INSERT INTO server_plugins (server_id, plugin_id, version) 
@@ -689,6 +695,77 @@ export class PluginManager {
   async uninstallCounterStrikeSharp(installDir: string, instanceId: string | number): Promise<void> {
     const cssDir = path.join(installDir, instanceId.toString(), "game", "csgo", "addons", "counterstrikesharp");
     await fs.promises.rm(cssDir, { recursive: true, force: true }).catch(() => {});
+  }
+
+  /**
+   * Scans configuration files in the target directory and injects MySQL credentials
+   * if it detects database settings.
+   */
+  private async injectMySQLCredentials(instanceId: string | number, targetDir: string) {
+    if (!await databaseManager.isAvailable()) return;
+
+    // We only provision if we find a likely candidate file
+    let credentials: any = null;
+    const getCreds = async () => {
+        if (!credentials) credentials = await databaseManager.provisionDatabase(instanceId);
+        return credentials;
+    };
+
+    const walk = async (dir: string) => {
+        const items = await fs.promises.readdir(dir, { withFileTypes: true });
+        for (const item of items) {
+            const fullPath = path.join(dir, item.name);
+            if (item.isDirectory()) {
+                await walk(fullPath);
+            } else if (item.isFile()) {
+                const ext = path.extname(item.name).toLowerCase();
+                const content = await fs.promises.readFile(fullPath, 'utf8');
+
+                if (ext === '.json') {
+                    // Check for common MySQL keys
+                    if (content.includes('"Database"') || content.includes('"Host"') || content.includes('"MySQL"')) {
+                        try {
+                            const config = JSON.parse(content);
+                            // Heuristic for MySQL configuration block
+                            // Many CS# plugins use these standard keys
+                            let changed = false;
+                            const creds = await getCreds();
+
+                            // SkyboxChanger/LevelsRanks style
+                            const keysMapping: Record<string, any> = {
+                                "DatabaseHost": creds.host,
+                                "DatabasePort": creds.port,
+                                "DatabaseUser": creds.user,
+                                "DatabasePassword": creds.password,
+                                "DatabaseName": creds.database,
+                                "Host": creds.host,
+                                "Port": creds.port,
+                                "User": creds.user,
+                                "Password": creds.password,
+                                "Database": creds.database
+                            };
+
+                            for (const [key, val] of Object.entries(keysMapping)) {
+                                if (config.hasOwnProperty(key)) {
+                                    config[key] = val;
+                                    changed = true;
+                                }
+                            }
+
+                            if (changed) {
+                                console.log(`[DB] Injected credentials into ${item.name}`);
+                                await fs.promises.writeFile(fullPath, JSON.stringify(config, null, 2));
+                            }
+                        } catch (e) {
+                            // Not valid JSON or other error, skip
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    await walk(targetDir);
   }
 
   async getPluginConfigFiles(
