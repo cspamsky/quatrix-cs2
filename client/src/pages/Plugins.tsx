@@ -601,7 +601,7 @@ const Plugins = () => {
             <p className="text-sm text-gray-400 mt-1">One-click deployment for professional CS2 server environments</p>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-end gap-4">
           <button 
             onClick={() => setUploadModalPlugin({ id: 'unknown', name: 'New Custom Plugin' })}
             className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 text-orange-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-orange-500/20 transition-all border border-orange-500/20"
