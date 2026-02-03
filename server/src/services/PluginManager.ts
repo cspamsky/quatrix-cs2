@@ -704,14 +704,24 @@ export class PluginManager {
   private async injectMySQLCredentials(instanceId: string | number, targetDir: string) {
     if (!await databaseManager.isAvailable()) return;
 
-    // We only provision if we find a likely candidate file
     let credentials: any = null;
     const getCreds = async () => {
-        if (!credentials) credentials = await databaseManager.provisionDatabase(instanceId);
+        if (!credentials) {
+            const raw = await databaseManager.provisionDatabase(instanceId);
+            // Deep clean: trim all string values to avoid JSON breakage
+            credentials = {
+                host: raw.host.trim(),
+                port: Number(raw.port),
+                user: raw.user.trim(),
+                password: raw.password.trim(),
+                database: raw.database.trim()
+            };
+        }
         return credentials;
     };
 
     const walk = async (dir: string) => {
+        if (!fs.existsSync(dir)) return;
         const items = await fs.promises.readdir(dir, { withFileTypes: true });
         for (const item of items) {
             const fullPath = path.join(dir, item.name);
@@ -721,51 +731,59 @@ export class PluginManager {
                 const ext = path.extname(item.name).toLowerCase();
                 const content = await fs.promises.readFile(fullPath, 'utf8');
 
-                if (ext === '.json') {
-                    // Check for common MySQL keys
-                    if (content.includes('"Database"') || content.includes('"Host"') || content.includes('"MySQL"')) {
-                        try {
-                            const config = JSON.parse(content);
-                            // Heuristic for MySQL configuration block
-                            // Many CS# plugins use these standard keys
-                            let changed = false;
-                            const creds = await getCreds();
+                if (ext === '.json' && (content.includes('"Database"') || content.includes('"Host"') || content.includes('"MySQL"'))) {
+                    try {
+                        const config = JSON.parse(content);
+                        let changed = false;
+                        const creds = await getCreds();
 
-                            // SkyboxChanger/LevelsRanks style
-                            const keysMapping: Record<string, any> = {
-                                "DatabaseHost": creds.host,
-                                "DatabasePort": creds.port,
-                                "DatabaseUser": creds.user,
-                                "DatabasePassword": creds.password,
-                                "DatabaseName": creds.database,
-                                "Host": creds.host,
-                                "Port": creds.port,
-                                "User": creds.user,
-                                "Password": creds.password,
-                                "Database": creds.database
-                            };
+                        const keysMapping: Record<string, any> = {
+                            "DatabaseHost": creds.host,
+                            "DatabasePort": creds.port,
+                            "DatabaseUser": creds.user,
+                            "DatabasePassword": creds.password,
+                            "DatabaseName": creds.database,
+                            "Host": creds.host,
+                            "Port": creds.port,
+                            "User": creds.user,
+                            "Password": creds.password,
+                            "Database": creds.database
+                        };
 
-                            for (const [key, val] of Object.entries(keysMapping)) {
-                                if (config.hasOwnProperty(key)) {
-                                    config[key] = val;
-                                    changed = true;
+                        // 1. Check top level keys
+                        for (const [key, val] of Object.entries(keysMapping)) {
+                            if (config.hasOwnProperty(key) && typeof config[key] !== 'object') {
+                                config[key] = val;
+                                changed = true;
+                            }
+                        }
+
+                        // 2. Check nested "Database" or "MySQL" objects
+                        const subObjects = ["Database", "MySQL", "mysql", "database"];
+                        for (const subKey of subObjects) {
+                            if (config[subKey] && typeof config[subKey] === 'object') {
+                                for (const [k, v] of Object.entries(keysMapping)) {
+                                    if (config[subKey].hasOwnProperty(k)) {
+                                        config[subKey][k] = v;
+                                        changed = true;
+                                    }
                                 }
                             }
-
-                            if (changed) {
-                                console.log(`[DB] Injected credentials into ${item.name}`);
-                                await fs.promises.writeFile(fullPath, JSON.stringify(config, null, 2));
-                            }
-                        } catch (e) {
-                            // Not valid JSON or other error, skip
                         }
+
+                        if (changed) {
+                            console.log(`[DB] Injected credentials into ${fullPath}`);
+                            await fs.promises.writeFile(fullPath, JSON.stringify(config, null, 2));
+                        }
+                    } catch (e) {
+                        // Skip non-valid or non-standard JSON
                     }
                 }
             }
         }
     };
 
-    await walk(targetDir);
+    await walk(targetDir).catch(err => console.error(`[PLUGIN] Injection walk failed:`, err));
   }
 
   async getPluginConfigFiles(
