@@ -4,7 +4,7 @@
 # QUATRIX - UNIFIED LINUX INSTALLATION SCRIPT
 # ==============================================================================
 # This script automates the entire Quatrix setup process:
-# 1. System Dependencies (Node.js 20, 32-bit libs, .NET 8)
+# 1. System Dependencies (Node.js 20, 32-bit libs, .NET 8, MariaDB)
 # 2. Service User Creation (quatrix)
 # 3. Environment Configuration (.env & JWT generation)
 # 4. Node.js Dependency Installation & Production Build
@@ -48,7 +48,7 @@ INSTALL_DIR="/home/quatrix/quatrix"
 # 2. Git & Basic Tool Installation
 info "Updating system packages and checking for Git..."
 apt-get update
-apt-get install -y curl git build-essential ufw sudo 
+apt-get install -y curl git build-essential ufw sudo mariadb-server mariadb-client
 
 # 3. Dedicated User Setup
 if id "quatrix" &>/dev/null; then
@@ -91,6 +91,16 @@ info "Installing 32-bit libraries and .NET 8 Runtime..."
 dpkg --add-architecture i386 || true
 apt-get update
 apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1 libicu-dev libkrb5-3 zlib1g libssl-dev dotnet-runtime-8.0
+
+# MariaDB Service & Security
+info "Enabling and configuring MariaDB..."
+systemctl enable mariadb
+systemctl start mariadb
+
+# Ensure root can connect for management
+mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT OPTION;"
+mysql -u root -e "FLUSH PRIVILEGES;"
+success "MariaDB configured for local management."
 
 # 5. Environment Automation
 if [ ! -f .env ]; then
