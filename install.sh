@@ -106,11 +106,31 @@ success "MariaDB configured for local management."
 if [ ! -f .env ]; then
     info "Generating .env from template..."
     cp .env.example .env
+    
     # Generate a unique 64-character hex secret for JWT
     JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
     sed -i "s/your_super_secret_jwt_key_here_change_this_in_production/$JWT_SECRET/" .env
+    
+    # --- MariaDB Automation ---
+    info "Setting up MariaDB admin user..."
+    DB_ADMIN_USER="quatrix_admin"
+    DB_ADMIN_PASS=$(node -e "console.log(require('crypto').randomBytes(12).toString('base64').replace(/[/+=]/g, ''))")
+    
+    # Create the user in MariaDB
+    mysql -u root -e "CREATE USER IF NOT EXISTS '$DB_ADMIN_USER'@'localhost' IDENTIFIED BY '$DB_ADMIN_PASS';"
+    mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO '$DB_ADMIN_USER'@'localhost' WITH GRANT OPTION;"
+    mysql -u root -e "FLUSH PRIVILEGES;"
+    
+    # Append to .env
+    echo "" >> .env
+    echo "# MariaDB Configuration" >> .env
+    echo "MYSQL_ROOT_USER=$DB_ADMIN_USER" >> .env
+    echo "MYSQL_ROOT_PASSWORD=$DB_ADMIN_PASS" >> .env
+    echo "MYSQL_HOST=localhost" >> .env
+    echo "MYSQL_PORT=3306" >> .env
+    
     chown quatrix:quatrix .env
-    success "Secure .env generated."
+    success "Secure .env and MariaDB user generated."
 else
     warn ".env already exists. Keeping current configuration."
 fi

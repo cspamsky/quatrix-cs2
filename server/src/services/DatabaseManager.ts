@@ -10,16 +10,26 @@ export class DatabaseManager {
     private pool: mysql.Pool | null = null;
     private credsFile = path.join(process.cwd(), 'data', 'databases.json');
     private config = {
-        host: process.env.MYSQL_HOST || 'localhost',
-        user: process.env.MYSQL_ROOT_USER || 'root',
-        password: process.env.MYSQL_ROOT_PASSWORD || '',
-        port: Number(process.env.MYSQL_PORT) || 3306
+        host: 'localhost',
+        user: 'root',
+        password: '',
+        port: 3306
     };
 
     /**
      * Initializes the connection to the master database.
      */
     async init() {
+        // Resolve config at runtime from environment
+        this.config = {
+            host: process.env.MYSQL_HOST || 'localhost',
+            user: process.env.MYSQL_ROOT_USER || 'root',
+            password: process.env.MYSQL_ROOT_PASSWORD || '',
+            port: Number(process.env.MYSQL_PORT) || 3306
+        };
+
+        console.log(`[DB] Initializing MySQL Manager with user: ${this.config.user} on ${this.config.host}:${this.config.port}`);
+
         try {
             this.pool = mysql.createPool({
                 host: this.config.host,
@@ -32,7 +42,8 @@ export class DatabaseManager {
             });
             
             // Check connection
-            await this.pool.getConnection();
+            const conn = await this.pool.getConnection();
+            conn.release();
             console.log("[DB] MySQL Manager connected successfully.");
         } catch (error: any) {
             console.error("[DB] MySQL Connection failed:", error.message);
