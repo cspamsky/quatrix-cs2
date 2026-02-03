@@ -99,8 +99,8 @@ const Layout = ({ children }: LayoutProps) => {
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-6 hidden lg:flex items-center gap-3">
-          <div className="bg-[#1890ff]/10 p-2 rounded-lg shrink-0">
-            <img src="/logo.png" alt="Quatrix Logo" className="w-9 h-9" />
+          <div className="shrink-0">
+            <img src="/logo.png" alt="Quatrix Logo" className="w-10 h-10" />
           </div>
           <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">Quatrix Manager</span>
         </div>
