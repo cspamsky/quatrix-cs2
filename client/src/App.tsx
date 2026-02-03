@@ -78,23 +78,25 @@ const App = () => {
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-            {/* Protected Dashboard Routes (With Sidebar, Require authentication) */}
-            <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-            <Route path="/instances" element={<ProtectedRoute><Layout><Instances /></Layout></ProtectedRoute>} />
-            <Route path="/instances/create" element={<ProtectedRoute><Layout><CreateInstance /></Layout></ProtectedRoute>} />
-            <Route path="/instances/:id/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
-            <Route path="/console/:id" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
-            <Route path="/instances/:id/settings" element={<ProtectedRoute><Layout><ServerSettings /></Layout></ProtectedRoute>} />
-            <Route path="/instances/:id/files" element={<ProtectedRoute><Layout><FileManager /></Layout></ProtectedRoute>} />
-            <Route path="/console" element={<ProtectedRoute><Layout><Console /></Layout></ProtectedRoute>} />
-            <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
-            <Route path="/players" element={<ProtectedRoute><Layout><Players /></Layout></ProtectedRoute>} />
-            <Route path="/bans" element={<ProtectedRoute><Layout><BanHistory /></Layout></ProtectedRoute>} />
-            <Route path="/maps" element={<ProtectedRoute><Layout><Maps /></Layout></ProtectedRoute>} />
-            <Route path="/plugins" element={<ProtectedRoute><Layout><Plugins /></Layout></ProtectedRoute>} />
-            <Route path="/admins" element={<ProtectedRoute><Layout><Admins /></Layout></ProtectedRoute>} />
-            <Route path="/chat/:id" element={<ProtectedRoute><Layout><Chat /></Layout></ProtectedRoute>} />
-            <Route path="/chat" element={<ProtectedRoute><Layout><Chat /></Layout></ProtectedRoute>} />
+            {/* Protected Dashboard Routes (Shared Layout) */}
+            <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/instances" element={<Instances />} />
+              <Route path="/instances/create" element={<CreateInstance />} />
+              <Route path="/instances/:id/console" element={<Console />} />
+              <Route path="/console/:id" element={<Console />} />
+              <Route path="/instances/:id/settings" element={<ServerSettings />} />
+              <Route path="/instances/:id/files" element={<FileManager />} />
+              <Route path="/console" element={<Console />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/players" element={<Players />} />
+              <Route path="/bans" element={<BanHistory />} />
+              <Route path="/maps" element={<Maps />} />
+              <Route path="/plugins" element={<Plugins />} />
+              <Route path="/admins" element={<Admins />} />
+              <Route path="/chat/:id" element={<Chat />} />
+              <Route path="/chat" element={<Chat />} />
+            </Route>
 
             {/* Default route redirects to dashboard if logged in, otherwise login */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />

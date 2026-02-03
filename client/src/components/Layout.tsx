@@ -12,16 +12,13 @@ import {
   X,
   MessageSquare
 } from 'lucide-react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
+import { useState, useEffect, Suspense } from 'react'
+import { Oval } from 'react-loading-icons'
 
 
 
-interface LayoutProps {
-  children: React.ReactNode
-}
-
-const Layout = ({ children }: LayoutProps) => {
+const Layout = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -162,7 +159,13 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Main Content Area */}
       <main id="main-content" className="flex-1 overflow-y-auto scrollbar-hide">
-        {children}
+        <Suspense fallback={
+          <div className="h-full flex items-center justify-center p-12">
+            <Oval stroke="#1890ff" strokeWidth={4} speed={1} />
+          </div>
+        }>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )
