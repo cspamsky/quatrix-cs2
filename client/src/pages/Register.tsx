@@ -53,8 +53,8 @@ const Register = () => {
       <div className="w-full max-w-md">
 
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-xl mb-4 shadow-lg shadow-primary/10">
-            <img src="/logo.png" alt="Quatrix Logo" className="w-12 h-12" />
+          <div className="inline-flex items-center justify-center w-28 h-28 bg-primary/10 rounded-2xl mb-6 shadow-xl shadow-primary/10">
+            <img src="/logo.png" alt="Quatrix Logo" className="w-20 h-20" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Quatrix Manager</h1>
           <p className="text-gray-400 mt-1">Create your account</p>

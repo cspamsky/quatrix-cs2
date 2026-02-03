@@ -72,7 +72,7 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Mobile Header */}
       <header className="lg:hidden flex items-center justify-between p-4 bg-[#001529] border-b border-gray-800 z-50">
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Quatrix Logo" className="w-6 h-6" />
+          <img src="/logo.png" alt="Quatrix Logo" className="w-8 h-8" />
           <span className="text-lg font-bold text-white tracking-tight">Quatrix</span>
         </div>
         <button 
@@ -100,7 +100,7 @@ const Layout = ({ children }: LayoutProps) => {
       `}>
         <div className="p-6 hidden lg:flex items-center gap-3">
           <div className="bg-[#1890ff]/10 p-2 rounded-lg shrink-0">
-            <img src="/logo.png" alt="Quatrix Logo" className="w-6 h-6" />
+            <img src="/logo.png" alt="Quatrix Logo" className="w-9 h-9" />
           </div>
           <span className="text-lg font-bold text-white tracking-tight whitespace-nowrap">Quatrix Manager</span>
         </div>
@@ -108,7 +108,7 @@ const Layout = ({ children }: LayoutProps) => {
         {/* Mobile Sidebar Header */}
         <div className="p-6 lg:hidden flex items-center justify-between border-b border-gray-800/50 mb-4">
           <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="Quatrix Logo" className="w-6 h-6" />
+              <img src="/logo.png" alt="Quatrix Logo" className="w-8 h-8" />
              <span className="text-lg font-bold text-white tracking-tight">Quatrix</span>
           </div>
           <button onClick={() => setIsMobileMenuOpen(false)} className="text-gray-500 hover:text-white">

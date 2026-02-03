@@ -74,8 +74,8 @@ const Login = () => {
       <div className="w-full max-w-md">
 
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center p-3 rounded-xl bg-primary/10 mb-4 shadow-lg shadow-primary/10">
-            <img src="/logo.png" alt="Quatrix Logo" className="w-12 h-12" />
+          <div className="inline-flex items-center justify-center p-4 rounded-2xl bg-primary/10 mb-6 shadow-xl shadow-primary/10">
+            <img src="/logo.png" alt="Quatrix Logo" className="w-20 h-20" />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Quatrix Manager</h1>
 
