@@ -1,4 +1,4 @@
-# <img src="client/public/favicon.svg" width="38" height="38" /> Quatrix CS2 Server Manager
+# <img src="assets/logo.png" width="38" height="38" /> Quatrix CS2 Server Manager
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.6.0-brightgreen.svg)](https://nodejs.org/)
