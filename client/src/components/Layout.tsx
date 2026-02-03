@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   Menu,
   X,
-  MessageSquare
+  MessageSquare,
+  Database
 } from 'lucide-react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { useState, useEffect, Suspense } from 'react'
@@ -32,6 +33,7 @@ const Layout = () => {
     { path: '/players', icon: Users, label: 'Player Management' },
     { path: '/plugins', icon: Puzzle, label: 'Plugins' },
     { path: '/admins', icon: ShieldCheck, label: 'Admin Management' },
+    { path: '/database', icon: Database, label: 'Database' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ]
 
