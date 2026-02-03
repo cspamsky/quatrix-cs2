@@ -25,6 +25,7 @@ class ServerManager {
   private lastInstallDir: string = "";
   private lastSteamCmdPath: string = "";
   private steamCmdExe!: string;
+  public pluginManager = pluginManager;
   private io: any = null;
 
   public setSocketIO(io: any) {

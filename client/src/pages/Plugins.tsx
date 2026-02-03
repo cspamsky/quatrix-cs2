@@ -30,11 +30,13 @@ interface Instance {
 }
 
 interface PluginInfo {
+    id: string;
     name: string;
     githubRepo?: string;
     category: 'core' | 'metamod' | 'cssharp';
     description?: string;
     tags?: string[];
+    inPool: boolean;
 }
 
 const Plugins = () => {
@@ -58,6 +60,11 @@ const Plugins = () => {
   const [editingContent, setEditingContent] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
+
+  // Upload Modal State
+  const [uploadModalPlugin, setUploadModalPlugin] = useState<{id: string, name: string} | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // 1. Fetch Plugin Registry (Global Pool)
   const { data: registry = {}, isLoading: registryLoading } = useQuery<Record<string, PluginInfo>>({
@@ -135,6 +142,40 @@ const Plugins = () => {
       toast.error('Network or Server failure.');
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadModalPlugin || !selectedFile) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('pluginId', uploadModalPlugin.id);
+    formData.append('pluginZip', selectedFile);
+
+    try {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/servers/plugins/pool/upload`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        const data = await response.json();
+
+        if (response.ok) {
+            toast.success('Plugin uploaded to pool successfully!');
+            setUploadModalPlugin(null);
+            setSelectedFile(null);
+            queryClient.invalidateQueries({ queryKey: ['plugin-registry'] });
+        } else {
+            toast.error(data.message || 'Upload failed');
+        }
+    } catch (error) {
+        toast.error('Network error during upload');
+    } finally {
+        setIsUploading(false);
     }
   };
 
@@ -372,6 +413,11 @@ const Plugins = () => {
                               <span className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 inline-block ${isInstalled ? 'bg-green-500/10 text-green-500' : 'bg-gray-800/60 text-gray-500'}`}>
                                 {isInstalled ? 'Installed' : 'Not Loaded'}
                               </span>
+                              {!info.inPool && (
+                                <span className="text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 ml-1 inline-block bg-orange-500/10 text-orange-500 border border-orange-500/20">
+                                  Missing in Pool
+                                </span>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -432,18 +478,30 @@ const Plugins = () => {
                                 </button>
                               </>
                             ) : (
-                              <button 
-                                disabled={
-                                  actionLoading !== null || 
-                                  (pid !== 'metamod' && !pluginStatus['metamod']?.installed) || 
-                                  (info.category === 'cssharp' && pid !== 'cssharp' && !pluginStatus['cssharp']?.installed)
-                                }
-                                onClick={() => handleAction(pid, 'install')}
-                                className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-primary/10 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
-                              >
-                                {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                                Install
-                              </button>
+                              <div className="flex items-center gap-2">
+                                {!info.inPool && (
+                                  <button 
+                                    onClick={() => setUploadModalPlugin({ id: pid, name: info.name })}
+                                    className="p-1.5 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-all"
+                                    title="Upload to Pool"
+                                  >
+                                    <Layers size={14} />
+                                  </button>
+                                )}
+                                <button 
+                                  disabled={
+                                    actionLoading !== null || 
+                                    !info.inPool ||
+                                    (pid !== 'metamod' && !pluginStatus['metamod']?.installed) || 
+                                    (info.category === 'cssharp' && pid !== 'cssharp' && !pluginStatus['cssharp']?.installed)
+                                  }
+                                  onClick={() => handleAction(pid, 'install')}
+                                  className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-primary/10 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
+                                >
+                                  {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                  {info.inPool ? 'Install' : 'Locked'}
+                                </button>
+                              </div>
                             )}
                           </div>
                         </td>
@@ -604,6 +662,96 @@ const Plugins = () => {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Plugin Upload Modal */}
+      {uploadModalPlugin && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !isUploading && setUploadModalPlugin(null)} />
+          <div className="relative bg-[#0c1424] border border-gray-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 border border-orange-500/20">
+                  <Layers size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Upload to Pool</h3>
+                  <p className="text-[10px] text-gray-500 font-mono tracking-tight mt-0.5">{uploadModalPlugin.name}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setUploadModalPlugin(null)}
+                className="p-2 text-gray-500 hover:text-white transition-colors"
+                disabled={isUploading}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpload} className="p-6 space-y-6">
+              <div className="space-y-4">
+                <div className="p-4 bg-orange-500/5 border border-orange-500/10 rounded-2xl flex items-start gap-3">
+                  <AlertCircle size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-gray-400 leading-relaxed">
+                    This plugin is missing in the central pool. Please upload the official <strong className="text-orange-500">.ZIP</strong> file. 
+                    The system will automatically extract and flatten the contents.
+                  </p>
+                </div>
+
+                <div className="relative group">
+                  <input 
+                    type="file" 
+                    accept=".zip"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    disabled={isUploading}
+                  />
+                  <div className={`p-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-3 transition-all ${selectedFile ? 'border-primary/50 bg-primary/5' : 'border-gray-800 group-hover:border-gray-700 hover:bg-white/5'}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedFile ? 'bg-primary/20 text-primary' : 'bg-gray-800 text-gray-600'}`}>
+                      {selectedFile ? <CheckCircle2 size={24} /> : <Download size={24} />}
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-white">
+                        {selectedFile ? selectedFile.name : 'Select ZIP file'}
+                      </p>
+                      <p className="text-[10px] text-gray-500 mt-1 font-mono uppercase tracking-widest">
+                        {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'MAX 50MB'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setUploadModalPlugin(null)}
+                  className="flex-1 px-4 py-3 bg-gray-800/40 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-gray-800 transition-all border border-gray-800"
+                  disabled={isUploading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!selectedFile || isUploading}
+                  className="flex-[2] px-4 py-3 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Layers size={16} />
+                      Start Upload
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

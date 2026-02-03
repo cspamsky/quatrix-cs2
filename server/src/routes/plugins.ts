@@ -4,9 +4,30 @@ import { serverManager } from "../serverManager.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { pluginRegistry, type PluginId } from "../config/plugins.js";
 
-const router = Router();
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
+const router = Router();
 router.use(authenticateToken);
+
+// Configure multer for ZIP uploads
+const upload = multer({ 
+    dest: "data/temp/uploads/",
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+    fileFilter: (req, file, cb) => {
+        if (path.extname(file.originalname).toLowerCase() === '.zip') {
+            cb(null, true);
+        } else {
+            cb(new Error("Only ZIP files are allowed"));
+        }
+    }
+});
+
+// Ensure upload dir exists
+if (!fs.existsSync("data/temp/uploads/")) {
+    fs.mkdirSync("data/temp/uploads/", { recursive: true });
+}
 
 // GET /api/servers/plugins/registry
 router.get("/plugins/registry", async (req: any, res) => {
@@ -84,6 +105,32 @@ router.post("/:id/plugins/:plugin/:action", async (req: any, res) => {
         res.json({ message: `${registry[pluginId].name} ${action}ed successfully` });
     } catch (error: any) {
         console.error(`Plugin ${action} error:`, error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// POST /api/servers/plugins/pool/upload
+router.post("/pool/upload", upload.single('pluginZip'), async (req: any, res) => {
+    const { pluginId } = req.body;
+    
+    if (!req.file) {
+        return res.status(400).json({ message: "No ZIP file uploaded" });
+    }
+
+    if (!pluginId) {
+        return res.status(400).json({ message: "Missing pluginId" });
+    }
+
+    try {
+        const registry = await serverManager.getPluginRegistry();
+        if (!registry[pluginId as PluginId]) {
+            return res.status(400).json({ message: "Invalid pluginId" });
+        }
+
+        await serverManager.pluginManager.uploadToPool(pluginId as PluginId, req.file.path);
+        res.json({ message: `Plugin ${pluginId} uploaded to pool successfully` });
+    } catch (error: any) {
+        console.error("[POOL] Upload error:", error);
         res.status(500).json({ message: error.message });
     }
 });

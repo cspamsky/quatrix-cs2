@@ -60,9 +60,20 @@ export class PluginManager {
     return manifest;
   }
 
-  async getRegistry() {
+  async getRegistry(serverId?: string | number) {
     const manifest: Record<string, any> = {};
+    const poolItems = await fs.promises.readdir(POOL_DIR).catch(() => []);
+    const poolItemsLower = poolItems.map(i => i.toLowerCase());
+
     for (const [id, info] of Object.entries(this.pluginRegistry)) {
+      const candidateNames = [
+        id.toLowerCase(),
+        ((info as any).folderName || "").toLowerCase(),
+        (info.name || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+      ].filter(Boolean);
+
+      const inPool = candidateNames.some(name => poolItemsLower.includes(name));
+
       manifest[id] = {
         name: info.name,
         version: info.currentVersion || "latest",
@@ -70,6 +81,7 @@ export class PluginManager {
         category: info.category,
         description: (info as any).description || "",
         folderName: (info as any).folderName,
+        inPool: inPool
       };
     }
     return manifest;
@@ -212,8 +224,41 @@ export class PluginManager {
 
     const expectedPath = path.join(POOL_DIR, info.folderName || pluginId);
     throw new Error(
-      `Plugin "${pluginId}" not found in local pool. Please add its files to: ${expectedPath}`,
+      `Plugin "${pluginId}" not found in local pool. Please upload it via the dashboard or add its files to: ${expectedPath}`,
     );
+  }
+
+  async uploadToPool(pluginId: PluginId, zipPath: string): Promise<void> {
+    const info = (this.pluginRegistry as any)[pluginId];
+    if (!info) throw new Error("Invalid plugin ID");
+
+    const tempExtractDir = path.join(POOL_DIR, `.temp_${pluginId}_${Date.now()}`);
+    const finalFolderName = info.folderName || pluginId;
+    const targetPoolPath = path.join(POOL_DIR, finalFolderName);
+
+    try {
+      await fs.promises.mkdir(tempExtractDir, { recursive: true });
+      
+      const zip = new AdmZip(zipPath);
+      zip.extractAllTo(tempExtractDir, true);
+
+      // Find the actual content root (smart flatten)
+      const contentRoot = await this.findContentRoot(tempExtractDir);
+
+      if (fs.existsSync(targetPoolPath)) {
+        await fs.promises.rm(targetPoolPath, { recursive: true, force: true });
+      }
+
+      await fs.promises.rename(contentRoot, targetPoolPath);
+      console.log(`[POOL] Plugin ${pluginId} successfully uploaded and extracted to ${targetPoolPath}`);
+    } catch (error: any) {
+      console.error(`[POOL] Upload failed for ${pluginId}:`, error);
+      throw new Error(`Failed to process plugin ZIP: ${error.message}`);
+    } finally {
+      // Cleanup temp dirs
+      await fs.promises.rm(tempExtractDir, { recursive: true, force: true }).catch(() => {});
+      await fs.promises.rm(zipPath, { force: true }).catch(() => {});
+    }
   }
 
   async installPlugin(
