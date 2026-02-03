@@ -24,6 +24,16 @@ router.get("/:id/database", authenticateToken, async (req: any, res) => {
   }
 });
 
+// POST /api/servers/:id/database/provision
+router.post("/:id/database/provision", authenticateToken, async (req: any, res) => {
+    try {
+        const creds = await databaseManager.provisionDatabase(req.params.id);
+        res.json({ message: "Database provisioned successfully", credentials: creds });
+    } catch (error: any) {
+        res.status(500).json({ message: "Failed to provision database", error: error.message });
+    }
+});
+
 // Schema for validation
 export const createServerSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters").max(50, "Name must be less than 50 characters"),

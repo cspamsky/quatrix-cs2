@@ -395,45 +395,74 @@ const ServerSettings = () => {
           </div>
 
           {/* Database Information */}
-          {dbCreds && (
-            <div className="bg-[#111827] rounded-2xl border border-gray-800 p-8">
-              <h3 className="text-lg font-bold text-white mb-8 flex items-center gap-3">
-                <Database className="w-5 h-5 text-primary" />
-                Database Information
-              </h3>
-              <p className="text-sm text-gray-400 mb-6">
-                This server has an isolated database provisioned for plugins like SkyboxChanger and LevelsRanks. 
-                Credentials are automatically injected into supported eklentis.
-              </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-400">Database Host</label>
-                  <div className="px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm">
-                    {dbCreds.host}:{dbCreds.port}
-                  </div>
+          <div className="bg-[#111827] rounded-2xl border border-gray-800 p-8">
+            <h3 className="text-lg font-bold text-white mb-8 flex items-center gap-3">
+              <Database className="w-5 h-5 text-primary" />
+              Database Management
+            </h3>
+            
+            {!dbCreds ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                  <Database className="w-8 h-8 text-primary opacity-50" />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-400">Database Name</label>
-                  <div className="px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm">
-                    {dbCreds.database}
+                <h4 className="text-white font-bold mb-2">No Database Provisioned</h4>
+                <p className="text-sm text-gray-400 max-w-md mb-6">
+                  Each server can have its own isolated MySQL database. 
+                  Provisioning a database allows plugins like SkyboxChanger and LevelsRanks to store data permanently.
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await apiFetch(`/api/servers/${id}/database/provision`, { method: 'POST' });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setDbCreds(data.credentials);
+                      toast.success('Database provisioned successfully');
+                    } else {
+                      toast.error('Failed to provision database');
+                    }
+                  }}
+                  className="px-6 py-2 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-xl font-bold transition-all"
+                >
+                  Provision Database Now
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <p className="text-sm text-gray-400">
+                  This server has an isolated database provisioned. Credentials are automatically injected into supported plugins.
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-400">Database Host</label>
+                    <div className="px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm">
+                      {dbCreds.host}:{dbCreds.port}
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-400">Username</label>
-                  <div className="px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm">
-                    {dbCreds.user}
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-400">Database Name</label>
+                    <div className="px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm">
+                      {dbCreds.database}
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-400">Password</label>
-                  <div className="px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm break-all">
-                    {dbCreds.password}
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-400">Username</label>
+                    <div className="px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm">
+                      {dbCreds.user}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-400">Password</label>
+                    <div className="px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm break-all">
+                      {dbCreds.password}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Global Action Footer */}
