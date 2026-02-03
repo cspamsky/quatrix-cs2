@@ -114,20 +114,24 @@ if [ ! -f .env ]; then
     # --- MariaDB Automation ---
     info "Setting up MariaDB admin user..."
     DB_ADMIN_USER="quatrix_admin"
+    # Generate a secure random password without problematic shell characters
     DB_ADMIN_PASS=$(node -e "console.log(require('crypto').randomBytes(12).toString('base64').replace(/[/+=]/g, ''))")
     
-    # Create the user in MariaDB
+    # Create the user in MariaDB and grant privileges
+    # Note: Using root via unix_socket (sudo) to create the manage user
     mysql -u root -e "CREATE USER IF NOT EXISTS '$DB_ADMIN_USER'@'localhost' IDENTIFIED BY '$DB_ADMIN_PASS';"
     mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO '$DB_ADMIN_USER'@'localhost' WITH GRANT OPTION;"
     mysql -u root -e "FLUSH PRIVILEGES;"
     
-    # Append to .env
-    echo "" >> .env
-    echo "# MariaDB Configuration" >> .env
-    echo "MYSQL_ROOT_USER=$DB_ADMIN_USER" >> .env
-    echo "MYSQL_ROOT_PASSWORD=$DB_ADMIN_PASS" >> .env
-    echo "MYSQL_HOST=localhost" >> .env
-    echo "MYSQL_PORT=3306" >> .env
+    # Append DB credentials to .env
+    {
+        echo ""
+        echo "# MariaDB Configuration"
+        echo "MYSQL_ROOT_USER=$DB_ADMIN_USER"
+        echo "MYSQL_ROOT_PASSWORD=$DB_ADMIN_PASS"
+        echo "MYSQL_HOST=localhost"
+        echo "MYSQL_PORT=3306"
+    } >> .env
     
     chown quatrix:quatrix .env
     success "Secure .env and MariaDB user generated."

@@ -20,7 +20,7 @@ export class DatabaseManager {
      * Initializes the connection to the master database.
      */
     async init() {
-        // Resolve config at runtime from environment
+        // Resolve credentials at runtime
         this.config = {
             host: process.env.MYSQL_HOST || 'localhost',
             user: process.env.MYSQL_ROOT_USER || 'root',
@@ -42,8 +42,7 @@ export class DatabaseManager {
             });
             
             // Check connection
-            const conn = await this.pool.getConnection();
-            conn.release();
+            await this.pool.getConnection();
             console.log("[DB] MySQL Manager connected successfully.");
         } catch (error: any) {
             console.error("[DB] MySQL Connection failed:", error.message);
