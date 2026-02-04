@@ -21,11 +21,24 @@ export class DatabaseManager {
      */
     async init() {
         // Resolve credentials at runtime
+        const rawHost = process.env.MYSQL_HOST || 'localhost';
+        const rawPort = process.env.MYSQL_PORT || '3306';
+        
+        // Handle cases where host might include port (e.g., "localhost:3306")
+        let cleanHost = rawHost;
+        let cleanPort = Number(rawPort);
+        
+        if (rawHost.includes(':')) {
+            const [hostPart, portPart] = rawHost.split(':');
+            if (hostPart) cleanHost = hostPart;
+            if (portPart && portPart.trim()) cleanPort = Number(portPart);
+        }
+        
         this.config = {
-            host: process.env.MYSQL_HOST || 'localhost',
+            host: cleanHost,
             user: process.env.MYSQL_ROOT_USER || 'root',
             password: process.env.MYSQL_ROOT_PASSWORD || '',
-            port: Number(process.env.MYSQL_PORT) || 3306
+            port: cleanPort
         };
 
         console.log(`[DB] Initializing MySQL Manager with user: ${this.config.user} on ${this.config.host}:${this.config.port}`);

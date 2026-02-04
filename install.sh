@@ -102,6 +102,42 @@ mysql -u root -e "GRANT ALL PRIVILEGES ON *.* TO 'root'@'localhost' WITH GRANT O
 mysql -u root -e "FLUSH PRIVILEGES;"
 success "MariaDB configured for local management."
 
+# phpMyAdmin Installation
+info "Installing phpMyAdmin, Nginx, and PHP-FPM..."
+export DEBIAN_FRONTEND=noninteractive
+apt-get install -y php-fpm php-mysql nginx phpmyadmin
+
+# Configure Nginx for phpMyAdmin on port 8080
+info "Configuring Nginx virtual host for phpMyAdmin (port 8080)..."
+PHP_VER=$(php -r "echo PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;")
+
+cat <<'NGINX_EOF' > /etc/nginx/sites-available/phpmyadmin
+server {
+    listen 8080;
+    root /usr/share/phpmyadmin;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/phpPHP_VER-fpm.sock;
+    }
+}
+NGINX_EOF
+
+# Replace PHP_VER placeholder with actual version
+sed -i "s/phpPHP_VER/php${PHP_VER}/g" /etc/nginx/sites-available/phpmyadmin
+
+# Enable the site
+ln -sf /etc/nginx/sites-available/phpmyadmin /etc/nginx/sites-enabled/
+
+# Test and restart services
+nginx -t && systemctl restart nginx "php${PHP_VER}-fpm"
+success "phpMyAdmin configured and accessible on port 8080."
+
 # 5. Environment Automation
 if [ ! -f .env ]; then
     info "Generating .env from template..."
@@ -178,10 +214,11 @@ info "Configuring UFW firewall rules..."
 ufw allow 22/tcp   # SSH
 ufw allow 80/tcp   # Web (mapped)
 ufw allow 3001/tcp # API/WS
+ufw allow 8080/tcp # phpMyAdmin (internal proxy)
 ufw allow 27015:27050/udp # CS2 Game Traffic
 ufw allow 27015:27050/tcp # CS2 RCON/TV
 ufw --force enable
-success "Firewall optimized for CS2."
+success "Firewall optimized for CS2 and phpMyAdmin."
 
 # Final Output
 echo -e "\n${GREEN}${BRIGHT}============================================================${NC}"
