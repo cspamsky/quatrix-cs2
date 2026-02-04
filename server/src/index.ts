@@ -93,7 +93,7 @@ app.get('/phpmyadmin', (req, res, next) => {
 });
 
 app.use('/phpmyadmin/', createProxyMiddleware({
-  target: 'http://localhost:8080',
+  target: 'http://localhost:80',
   changeOrigin: true,
   xfwd: true, // Bu ayar x-forwarded-proto, x-forwarded-host gibi başlıkları otomatik ekler
   pathRewrite: {
