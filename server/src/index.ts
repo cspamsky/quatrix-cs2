@@ -95,11 +95,14 @@ app.get('/phpmyadmin', (req, res, next) => {
 app.use('/phpmyadmin/', createProxyMiddleware({
   target: 'http://localhost:8080',
   changeOrigin: true,
+  xfwd: true, // Bu ayar x-forwarded-proto, x-forwarded-host gibi başlıkları otomatik ekler
   pathRewrite: {
     '^/phpmyadmin/': '/', 
   },
   on: {
-    proxyReq: (_proxyReq: any, req: any) => {
+    proxyReq: (proxyReq: any, req: any) => {
+      // Cloudflare HTTPS bilgisini phpMyAdmin'e aktar
+      proxyReq.setHeader('X-Forwarded-Proto', 'https');
       // console.log(`[PROXY] phpMyAdmin: ${req.method} ${req.url}`);
     },
     error: (err: any, _req: any, res: any) => {
