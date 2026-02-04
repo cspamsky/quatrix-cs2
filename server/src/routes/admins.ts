@@ -24,13 +24,63 @@ router.get("/:id/admins", async (req: any, res) => {
         const serverPath = fileSystemService.getInstancePath(id);
         const csgoPath = path.join(serverPath, "game", "csgo");
         const filePath = path.join(csgoPath, ADMINS_FILE_PATH);
-        const content = await fs.promises.readFile(filePath, 'utf-8');
-        res.json(JSON.parse(content));
-    } catch (error: any) {
-        if (error.code === 'ENOENT') {
-            // If file doesn't exist, return empty object (SimpleAdmin format is usually {} with SteamIDs as keys)
-            return res.json({});
+        
+        // 1. Read from JSON file (primary source)
+        let jsonAdmins: any = {};
+        try {
+            const content = await fs.promises.readFile(filePath, 'utf-8');
+            jsonAdmins = JSON.parse(content);
+        } catch (error: any) {
+            if (error.code !== 'ENOENT') {
+                console.error('[ADMINS] Error reading JSON:', error.message);
+            }
         }
+
+        // 2. Read from MariaDB (secondary source, for sync verification)
+        try {
+            const { databaseManager } = await import('../services/DatabaseManager.js');
+            
+            if (await databaseManager.isAvailable()) {
+                const creds = await databaseManager.getDatabaseCredentials(id);
+                
+                if (creds) {
+                    const mysql = await import('mysql2/promise');
+                    const connection = await mysql.createConnection({
+                        host: creds.host,
+                        port: creds.port,
+                        user: creds.user,
+                        password: creds.password,
+                        database: creds.database
+                    });
+
+                    try {
+                        const [rows] = await connection.execute(
+                            'SELECT * FROM sa_admins WHERE server_id = ?',
+                            [id]
+                        );
+
+                        // Merge MariaDB admins into JSON format (if not already present)
+                        for (const row of rows as any[]) {
+                            if (!jsonAdmins[row.player_steamid]) {
+                                jsonAdmins[row.player_steamid] = {
+                                    name: row.player_name,
+                                    flags: row.flags?.split(',') || ['@css/root'],
+                                    immunity: row.immunity || 100
+                                };
+                            }
+                        }
+                    } finally {
+                        await connection.end();
+                    }
+                }
+            }
+        } catch (dbError: any) {
+            console.error('[ADMINS] Failed to read from MariaDB:', dbError.message);
+            // Continue with JSON data only
+        }
+
+        res.json(jsonAdmins);
+    } catch (error: any) {
         res.status(500).json({ message: error.message || "Failed to fetch admins" });
     }
 });
@@ -46,14 +96,67 @@ router.post("/:id/admins", async (req: any, res) => {
         if (!server) return res.status(404).json({ message: "Server not found" });
 
         const serverPath = fileSystemService.getInstancePath(id);
-        // Ensure we are targeting the correct CS2 directory
         const csgoPath = path.join(serverPath, "game", "csgo");
         const filePath = path.join(csgoPath, ADMINS_FILE_PATH);
         
+        // 1. Write to JSON file (for CounterStrikeSharp)
         await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
         await fs.promises.writeFile(filePath, JSON.stringify(admins, null, 4));
         
-        // Reload admins in-game if server is running
+        // 2. Sync to MariaDB (for CS2-SimpleAdmin)
+        try {
+            const { databaseManager } = await import('../services/DatabaseManager.js');
+            
+            if (await databaseManager.isAvailable()) {
+                const creds = await databaseManager.getDatabaseCredentials(id);
+                
+                if (creds) {
+                    const mysql = await import('mysql2/promise');
+                    const connection = await mysql.createConnection({
+                        host: creds.host,
+                        port: creds.port,
+                        user: creds.user,
+                        password: creds.password,
+                        database: creds.database
+                    });
+
+                    try {
+                        // Clear existing admins for this server (optional, or use REPLACE INTO)
+                        await connection.execute('DELETE FROM sa_admins WHERE server_id = ?', [id]);
+
+                        // Insert each admin into sa_admins table
+                        for (const [steamId, adminData] of Object.entries(admins)) {
+                            const admin = adminData as any;
+                            await connection.execute(`
+                                INSERT INTO sa_admins (
+                                    player_steamid, 
+                                    player_name, 
+                                    flags, 
+                                    immunity, 
+                                    server_id,
+                                    created
+                                ) VALUES (?, ?, ?, ?, ?, NOW())
+                            `, [
+                                steamId,
+                                admin.name || 'Unknown',
+                                admin.flags?.join(',') || '@css/root',
+                                admin.immunity || 100,
+                                id
+                            ]);
+                        }
+
+                        console.log(`[ADMINS] Synced ${Object.keys(admins).length} admins to MariaDB for server ${id}`);
+                    } finally {
+                        await connection.end();
+                    }
+                }
+            }
+        } catch (dbError: any) {
+            console.error('[ADMINS] Failed to sync to MariaDB:', dbError.message);
+            // Continue anyway - JSON file is the primary source
+        }
+        
+        // 3. Reload admins in-game if server is running
         if (serverManager.isServerRunning(id)) {
             await serverManager.sendCommand(id, "css_reloadadmins");
         }
