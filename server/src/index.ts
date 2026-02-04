@@ -84,25 +84,28 @@ app.use('/api/chat', chatRouter);
 app.use('/api/maps', mapsRouter);
 
 // --- phpMyAdmin Proxy ---
-// Force trailing slash for relative paths to work correctly
-app.get('/phpmyadmin', (req, res) => {
-  res.redirect('/phpmyadmin/');
+// Force trailing slash only if exactly /phpmyadmin (prevents redirect loops)
+app.get('/phpmyadmin', (req, res, next) => {
+  if (req.originalUrl === '/phpmyadmin') {
+    return res.redirect(301, '/phpmyadmin/');
+  }
+  next();
 });
 
-app.use('/phpmyadmin', createProxyMiddleware({
+app.use('/phpmyadmin/', createProxyMiddleware({
   target: 'http://localhost:8080',
   changeOrigin: true,
   pathRewrite: {
-    '^/phpmyadmin': '', // Express mounts this at /phpmyadmin, so we strip it for the container
+    '^/phpmyadmin/': '/', 
   },
   on: {
     proxyReq: (_proxyReq: any, req: any) => {
-      console.log(`[PROXY] phpMyAdmin: ${req.method} ${req.url}`);
+      // console.log(`[PROXY] phpMyAdmin: ${req.method} ${req.url}`);
     },
     error: (err: any, _req: any, res: any) => {
       console.error('[PROXY] phpMyAdmin Error:', err.message);
-      if (res.status) {
-        res.status(502).send('phpMyAdmin is not reachable. Ensure Docker container is running.');
+      if (!res.headersSent) {
+        res.status(502).send('phpMyAdmin is not reachable. Ensure Docker container is running (sudo docker ps).');
       }
     }
   }
