@@ -704,6 +704,16 @@ export class PluginManager {
   private async injectMySQLCredentials(instanceId: string | number, targetDir: string) {
     if (!await databaseManager.isAvailable()) return;
 
+    // Load credentials and check for autoSync setting
+    const allCreds = await databaseManager.loadAllCredentials();
+    const serverSettings = allCreds[instanceId.toString()];
+    
+    // If autoSync is explicitly disabled, skip injection
+    if (serverSettings && serverSettings.autoSync === false) {
+      console.log(`[DB] Auto-sync disabled for server ${instanceId}, skipping injection.`);
+      return;
+    }
+
     let credentials: any = null;
     const getCreds = async () => {
         if (!credentials) {

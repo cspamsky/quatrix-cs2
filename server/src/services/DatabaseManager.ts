@@ -114,7 +114,7 @@ export class DatabaseManager {
         return all[id] || null;
     }
 
-    private async loadAllCredentials(): Promise<Record<string, any>> {
+    public async loadAllCredentials(): Promise<Record<string, any>> {
         try {
             if (!fs.existsSync(this.credsFile)) return {};
             const data = await fs.promises.readFile(this.credsFile, 'utf-8');
@@ -130,6 +130,47 @@ export class DatabaseManager {
         const dir = path.dirname(this.credsFile);
         if (!fs.existsSync(dir)) await fs.promises.mkdir(dir, { recursive: true });
         await fs.promises.writeFile(this.credsFile, JSON.stringify(all, null, 2));
+    }
+
+    /**
+     * Creates a database and user with custom credentials provided by the user.
+     */
+    async createCustomDatabase(serverId: string | number, creds: any) {
+        if (!this.pool) throw new Error("MySQL service is not available.");
+        const id = serverId.toString();
+        
+        try {
+            console.log(`[DB] Creating custom database ${creds.database} for server ${id}...`);
+            
+            // Create Database
+            await this.pool.query(`CREATE DATABASE IF NOT EXISTS \`${creds.database}\``);
+            
+            // Create User and Grant Privileges
+            // We use 'localhost' for better security if it's a local panel
+            await this.pool.query(`CREATE USER IF NOT EXISTS '${creds.user}'@'%' IDENTIFIED BY '${creds.password}'`);
+            await this.pool.query(`GRANT ALL PRIVILEGES ON \`${creds.database}\`.* TO '${creds.user}'@'%'`);
+            await this.pool.query(`FLUSH PRIVILEGES`);
+
+            await this.saveCredentials(id, creds);
+            return creds;
+        } catch (error: any) {
+            console.error(`[DB] Failed to create custom database for server ${id}:`, error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Executes a raw SQL query against the local master database.
+     * Careful: This should only be used by admins and is highly sensitive.
+     */
+    async executeQuery(query: string) {
+        if (!this.pool) throw new Error("MySQL service is not available.");
+        try {
+            const [rows] = await this.pool.query(query);
+            return rows;
+        } catch (error: any) {
+            throw new Error(`SQL Error: ${error.message}`);
+        }
     }
 
     /**

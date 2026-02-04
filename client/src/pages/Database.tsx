@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Database, Server, RefreshCw, Copy, Check, Layers } from 'lucide-react'
+import { Database, Server, RefreshCw, Copy, Check, Layers, Terminal, X, AlertCircle } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import toast from 'react-hot-toast'
 
@@ -16,6 +16,7 @@ interface ServerWithDB {
   name: string
   db: DatabaseInfo | null
   stats?: { size: number; tables: number }
+  autoSync?: boolean
 }
 
 const DatabasePage = () => {
@@ -25,6 +26,9 @@ const DatabasePage = () => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [globalStatus, setGlobalStatus] = useState<'ONLINE' | 'OFFLINE' | 'CHECKING'>('CHECKING')
+  const [queryingId, setQueryingId] = useState<number | null>(null)
+  const [sqlQuery, setSqlQuery] = useState('')
+  const [queryResult, setQueryResult] = useState<any>(null)
   const [manualForm, setManualForm] = useState({
     host: '',
     port: '3306',
@@ -60,7 +64,8 @@ const DatabasePage = () => {
             id: srv.id,
             name: srv.name,
             db: dbData?.credentials || null,
-            stats: dbData?.stats || { size: 0, tables: 0 }
+            stats: dbData?.stats || { size: 0, tables: 0 },
+            autoSync: dbData?.credentials?.autoSync !== false // default to true
           }
         }))
         
@@ -93,25 +98,86 @@ const DatabasePage = () => {
     }
   }
 
-  const handleSaveManual = async (serverId: number) => {
+  const handleSaveManual = async (id: number) => {
     try {
-      const res = await apiFetch(`/api/servers/${serverId}/database`, {
+      const response = await apiFetch(`/api/servers/${id}/database`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(manualForm)
       })
 
-      if (res.ok) {
-        const data = await res.json()
-        setServers(prev => prev.map(s => s.id === serverId ? { ...s, db: data.credentials } : s))
+      if (response.ok) {
+        toast.success('Credentials saved successfully')
         setEditingId(null)
-        toast.success('Manual credentials saved')
+        fetchData()
       } else {
-        const err = await res.json()
-        toast.error(err.message || 'Failed to save credentials')
+        const data = await response.json()
+        toast.error(data.message || 'Failed to save credentials')
       }
     } catch (error) {
-      toast.error('Connection error')
+      toast.error('Failed to connect to server')
+    }
+  }
+
+  const handleCustomProvision = async (id: number) => {
+    try {
+      const response = await apiFetch(`/api/servers/${id}/database/custom`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user: manualForm.user,
+          password: manualForm.password,
+          database: manualForm.database
+        })
+      })
+
+      if (response.ok) {
+        toast.success('Local database created with your credentials')
+        setEditingId(null)
+        fetchData()
+      } else {
+        const data = await response.json()
+        toast.error(data.message || 'Failed to create local database')
+      }
+    } catch (error) {
+      toast.error('Failed to connect to server')
+    }
+  }
+
+  const toggleAutoSync = async (id: number, current: boolean) => {
+    try {
+      const response = await apiFetch(`/api/servers/${id}/database/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ autoSync: !current })
+      })
+
+      if (response.ok) {
+        toast.success(`Auto-sync ${!current ? 'enabled' : 'disabled'}`)
+        fetchData()
+      }
+    } catch (error) {
+      toast.error('Failed to update settings')
+    }
+  }
+
+  const handleExecuteQuery = async (id: number) => {
+    if (!sqlQuery.trim()) return
+    try {
+      const response = await apiFetch(`/api/servers/${id}/database/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: sqlQuery })
+      })
+      const data = await response.json()
+      if (response.ok) {
+        setQueryResult(data.results)
+        toast.success('Query executed')
+      } else {
+        toast.error(data.message)
+      }
+    } catch (error) {
+      toast.error('Failed to execute query')
     }
   }
 
@@ -213,12 +279,20 @@ const DatabasePage = () => {
                   </>
                 )}
                 {server.db && editingId !== server.id && (
-                  <button
-                    onClick={() => openManualEntry(server)}
-                    className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 rounded-xl transition-all"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setQueryingId(server.id)}
+                      className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                    >
+                      SQL Console
+                    </button>
+                    <button
+                      onClick={() => openManualEntry(server)}
+                      className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/10 rounded-xl transition-all"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -276,13 +350,21 @@ const DatabasePage = () => {
                   <div className="flex gap-3 pt-4">
                     <button 
                       onClick={() => handleSaveManual(server.id)}
-                      className="flex-1 py-2.5 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+                      className="flex-1 py-2.5 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 text-xs"
                     >
                       Save Configuration
                     </button>
+                    {!manualForm.host || manualForm.host === 'localhost' || manualForm.host === '127.0.0.1' ? (
+                      <button 
+                        onClick={() => handleCustomProvision(server.id)}
+                        className="flex-1 py-2.5 bg-white/10 text-white font-bold rounded-xl border border-white/10 hover:bg-white/20 transition-all text-xs"
+                      >
+                        Create Local DB
+                      </button>
+                    ) : null}
                     <button 
                       onClick={() => setEditingId(null)}
-                      className="px-6 py-2.5 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 transition-all"
+                      className="px-6 py-2.5 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 transition-all text-xs"
                     >
                       Cancel
                     </button>
@@ -342,21 +424,101 @@ const DatabasePage = () => {
                   <span className="text-[11px] font-black text-primary uppercase tracking-[0.2em]">Synchronized</span>
                 </div>
                 <div className="text-[10px] text-gray-500 font-medium italic">
-                  Injecting credentials to plugin configs...
+                  {server.autoSync ? 'Injecting credentials to plugin configs...' : 'Auto-sync disabled.'}
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-[10px] font-bold text-gray-600 uppercase">Auto-Sync</label>
+                  <button 
+                    onClick={() => toggleAutoSync(server.id, !!server.autoSync)}
+                    className={`w-10 h-5 rounded-full transition-all relative ${server.autoSync ? 'bg-primary' : 'bg-gray-800'}`}
+                  >
+                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${server.autoSync ? 'right-1' : 'left-1'}`}></div>
+                  </button>
                 </div>
               </div>
             )}
           </div>
         ))}
-
-        {servers.length === 0 && (
-          <div className="col-span-full py-20 bg-[#111827] rounded-3xl border border-dashed border-gray-800 flex flex-col items-center">
-            <Layers className="w-12 h-12 text-gray-800 mb-4" />
-            <h3 className="text-white font-bold">No instances found</h3>
-            <p className="text-gray-500 text-sm mt-1">Create a server instance first to manage its database.</p>
-          </div>
-        )}
       </div>
+
+      {servers.length === 0 && (
+        <div className="col-span-full py-20 bg-[#111827] rounded-3xl border border-dashed border-gray-800 flex flex-col items-center">
+          <Layers className="w-12 h-12 text-gray-800 mb-4" />
+          <h3 className="text-white font-bold">No instances found</h3>
+          <p className="text-gray-500 text-sm mt-1">Create a server instance first to manage its database.</p>
+        </div>
+      )}
+
+      {/* SQL Console Modal */}
+      {queryingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-[#0b0f1a] w-full max-w-4xl rounded-3xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-6 border-b border-gray-800 flex items-center justify-between bg-white/[0.01]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <Terminal className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white">SQL Query Console</h3>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Server ID: {queryingId}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setQueryingId(null); setQueryResult(null); setSqlQuery(''); }}
+                className="p-2 hover:bg-white/5 rounded-xl text-gray-500 transition-all"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 flex flex-col gap-6 overflow-hidden">
+               <div className="flex-1 flex flex-col gap-2 min-h-[160px]">
+                  <label className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Execute SQL Query</label>
+                  <textarea 
+                    value={sqlQuery}
+                    onChange={(e) => setSqlQuery(e.target.value)}
+                    placeholder="CREATE TABLE IF NOT EXISTS players (...); OR SELECT * FROM stats;"
+                    className="flex-1 w-full bg-black/40 border border-gray-800 rounded-2xl p-4 text-sm font-mono text-primary placeholder:text-gray-700 focus:outline-none focus:border-primary/40 transition-all resize-none"
+                  />
+                  <div className="flex justify-end">
+                    <button 
+                      onClick={() => handleExecuteQuery(queryingId)}
+                      className="px-6 py-2.5 bg-primary text-black font-black text-xs uppercase tracking-widest rounded-xl hover:shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] transition-all"
+                    >
+                      Run Query
+                    </button>
+                  </div>
+               </div>
+
+               <div className="flex-1 flex flex-col gap-2 overflow-hidden">
+                  <label className="text-[10px] font-black text-gray-600 uppercase tracking-widest">Results</label>
+                  <div className="flex-1 bg-black/60 rounded-2xl border border-gray-800/50 p-4 overflow-auto font-mono text-[11px]">
+                     {queryResult ? (
+                        <pre className="text-gray-300">
+                          {JSON.stringify(queryResult, null, 2)}
+                        </pre>
+                     ) : (
+                        <div className="h-full flex flex-col items-center justify-center opacity-20 text-center">
+                          <Database className="w-12 h-12 mb-2" />
+                          <p>No results to display</p>
+                        </div>
+                     )}
+                  </div>
+               </div>
+            </div>
+            
+            <div className="p-4 bg-yellow-500/5 border-t border-yellow-500/10 flex items-start gap-3">
+               <div className="p-1 bg-yellow-500/20 rounded-lg text-yellow-500 mt-0.5">
+                 <AlertCircle className="w-4 h-4" />
+               </div>
+               <p className="text-[10px] text-yellow-500/80 leading-relaxed italic">
+                 DANGER: Raw SQL queries are executed with high privileges. Ensure your syntax is correct. 
+                 Always backup your data before running structural changes (CREATE/DROP/ALTER).
+               </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

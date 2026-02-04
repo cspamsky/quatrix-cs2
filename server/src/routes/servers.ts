@@ -1,4 +1,6 @@
 import { Router } from "express";
+import fs from "fs";
+import path from "path";
 import { z } from "zod";
 import db from "../db.js";
 import { serverManager } from "../serverManager.js";
@@ -286,5 +288,52 @@ router.post("/", createServerLimiter, (req: any, res) => {
 
 
 
+
+// POST /api/servers/:id/database/custom (Create local DB with user-provided info)
+router.post("/:id/database/custom", authenticateToken, async (req: any, res) => {
+    try {
+        const { user, password, database } = req.body;
+        if (!user || !password || !database) {
+            return res.status(400).json({ message: "Missing required fields for custom database" });
+        }
+        const creds = { host: 'localhost', port: 3306, user, password, database };
+        await databaseManager.createCustomDatabase(req.params.id, creds);
+        res.json({ message: "Custom local database created successfully", credentials: creds });
+    } catch (error: any) {
+        res.status(500).json({ message: "Failed to create custom database", error: error.message });
+    }
+});
+
+// POST /api/servers/:id/database/query (Raw SQL Console)
+router.post("/:id/database/query", authenticateToken, async (req: any, res) => {
+    try {
+        const { query } = req.body;
+        if (!query) return res.status(400).json({ message: "Query is required" });
+        
+        const results = await databaseManager.executeQuery(query);
+        res.json({ results });
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+// POST /api/servers/:id/database/settings (Toggle Auto-Sync)
+router.post("/:id/database/settings", authenticateToken, async (req: any, res) => {
+    try {
+        const { autoSync } = req.body;
+        const all = await databaseManager.loadAllCredentials();
+        if (!all[req.params.id]) {
+            all[req.params.id] = {};
+        }
+        all[req.params.id].autoSync = autoSync;
+        
+        const credsFile = path.join(process.cwd(), 'data', 'databases.json');
+        await fs.promises.writeFile(credsFile, JSON.stringify(all, null, 2));
+        
+        res.json({ message: "Database settings updated", autoSync });
+    } catch (error: any) {
+        res.status(500).json({ message: "Failed to update database settings" });
+    }
+});
 
 export default router;
