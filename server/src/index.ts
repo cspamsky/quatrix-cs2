@@ -9,6 +9,7 @@ import { serverManager } from "./serverManager.js";
 import { apiLimiter } from "./middleware/rateLimiter.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createProxyMiddleware } from 'http-proxy-middleware';
 
 // Routes
 import authRouter from "./routes/auth.js";
@@ -81,6 +82,16 @@ app.use('/api/servers', adminsRouter); // /api/servers/:id/admins
 app.use('/api/logs', logsRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/maps', mapsRouter);
+
+// --- phpMyAdmin Proxy ---
+// Forward requests from /phpmyadmin to the Docker container at port 8080
+app.use('/phpmyadmin', createProxyMiddleware({
+  target: 'http://localhost:8080',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/phpmyadmin': '/', // Docker image handles internal routing at root
+  },
+}));
 
 // --- Serve Frontend in Production ---
 if (isProduction) {
