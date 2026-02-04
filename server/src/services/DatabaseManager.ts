@@ -204,24 +204,28 @@ export class DatabaseManager {
      * Gets statistics for a specific database (size in MB and table count).
      */
     async getDatabaseStats(serverId: string | number) {
-        if (!this.pool) return null;
-        const dbName = `quatrix_srv_${serverId}`;
+        if (!this.pool) return { size: 0, tables: 0, tableNames: [] };
         
+        const dbName = `quatrix_srv_${serverId}`;
         try {
-            const [rows]: any = await this.pool.query(`
-                SELECT 
-                    ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb,
-                    COUNT(*) AS table_count
+            // Get database size
+            const [sizeRows]: any = await this.pool.query(`
+                SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb
                 FROM information_schema.tables 
                 WHERE table_schema = ?
             `, [dbName]);
 
+            // Get table names
+            const [tableRows]: any = await this.pool.query(`SHOW TABLES FROM \`${dbName}\``);
+            const tableNames = tableRows.map((row: any) => Object.values(row)[0]);
+
             return {
-                size: rows[0]?.size_mb || 0,
-                tables: rows[0]?.table_count || 0
+                size: sizeRows[0]?.size_mb || 0,
+                tables: tableNames.length,
+                tableNames: tableNames
             };
         } catch (error) {
-            return { size: 0, tables: 0 };
+            return { size: 0, tables: 0, tableNames: [] };
         }
     }
 }
