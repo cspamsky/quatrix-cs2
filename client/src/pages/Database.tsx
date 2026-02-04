@@ -15,7 +15,7 @@ interface ServerWithDB {
   id: number
   name: string
   db: DatabaseInfo | null
-  stats?: { size: number; tables: number; tableNames?: string[] }
+  stats?: { size: number; tables: number }
   autoSync?: boolean
 }
 
@@ -259,7 +259,7 @@ const DatabasePage = () => {
                 {server.db && editingId !== server.id && (
                   <div className="flex gap-2">
                     <button
-                      onClick={() => window.open(`${window.location.protocol}//${window.location.hostname}/phpmyadmin`, '_blank')}
+                      onClick={() => window.open(window.location.origin + '/phpmyadmin', '_blank')}
                       className="px-3 py-2 bg-[#6c78af]/20 hover:bg-[#6c78af]/30 text-[#bbc4ff] border border-[#6c78af]/30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
@@ -384,20 +384,6 @@ const DatabasePage = () => {
                        <div className="text-lg font-bold text-white font-mono">{server.stats?.tables || 0}</div>
                     </div>
                   </div>
-                  
-                  {/* Table Names List */}
-                  {server.stats?.tableNames && server.stats.tableNames.length > 0 && (
-                    <div className="col-span-2 mt-4 space-y-2">
-                       <div className="text-[9px] text-gray-500 font-black uppercase tracking-[0.2em]">Table Structure</div>
-                       <div className="flex flex-wrap gap-2">
-                          {server.stats.tableNames.map(name => (
-                            <span key={name} className="px-2 py-1 bg-primary/5 border border-primary/10 rounded-lg text-[10px] text-primary/80 font-mono">
-                              {name}
-                            </span>
-                          ))}
-                       </div>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
