@@ -125,8 +125,18 @@ router.post("/:id/admins", async (req: any, res) => {
                         await connection.execute('DELETE FROM sa_admins WHERE server_id = ?', [id]);
 
                         // Insert each admin into sa_admins table
-                        for (const [steamId, adminData] of Object.entries(admins)) {
+                        for (const [adminName, adminData] of Object.entries(admins)) {
                             const admin = adminData as any;
+                            
+                            // Extract Steam ID from identity field
+                            const steamId = admin.identity || adminName;
+                            
+                            // Skip if Steam ID is invalid
+                            if (!/^\d{17}$/.test(steamId)) {
+                                console.warn(`[ADMINS] Skipping invalid Steam ID for ${adminName}: ${steamId}`);
+                                continue;
+                            }
+                            
                             await connection.execute(`
                                 INSERT INTO sa_admins (
                                     player_steamid, 
@@ -138,7 +148,7 @@ router.post("/:id/admins", async (req: any, res) => {
                                 ) VALUES (?, ?, ?, ?, ?, NOW())
                             `, [
                                 steamId,
-                                admin.name || 'Unknown',
+                                adminName,
                                 admin.flags?.join(',') || '@css/root',
                                 admin.immunity || 100,
                                 id
