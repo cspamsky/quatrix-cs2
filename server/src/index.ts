@@ -84,14 +84,25 @@ app.use('/api/chat', chatRouter);
 app.use('/api/maps', mapsRouter);
 
 // --- phpMyAdmin Proxy ---
-// Forward requests from /phpmyadmin to the Docker container at port 8080
+// Force trailing slash for relative paths to work correctly
+app.get('/phpmyadmin', (req, res) => {
+  res.redirect('/phpmyadmin/');
+});
+
 app.use('/phpmyadmin', createProxyMiddleware({
   target: 'http://localhost:8080',
   changeOrigin: true,
   pathRewrite: {
-    '^/phpmyadmin': '/', // Docker image handles internal routing at root
+    '^/phpmyadmin': '', // Express mounts this at /phpmyadmin, so we strip it for the container
   },
-}));
+  onProxyReq: (_proxyReq: any, req: any) => {
+    console.log(`[PROXY] phpMyAdmin: ${req.method} ${req.url}`);
+  },
+  onError: (err: any, _req: any, res: any) => {
+    console.error('[PROXY] phpMyAdmin Error:', err.message);
+    res.status(502).send('phpMyAdmin is not reachable. Ensure Docker container is running.');
+  }
+}) as any);
 
 // --- Serve Frontend in Production ---
 if (isProduction) {
