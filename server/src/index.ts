@@ -95,12 +95,16 @@ app.use('/phpmyadmin', createProxyMiddleware({
   pathRewrite: {
     '^/phpmyadmin': '', // Express mounts this at /phpmyadmin, so we strip it for the container
   },
-  onProxyReq: (_proxyReq: any, req: any) => {
-    console.log(`[PROXY] phpMyAdmin: ${req.method} ${req.url}`);
-  },
-  onError: (err: any, _req: any, res: any) => {
-    console.error('[PROXY] phpMyAdmin Error:', err.message);
-    res.status(502).send('phpMyAdmin is not reachable. Ensure Docker container is running.');
+  on: {
+    proxyReq: (_proxyReq: any, req: any) => {
+      console.log(`[PROXY] phpMyAdmin: ${req.method} ${req.url}`);
+    },
+    error: (err: any, _req: any, res: any) => {
+      console.error('[PROXY] phpMyAdmin Error:', err.message);
+      if (res.status) {
+        res.status(502).send('phpMyAdmin is not reachable. Ensure Docker container is running.');
+      }
+    }
   }
 }) as any);
 
