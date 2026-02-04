@@ -59,6 +59,21 @@ const isProduction = process.env.NODE_ENV === 'production';
 app.use(cors());
 app.use(express.json());
 
+// --- phpMyAdmin Proxy (Must be at the top) ---
+app.get('/phpmyadmin', (req, res) => res.redirect(301, '/phpmyadmin/'));
+app.use('/phpmyadmin/', createProxyMiddleware({
+  target: 'http://localhost:8080',
+  changeOrigin: true,
+  xfwd: true,
+  pathRewrite: { '^/phpmyadmin/': '/' },
+  on: {
+    proxyReq: (proxyReq: any) => proxyReq.setHeader('X-Forwarded-Proto', 'https'),
+    error: (err: any, _req: any, res: any) => {
+      if (!res.headersSent) res.status(502).send('phpMyAdmin is not reachable. Check Docker (sudo docker ps).');
+    }
+  }
+}) as any);
+
 // Simple Request Logger
 app.use((req, res, next) => {
     if (!req.path.startsWith('/socket.io')) {
@@ -83,42 +98,12 @@ app.use('/api/logs', logsRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/maps', mapsRouter);
 
-// --- phpMyAdmin Proxy ---
-// Force trailing slash only if exactly /phpmyadmin (prevents redirect loops)
-app.get('/phpmyadmin', (req, res, next) => {
-  if (req.originalUrl === '/phpmyadmin') {
-    return res.redirect(301, '/phpmyadmin/');
-  }
-  next();
-});
-
-app.use('/phpmyadmin/', createProxyMiddleware({
-  target: 'http://localhost:80',
-  changeOrigin: true,
-  xfwd: true, // Bu ayar x-forwarded-proto, x-forwarded-host gibi başlıkları otomatik ekler
-  pathRewrite: {
-    '^/phpmyadmin/': '/', 
-  },
-  on: {
-    proxyReq: (proxyReq: any, req: any) => {
-      // Cloudflare HTTPS bilgisini phpMyAdmin'e aktar
-      proxyReq.setHeader('X-Forwarded-Proto', 'https');
-      // console.log(`[PROXY] phpMyAdmin: ${req.method} ${req.url}`);
-    },
-    error: (err: any, _req: any, res: any) => {
-      console.error('[PROXY] phpMyAdmin Error:', err.message);
-      if (!res.headersSent) {
-        res.status(502).send('phpMyAdmin is not reachable. Ensure Docker container is running (sudo docker ps).');
-      }
-    }
-  }
-}) as any);
 
 // --- Serve Frontend in Production ---
 if (isProduction) {
   const clientBuildPath = path.join(__dirname, '../../client/dist');
   console.log(`\x1b[34m[INFO]\x1b[0m Serving frontend from: \x1b[35m${clientBuildPath}\x1b[0m`);
-  
+
   app.use(express.static(clientBuildPath));
   
   // SPA fallback - tüm non-API route'ları index.html'e yönlendir
