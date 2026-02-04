@@ -61,9 +61,15 @@ router.get("/:id/admins", async (req: any, res) => {
 
                         // Merge MariaDB admins into JSON format (if not already present)
                         for (const row of rows as any[]) {
-                            if (!jsonAdmins[row.player_steamid]) {
-                                jsonAdmins[row.player_steamid] = {
-                                    name: row.player_name,
+                            // Check if this Steam ID already exists in JSON (by checking identity field)
+                            const existsInJson = Object.values(jsonAdmins).some(
+                                (admin: any) => admin.identity === row.player_steamid.toString()
+                            );
+                            
+                            if (!existsInJson) {
+                                // Add admin with name as key (to match JSON format)
+                                jsonAdmins[row.player_name] = {
+                                    identity: row.player_steamid.toString(),
                                     flags: row.flags?.split(',') || ['@css/root'],
                                     immunity: row.immunity || 100
                                 };
