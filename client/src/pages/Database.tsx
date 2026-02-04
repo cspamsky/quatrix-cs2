@@ -259,7 +259,7 @@ const DatabasePage = () => {
                 {server.db && editingId !== server.id && (
                   <div className="flex gap-2">
                     <button
-                      onClick={() => window.open(window.location.origin + '/phpmyadmin', '_blank')}
+                      onClick={() => window.open(window.location.origin + '/phpmyadmin/', '_blank')}
                       className="px-3 py-2 bg-[#6c78af]/20 hover:bg-[#6c78af]/30 text-[#bbc4ff] border border-[#6c78af]/30 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
