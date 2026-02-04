@@ -60,8 +60,12 @@ app.use(cors());
 app.use(express.json());
 
 // --- phpMyAdmin Proxy (Must be at the top) ---
-app.get('/phpmyadmin', (req, res) => res.redirect(301, '/phpmyadmin/'));
-app.use('/phpmyadmin/', createProxyMiddleware({
+app.use('/phpmyadmin', (req, res, next) => {
+  if (req.originalUrl === '/phpmyadmin') {
+    return res.redirect(301, '/phpmyadmin/');
+  }
+  next();
+}, createProxyMiddleware({
   target: 'http://localhost:8080',
   changeOrigin: true,
   xfwd: true,
