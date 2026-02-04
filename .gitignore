@@ -40,6 +40,10 @@ steamcmd/
 # Misc
 *.tmp
 *.bak
+tsc_output.txt
+
+# Runtime Instance Data
+server/quatrix_root/
 
 # Assets Persistence
 !.gitkeep
