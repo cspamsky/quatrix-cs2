@@ -19,6 +19,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@types/tar": "^6.1.13",
     "adm-zip": "^0.5.16",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.6.0",
@@ -36,6 +37,7 @@
     "socket.io": "^4.8.3",
     "srcds-rcon": "^2.2.1",
     "systeminformation": "^5.30.2",
+    "tar": "^7.5.7",
     "zod": "^4.3.5"
   },
   "devDependencies": {

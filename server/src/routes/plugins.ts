@@ -16,10 +16,11 @@ const upload = multer({
     dest: "data/temp/uploads/",
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
     fileFilter: (req, file, cb) => {
-        if (path.extname(file.originalname).toLowerCase() === '.zip') {
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (['.zip', '.rar', '.gz', '.tar'].includes(ext) || file.originalname.endsWith('.tar.gz')) {
             cb(null, true);
         } else {
-            cb(new Error("Only ZIP files are allowed"));
+            cb(new Error("Supported formats: .zip, .rar, .tar.gz"));
         }
     }
 });
@@ -110,7 +111,15 @@ router.post("/:id/plugins/:plugin/:action", async (req: any, res) => {
 });
 
 // POST /api/servers/plugins/pool/upload
-router.post("/plugins/pool/upload", upload.single('pluginZip'), async (req: any, res) => {
+router.post("/plugins/pool/upload", (req, res, next) => {
+    upload.single('pluginZip')(req, res, (err) => {
+        if (err) {
+            console.error("[POOL] Multer Error:", err.message);
+            return res.status(400).json({ message: err.message });
+        }
+        next();
+    });
+}, async (req: any, res) => {
     const { pluginId } = req.body;
     
     if (!req.file) {
@@ -118,7 +127,7 @@ router.post("/plugins/pool/upload", upload.single('pluginZip'), async (req: any,
     }
 
     try {
-        await serverManager.pluginManager.uploadToPool(pluginId || "unknown", req.file.path);
+        await serverManager.pluginManager.uploadToPool(pluginId || "unknown", req.file.path, req.file.originalname);
         res.json({ message: "Plugin uploaded and processed successfully" });
     } catch (error: any) {
         console.error("[POOL] Upload error:", error);

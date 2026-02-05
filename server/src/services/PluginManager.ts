@@ -3,6 +3,7 @@ import fs from "fs";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
 import AdmZip from "adm-zip";
+import * as tar from "tar";
 import { pluginRegistry, type PluginId } from "../config/plugins.js";
 import { fileURLToPath } from "url";
 import db from "../db.js";
@@ -100,10 +101,11 @@ export class PluginManager {
         if (!isKnown) {
             // New discovered plugin
             const fullPath = path.join(POOL_DIR, item);
-            const stats = await fs.promises.stat(fullPath);
-            if (stats.isDirectory()) {
+            const stats = await fs.promises.stat(fullPath).catch(() => null);
+            if (stats && stats.isDirectory()) {
                 const category = await this.detectPoolFolderCategory(fullPath);
-                manifest[itemLower] = {
+                // Use original case 'item' as the key to satisfy UI expectations
+                manifest[item] = {
                    name: item,
                    version: "latest",
                    category: category,
@@ -280,20 +282,35 @@ export class PluginManager {
     );
   }
 
-  async uploadToPool(pluginId: string, zipPath: string): Promise<void> {
+  async uploadToPool(pluginId: string, filePath: string, originalName: string): Promise<void> {
     const tempExtractDir = path.join(POOL_DIR, `.temp_upload_${Date.now()}`);
+    const lowerName = originalName.toLowerCase();
+    console.log(`[POOL] Processing upload: ${originalName} (ID: ${pluginId})`);
 
     try {
       await fs.promises.mkdir(tempExtractDir, { recursive: true });
-      
-      const zip = new AdmZip(zipPath);
-      zip.extractAllTo(tempExtractDir, true);
+      if (lowerName.endsWith('.zip')) {
+        const zip = new AdmZip(filePath);
+        zip.extractAllTo(tempExtractDir, true);
+      } else if (lowerName.endsWith('.tar.gz') || lowerName.endsWith('.tgz') || lowerName.endsWith('.tar')) {
+        await tar.x({
+          file: filePath,
+          C: tempExtractDir
+        });
+      } else if (lowerName.endsWith('.rar')) {
+        throw new Error("RAR extraction is not natively supported yet. Please convert your plugin to .ZIP or .tar.gz format.");
+      } else {
+        throw new Error(`Unsupported file format: "${originalName}". Use .zip, .tar.gz or .tar`);
+      }
+
+      // If pluginId is "unknown", let's try to derive a better ID from the filename
+      const fallbackId = (pluginId === 'unknown') ? originalName.replace(/\.(zip|tar\.gz|tgz|tar|rar)$/i, '') : pluginId;
 
       // Find the actual content root (smart flatten)
       const contentRoot = await this.findContentRoot(tempExtractDir);
       
       // Detect metadata from extracted files
-      const metadata = await this.detectPluginMetadata(contentRoot, pluginId);
+      const metadata = await this.detectPluginMetadata(contentRoot, fallbackId);
       const finalFolderName = metadata.folderName;
       const targetPoolPath = path.join(POOL_DIR, finalFolderName);
 
@@ -305,11 +322,11 @@ export class PluginManager {
       console.log(`[POOL] Plugin ${metadata.name} (${metadata.category}) successfully uploaded to ${targetPoolPath}`);
     } catch (error: any) {
       console.error(`[POOL] Upload failed:`, error);
-      throw new Error(`Failed to process plugin ZIP: ${error.message}`);
+      throw new Error(`Failed to process plugin: ${error.message}`);
     } finally {
       // Cleanup temp dirs
       await fs.promises.rm(tempExtractDir, { recursive: true, force: true }).catch(() => {});
-      await fs.promises.rm(zipPath, { force: true }).catch(() => {});
+      await fs.promises.rm(filePath, { force: true }).catch(() => {});
     }
   }
 
@@ -324,7 +341,10 @@ export class PluginManager {
           const hasCSS = addonsItems.some(i => i.toLowerCase() === "counterstrikesharp");
           if (hasCSS) {
               const pluginsPath = path.join(addonsPath, "counterstrikesharp", "plugins");
-              const cssPlugins = await fs.promises.readdir(pluginsPath).catch(() => []);
+              const cssItems = await fs.promises.readdir(pluginsPath).catch(() => []);
+              const skipItems = ['counterstrikesharp.api', 'counterstrikesharp.shared'];
+              const cssPlugins = cssItems.filter(i => !skipItems.some(s => i.toLowerCase() === s));
+
               if (cssPlugins.length > 0) {
                   const pName = cssPlugins[0] || suggestedId || "UnknownCS";
                   return { name: pName, category: 'cssharp', folderName: pName };
@@ -332,6 +352,13 @@ export class PluginManager {
               const defName = suggestedId || "UnknownCS";
               return { name: defName, category: 'cssharp', folderName: defName };
           }
+          
+          // 1b. Check for Metamod:Source specifically
+          const hasMetamod = addonsItems.some(i => i.toLowerCase() === "metamod");
+          if (hasMetamod || (suggestedId && suggestedId.toLowerCase().includes("mmsource"))) {
+              return { name: 'Metamod:Source', category: 'metamod', folderName: 'metamod' };
+          }
+
           const mmName = suggestedId || addonsItems[0] || "UnknownMM";
           return { name: mmName, category: 'metamod', folderName: mmName };
       }
@@ -339,15 +366,51 @@ export class PluginManager {
       // 2. Check for naked CS# plugin (just dlls/configs)
       const dllFiles = items.filter(i => i.isFile() && i.name.toLowerCase().endsWith(".dll"));
       if (dllFiles.length > 0) {
-          const mainDll = dllFiles.find(f => !f.name.toLowerCase().includes("native")) || dllFiles[0];
+          const skipDlls = [
+            'counterstrikesharp.api', 'metamod.source', 'metamod', 'counterstrikesharp',
+            'dapper', 'mysql.data', 'newtonsoft.json', 'npgsql', 'system.data', 'microsoft.data'
+          ];
+          
+          const lowerSuggested = suggestedId?.toLowerCase();
+          
+          // Try to find a DLL that matches our suggested ID (zip name)
+          let mainDll = dllFiles.find(f => f.name.toLowerCase().replace(".dll", "") === lowerSuggested);
+          
+          // If not found, look for something that isn't a known library
+          if (!mainDll) {
+              mainDll = dllFiles.find(f => {
+                  const name = f.name.toLowerCase();
+                  return !name.includes("native") && !skipDlls.some(skip => name.startsWith(skip));
+              });
+          }
+
+          // Fallback to first DLL if still nothing found
+          if (!mainDll) mainDll = dllFiles[0];
+          
           if (mainDll) {
-            const name = mainDll.name.replace(".dll", "");
+            let name = mainDll.name.replace(".dll", "");
+            
+            // 1. Strip common noise/suffixes
+            const cleanName = name.replace(/[.-]Plugin$/i, "").replace(/Plugin$/i, "");
+            
+            // 2. If suggestedId (zip name) is valid, prefer it to keep naming consistent with upload
+            if (suggestedId && suggestedId !== 'unknown') {
+                // If the DLL name contains the suggestedId, use the suggestedId
+                if (cleanName.toLowerCase().includes(suggestedId.toLowerCase())) {
+                    name = suggestedId;
+                } else {
+                    name = cleanName;
+                }
+            } else {
+                name = cleanName;
+            }
+
             return { name: name, category: 'cssharp', folderName: name };
           }
       }
 
-      // Fallback
-      const fallbackName = suggestedId || path.basename(dir);
+      // Fallback: If suggestedId is 'unknown', use the folder name instead of 'unknown'
+      const fallbackName = (suggestedId && suggestedId !== 'unknown') ? suggestedId : path.basename(dir);
       return { name: fallbackName, category: 'cssharp', folderName: fallbackName };
   }
 

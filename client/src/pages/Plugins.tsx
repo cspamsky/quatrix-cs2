@@ -313,10 +313,30 @@ const Plugins = () => {
     });
   }, [allPlugins, searchQuery, activeCategory]);
 
+  const TabSwitcher = () => (
+    <div className="flex items-center gap-1 bg-[#111827]/40 p-1 rounded-2xl border border-gray-800/50 shrink-0">
+      <button 
+        onClick={() => setActiveTab('instances')}
+        className={`flex items-center gap-3 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'instances' ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+      >
+        <ServerIcon size={14} />
+        Server Management
+      </button>
+      <button 
+        onClick={() => setActiveTab('pool')}
+        className={`flex items-center gap-3 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'pool' ? 'bg-orange-500 text-white shadow-xl shadow-orange-500/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+      >
+        <Box size={14} />
+        Global Repository
+      </button>
+    </div>
+  );
+
   const renderPoolTable = () => {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col lg:flex-row gap-4 shrink-0">
+            <TabSwitcher />
             <div className="relative flex-1 group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={18} />
                 <input 
@@ -426,6 +446,7 @@ const Plugins = () => {
       <div className="flex flex-col gap-6 max-h-[calc(100vh-250px)]">
         {/* Filter Bar */}
         <div className="flex flex-col lg:flex-row gap-4 shrink-0">
+            <TabSwitcher />
             <div className="relative flex-1 group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={18} />
                 <input 
@@ -495,7 +516,7 @@ const Plugins = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/20">
-            {sections.map(section => {
+            {instances.length > 0 ? sections.map(section => {
               const sectionPlugins = filteredPlugins.filter(p => p.category === section.id);
               if (sectionPlugins.length === 0) return null;
 
@@ -644,10 +665,7 @@ const Plugins = () => {
                   })}
                 </React.Fragment>
               );
-            })}
-
-            {/* Empty Server State Integrated in Table */}
-            {instances.length === 0 && !instancesLoading && (
+            }) : !instancesLoading && (
                 <tr>
                     <td colSpan={4} className="px-6 py-20 text-center">
                         <div className="flex flex-col items-center gap-4">
@@ -714,23 +732,6 @@ const Plugins = () => {
 
   return (
     <div className="p-6 font-display overflow-y-auto max-h-[calc(100vh-64px)] scrollbar-hide">
-      <div className="flex items-center gap-1 bg-[#111827]/40 p-1 rounded-2xl border border-gray-800/50 mb-8 self-start">
-        <button 
-          onClick={() => setActiveTab('instances')}
-          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'instances' ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
-        >
-          <ServerIcon size={14} />
-          Server Management
-        </button>
-        <button 
-          onClick={() => setActiveTab('pool')}
-          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'pool' ? 'bg-orange-500 text-white shadow-xl shadow-orange-500/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
-        >
-          <Box size={14} />
-          Global Repository
-        </button>
-      </div>
-
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
@@ -887,15 +888,15 @@ const Plugins = () => {
                 <div className="p-4 bg-orange-500/5 border border-orange-500/10 rounded-2xl flex items-start gap-3">
                   <AlertCircle size={16} className="text-orange-500 shrink-0 mt-0.5" />
                   <p className="text-[11px] text-gray-400 leading-relaxed">
-                    This plugin is missing in the central pool. Please upload the official <strong className="text-orange-500">.ZIP</strong> file. 
+                    This plugin is missing in the central pool. Please upload the official <strong className="text-orange-500">.ZIP, .RAR or .TAR.GZ</strong> file. 
                     The system will automatically extract and flatten the contents.
                   </p>
                 </div>
 
                 <div className="relative group">
-                  <input 
+                    <input 
                     type="file" 
-                    accept=".zip"
+                    accept=".zip,.rar,.gz,.tgz,.tar"
                     onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     disabled={isUploading}
@@ -906,7 +907,7 @@ const Plugins = () => {
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-bold text-white">
-                        {selectedFile ? selectedFile.name : 'Select ZIP file'}
+                        {selectedFile ? selectedFile.name : 'Select plugin file'}
                       </p>
                       <p className="text-[10px] text-gray-500 mt-1 font-mono uppercase tracking-widest">
                         {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'MAX 50MB'}
