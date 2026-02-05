@@ -10,6 +10,7 @@ import {
 import toast from 'react-hot-toast'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../utils/api'
+import { useTranslation } from 'react-i18next'
 
 interface JoinLog {
   id: number
@@ -24,6 +25,7 @@ interface JoinLogsTabProps {
 }
 
 const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
+  const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
   const [refreshing, setRefreshing] = useState(false)
 
@@ -49,7 +51,7 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
     setRefreshing(true)
     await refetch()
     setRefreshing(false)
-    toast.success('Logs updated')
+    toast.success(t('players.logs_updated'))
   }
 
   const filteredLogs = logs.filter((log: JoinLog) => 
@@ -63,10 +65,10 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
         <div className="flex items-center gap-4">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary" />
-            Join/Leave History
+            {t('players.join_leave_history')}
           </h3>
           <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full font-bold tracking-widest uppercase">
-            Live Feed
+            {t('players.live_feed')}
           </span>
         </div>
 
@@ -75,7 +77,7 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
             <input 
               className="w-64 pl-10 pr-4 py-2 bg-[#1d1d1d]/30 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200" 
-              placeholder="Search history..." 
+              placeholder={t('players.search_history')}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -87,7 +89,7 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
             className="bg-[#111827] hover:bg-gray-800 disabled:opacity-50 text-white px-5 py-2 rounded-xl font-bold text-sm border border-gray-800 flex items-center transition-all active:scale-95"
           >
             <RefreshCw className={`mr-2 w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('players.refresh')}
           </button>
         </div>
       </div>
@@ -97,21 +99,21 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#1d1d1d]/30 text-gray-400 text-[10px] uppercase font-black tracking-widest">
-                <th className="px-6 py-4 border-b border-gray-800/50">Timestamp</th>
-                <th className="px-6 py-4 border-b border-gray-800/50">Player</th>
-                <th className="px-6 py-4 border-b border-gray-800/50">Steam ID</th>
-                <th className="px-6 py-4 border-b border-gray-800/50 text-right">Event</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">{t('players.timestamp')}</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">{t('players.player')}</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">{t('players.steam_id')}</th>
+                <th className="px-6 py-4 border-b border-gray-800/50 text-right">{t('players.event')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/30">
               {loading ? (
                 <tr>
-                   <td colSpan={4} className="px-6 py-12 text-center text-gray-500 text-sm">Loading logs...</td>
+                   <td colSpan={4} className="px-6 py-12 text-center text-gray-500 text-sm">{t('players.loading_logs')}</td>
                 </tr>
               ) : filteredLogs.length === 0 ? (
                 <tr>
                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500 text-sm">
-                     No logs found for this server.
+                     {t('players.no_logs')}
                    </td>
                 </tr>
               ) : (
@@ -138,7 +140,7 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
                           : 'bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
                       }`}>
                         {log.event_type === 'join' ? <LogIn size={10} /> : <LogOut size={10} />}
-                        {log.event_type}
+                        {t(`players.${log.event_type}`)}
                       </span>
                     </td>
                   </tr>

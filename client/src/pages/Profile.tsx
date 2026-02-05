@@ -15,6 +15,7 @@ import { apiFetch } from '../utils/api'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { Check, ShieldOff, Copy } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface Session {
   id: number
@@ -34,6 +35,7 @@ interface UserProfile {
 }
 
 const Profile = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -76,7 +78,7 @@ const Profile = () => {
       return data
     }),
     onSuccess: () => {
-      toast.success('Password updated successfully')
+      toast.success(t('profile.password_success'))
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -219,9 +221,9 @@ const Profile = () => {
         <div>
           <h2 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
             <User className="text-primary" size={28} />
-            User Profile
+            {t('profile.title')}
           </h2>
-          <p className="text-sm text-gray-400 mt-1">Manage your account security and personal preferences</p>
+          <p className="text-sm text-gray-400 mt-1">{t('profile.subtitle')}</p>
         </div>
       </div>
 

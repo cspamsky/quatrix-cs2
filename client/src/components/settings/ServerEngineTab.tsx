@@ -1,5 +1,6 @@
 import React from 'react'
 import { Monitor, Shield, AlertTriangle, RefreshCw, Download, Terminal, FolderOpen, Save } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface ServerEngineTabProps {
   steamCmdPath: string
@@ -22,13 +23,14 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
   onDownloadSteamCmd,
   onSave
 }) => {
+  const { t } = useTranslation()
   return (
     <div className="max-w-4xl animate-in fade-in slide-in-from-bottom-2 duration-300">
       <div className="flex items-center gap-2 mb-8">
         <Monitor className="text-primary w-6 h-6" />
         <div>
-          <h3 className="text-lg font-bold text-white tracking-tight">Server Engine Configuration</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Manage SteamCMD and core game installation paths.</p>
+          <h3 className="text-lg font-bold text-white tracking-tight">{t('settingsEngine.title')}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{t('settingsEngine.subtitle')}</p>
         </div>
       </div>
 
@@ -50,14 +52,14 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
           <div className="p-6 bg-[#0d1624] rounded-2xl border border-gray-800/50 space-y-6">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-400">SteamCMD Executable Path</label>
+                <label className="block text-sm font-medium text-gray-400">{t('settingsEngine.steamcmd_path')}</label>
                 <button 
                   onClick={onDownloadSteamCmd}
                   disabled={engineLoading}
                   className="text-[10px] font-black text-primary hover:text-primary/80 uppercase tracking-widest flex items-center gap-1 disabled:opacity-50"
                 >
                   <Download size={12} />
-                  Download Online
+                  {t('settingsEngine.download_online')}
                 </button>
               </div>
               <div className="relative group">
@@ -73,12 +75,12 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
                 />
               </div>
               <p className="text-[10px] text-gray-600 mt-2 leading-relaxed">
-                Absolute path to your <b>steamcmd.sh</b>. If you don't have it, click 'Download Online'.
+                {t('settingsEngine.steamcmd_help')}
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">Game Library Path</label>
+              <label className="block text-sm font-medium text-gray-400 mb-2">{t('settingsEngine.game_library_path')}</label>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within:text-primary transition-colors">
                   <FolderOpen size={18} />
@@ -92,7 +94,7 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
                 />
               </div>
               <p className="text-[10px] text-gray-600 mt-2 leading-relaxed">
-                Where individual CS2 server instances will be installed. Make sure you have enough disk space (avg. 35GB per instance).
+                {t('settingsEngine.library_help')}
               </p>
             </div>
 
@@ -103,26 +105,25 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
               className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-50"
             >
               {engineLoading ? <RefreshCw size={18} className="animate-spin" /> : <Save size={18} />}
-              Update Cloud Engine
+              {t('settingsEngine.update_engine')}
             </button>
           </div>
         </div>
 
         <div className="space-y-6">
           <div className="p-8 bg-gradient-to-br from-primary/10 to-transparent rounded-2xl border border-primary/20">
-            <h4 className="text-primary font-black uppercase tracking-widest text-xs mb-4">Pro Tip: Space Management</h4>
+            <h4 className="text-primary font-black uppercase tracking-widest text-xs mb-4">{t('settingsEngine.pro_tip_title')}</h4>
             <p className="text-gray-400 text-sm leading-relaxed mb-6">
-              Running multiple CS2 servers can consume significant disk space. 
-              We recommend using an <b>SSD</b> for game files to ensure fast loading times and better server performance.
+              {t('settingsEngine.pro_tip_desc')}
             </p>
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-xs text-gray-300">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
-                One instance: ~35 GB
+                {t('settingsEngine.one_instance')}
               </div>
               <div className="flex items-center gap-3 text-xs text-gray-300">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
-                Five instances: ~175 GB
+                {t('settingsEngine.five_instances')}
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Server, MapPin, Users, Lock, Key, Shield, Globe } from 'lucide-react'
 import { SERVER_REGIONS } from '../config/regions'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 
 interface ServerData {
   id: number
@@ -27,6 +28,7 @@ interface ServerData {
 }
 
 const ServerSettings = () => {
+  const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
@@ -70,9 +72,9 @@ const ServerSettings = () => {
       })
 
       if (response.ok) {
-        toast.success('Server settings updated successfully')
+        toast.success(t('serverSettings.save_success'))
       } else {
-        toast.error('Failed to save server settings')
+        toast.error(t('serverSettings.save_error'))
       }
     } catch (error) {
       console.error('Save error:', error)
@@ -87,7 +89,7 @@ const ServerSettings = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4 text-gray-600">
           <Server className="w-10 h-10 opacity-20" />
-          <span className="text-xs font-bold tracking-widest uppercase">LOADING SETTINGS</span>
+          <span className="text-xs font-bold tracking-widest uppercase">{t('serverSettings.loading')}</span>
         </div>
       </div>
     )
@@ -96,7 +98,7 @@ const ServerSettings = () => {
   if (!server) {
     return (
       <div className="flex items-center justify-center min-h-screen text-gray-400">
-        Server not found
+        {t('serverSettings.not_found')}
       </div>
     )
   }
@@ -109,15 +111,12 @@ const ServerSettings = () => {
           className="flex items-center text-gray-500 hover:text-white transition-colors mb-4 text-xs font-bold uppercase tracking-widest"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Instances
+          {t('serverSettings.back_to_instances')}
         </button>
-        <h2 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-          Server Settings
-          <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full font-bold tracking-widest uppercase">
-            Configuration
-          </span>
+        <h2 className="text-3xl font-bold text-white tracking-tight">
+          {t('serverSettings.title')}
         </h2>
-        <p className="text-sm text-gray-400 mt-2">Manage your Counter-Strike 2 server parameters and security protocols.</p>
+        <p className="text-sm text-gray-400 mt-2">{t('serverSettings.subtitle')}</p>
       </header>
 
       <form onSubmit={handleSave} className="space-y-8 flex-1">
@@ -126,12 +125,12 @@ const ServerSettings = () => {
           <div className="bg-[#111827] rounded-2xl border border-gray-800 p-8">
             <h3 className="text-lg font-bold text-white mb-8 flex items-center gap-3">
               <Server className="w-5 h-5 text-primary" />
-              Instance Information
+              {t('serverSettings.instance_info')}
             </h3>
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-400">
-                  Server Name
+                  {t('serverSettings.server_name')}
                 </label>
                 <input
                   type="text"
@@ -145,7 +144,7 @@ const ServerSettings = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    Primary Map
+                    {t('serverSettings.primary_map')}
                   </label>
                   <div className="relative">
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
@@ -168,7 +167,7 @@ const ServerSettings = () => {
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    Max Players
+                    {t('serverSettings.max_players')}
                   </label>
                   <div className="relative">
                     <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
@@ -187,7 +186,7 @@ const ServerSettings = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    Server Port
+                    {t('serverSettings.server_port')}
                   </label>
                   <input
                     type="number"
@@ -201,28 +200,28 @@ const ServerSettings = () => {
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    Game Alias
+                    {t('serverSettings.game_alias')}
                   </label>
                   <select
                     value={server.game_alias || ''}
                     onChange={(e) => setServer({ ...server, game_alias: e.target.value })}
                     className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer"
                   >
-                    <option value="">Default (Use Game Mode)</option>
-                    <option value="competitive">Competitive</option>
-                    <option value="casual">Casual</option>
-                    <option value="deathmatch">Deathmatch</option>
-                    <option value="wingman">Wingman</option>
-                    <option value="armsrace">Arms Race</option>
-                    <option value="demolition">Demolition</option>
-                    <option value="training">Training</option>
-                    <option value="custom">Custom</option>
+                    <option value="">{t('createInstance.game_alias_default')}</option>
+                    <option value="competitive">{t('createInstance.game_alias_competitive')}</option>
+                    <option value="casual">{t('createInstance.game_alias_casual')}</option>
+                    <option value="deathmatch">{t('createInstance.game_alias_deathmatch')}</option>
+                    <option value="wingman">{t('createInstance.game_alias_wingman')}</option>
+                    <option value="armsrace">{t('createInstance.game_alias_armsrace')}</option>
+                    <option value="demolition">{t('createInstance.game_alias_demolition')}</option>
+                    <option value="training">{t('createInstance.game_alias_training')}</option>
+                    <option value="custom">{t('createInstance.game_alias_custom')}</option>
                   </select>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    Tickrate
+                    {t('serverSettings.tickrate')}
                   </label>
                   <input
                     type="number"
@@ -236,7 +235,7 @@ const ServerSettings = () => {
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    Server Region
+                    {t('serverSettings.server_region')}
                   </label>
                   <div className="relative">
                     <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
@@ -246,7 +245,7 @@ const ServerSettings = () => {
                       className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer"
                     >
                       {SERVER_REGIONS.map((r: any) => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
+                        <option key={r.id} value={r.id}>{t(`regions.${r.code}`)}</option>
                       ))}
                     </select>
                   </div>
@@ -254,7 +253,7 @@ const ServerSettings = () => {
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    Additional Launch Arguments
+                    {t('serverSettings.additional_args')}
                   </label>
                   <input
                     type="text"
@@ -272,13 +271,13 @@ const ServerSettings = () => {
           <div className="bg-[#111827] rounded-2xl border border-gray-800 p-8">
             <h3 className="text-lg font-bold text-white mb-8 flex items-center gap-3">
               <Shield className="w-5 h-5 text-primary" />
-              Security Settings
+              {t('serverSettings.security_settings')}
             </h3>
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    Server Password
+                    {t('serverSettings.server_password')}
                   </label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
@@ -287,14 +286,14 @@ const ServerSettings = () => {
                       value={server.password || ''}
                       onChange={(e) => setServer({ ...server, password: e.target.value })}
                       className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
-                      placeholder="Optional"
+                      placeholder={t('serverSettings.optional')}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-gray-400">
-                    RCON Password <span className="text-red-500">*</span>
+                    {t('serverSettings.rcon_password')} <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
@@ -303,7 +302,7 @@ const ServerSettings = () => {
                       value={server.rcon_password || ''}
                       onChange={(e) => setServer({ ...server, rcon_password: e.target.value })}
                       className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
-                      placeholder="Required"
+                      placeholder={t('serverSettings.required')}
                     />
                   </div>
                 </div>
@@ -311,27 +310,27 @@ const ServerSettings = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-400">
-                  GSLT Token <span className="text-red-500">*</span>
+                  {t('serverSettings.gslt_token')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={server.gslt_token || ''}
                   onChange={(e) => setServer({ ...server, gslt_token: e.target.value })}
                   className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm focus:border-primary outline-none transition-all"
-                  placeholder="Steam Game Server Login Token"
+                  placeholder={t('serverSettings.gslt_placeholder')}
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-400">
-                  Steam Web API Key <span className="text-red-500">*</span>
+                  {t('serverSettings.steam_api_key')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={server.steam_api_key || ''}
                   onChange={(e) => setServer({ ...server, steam_api_key: e.target.value })}
                   className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm focus:border-primary outline-none transition-all"
-                  placeholder="Your Steam Web API Key"
+                  placeholder={t('serverSettings.steam_api_placeholder')}
                 />
               </div>
 
@@ -348,8 +347,8 @@ const ServerSettings = () => {
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">Valve Anti-Cheat (VAC)</span>
-                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Enhanced Protection</span>
+                    <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">{t('serverSettings.vac_enabled')}</span>
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('serverSettings.vac_desc')}</span>
                   </div>
                 </label>
               </div>
@@ -367,8 +366,8 @@ const ServerSettings = () => {
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">Hibernation</span>
-                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Low CPU when empty</span>
+                    <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">{t('serverSettings.hibernation')}</span>
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('serverSettings.hibernation_desc')}</span>
                   </div>
                 </label>
 
@@ -384,8 +383,8 @@ const ServerSettings = () => {
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">Validate Files</span>
-                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Run validation on start</span>
+                    <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">{t('serverSettings.validate_files')}</span>
+                    <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{t('serverSettings.validate_desc')}</span>
                   </div>
                 </label>
               </div>
@@ -401,7 +400,7 @@ const ServerSettings = () => {
             onClick={() => navigate('/instances')}
             className="px-6 py-2 text-gray-400 hover:text-white transition-colors font-semibold"
           >
-            Discard
+            {t('serverSettings.discard')}
           </button>
           <button
             type="submit"
@@ -409,7 +408,7 @@ const ServerSettings = () => {
             className="px-8 py-2 bg-primary hover:bg-blue-600 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? t('serverSettings.saving') : t('serverSettings.save_changes')}
           </button>
         </div>
       </form>

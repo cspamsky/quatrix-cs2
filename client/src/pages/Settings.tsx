@@ -10,12 +10,14 @@ import GeneralTab from '../components/settings/GeneralTab'
 import ServerEngineTab from '../components/settings/ServerEngineTab'
 import SystemHealthTab from '../components/settings/SystemHealthTab'
 import ActivityLogTab from '../components/settings/ActivityLogTab'
+import { useTranslation } from 'react-i18next'
 
-type TabType = 'General' | 'Notifications' | 'API Keys' | 'Activity Log' | 'Server Engine' | 'System Health'
+type TabType = 'general' | 'notifications' | 'api_keys' | 'activity_log' | 'server_engine' | 'system_health'
 
 const Settings = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<TabType>('General')
+  const [activeTab, setActiveTab] = useState<TabType>('general')
   
   // --- Local States for Forms (Controlled Inputs) ---
   const [panelName, setPanelName] = useState('Quatrix Panel')
@@ -47,7 +49,7 @@ const Settings = () => {
   const { data: healthData, isLoading: healthLoading, refetch: refetchHealth } = useQuery({
     queryKey: ['system-health'],
     queryFn: () => apiFetch('/api/system/health').then(res => res.json()),
-    enabled: activeTab === 'System Health',
+    enabled: activeTab === 'system_health',
   })
 
   // --- Mutations ---
@@ -60,13 +62,13 @@ const Settings = () => {
       body: JSON.stringify(updates)
     }).then(res => res.json()),
     onSuccess: () => {
-      toast.success('Settings updated successfully!')
+      toast.success(t('settings.save_success'))
       queryClient.invalidateQueries({ queryKey: ['settings'] })
-      setEngineMessage({ type: 'success', text: 'Cloud Engine settings saved.' })
+      setEngineMessage({ type: 'success', text: t('settings.engine_save_success') })
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to update settings')
-      setEngineMessage({ type: 'error', text: 'Error saving settings.' })
+      toast.error(error.message || t('settings.save_error'))
+      setEngineMessage({ type: 'error', text: t('settings.engine_save_error') })
     }
   })
 
@@ -102,13 +104,20 @@ const Settings = () => {
         toast.success(result.message || 'System repaired successfully')
         queryClient.invalidateQueries({ queryKey: ['system-health'] })
       } else {
-        toast.error(result.message || 'Repair failed')
+        toast.error(result.message || t('settings.repair_fail'))
       }
     },
-    onError: () => toast.error('Failed to repair system health')
+    onError: () => toast.error(t('settings.repair_fail_generic'))
   })
 
-  const tabs: TabType[] = ['General', 'Server Engine', 'System Health', 'Notifications', 'API Keys', 'Activity Log']
+  const tabs: { key: TabType; label: string }[] = [
+    { key: 'general', label: t('settings.tab_general') },
+    { key: 'server_engine', label: t('settings.tab_server_engine') },
+    { key: 'system_health', label: t('settings.tab_system_health') },
+    { key: 'activity_log', label: t('settings.tab_activity_log') },
+    { key: 'notifications', label: t('settings.tab_notifications') },
+    { key: 'api_keys', label: t('settings.tab_api_keys') }
+  ]
 
   const handleSaveEngineSettings = () => {
     updateSettingsMutation.mutate({ steamcmd_path: steamCmdPath, install_dir: installDir })
@@ -122,12 +131,12 @@ const Settings = () => {
     <div className="p-6">
       <div className="flex justify-between items-start mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Settings</h2>
-          <p className="text-sm text-gray-400 mt-1">Configure your panel settings and security preferences</p>
+          <h2 className="text-2xl font-bold text-white tracking-tight">{t('settings.title')}</h2>
+          <p className="text-sm text-gray-400 mt-1">{t('settings.subtitle')}</p>
         </div>
         <div className="flex items-center px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl text-green-500 text-xs font-semibold">
           <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-          WebSocket Connected
+          {t('settings.websocket_connected')}
         </div>
       </div>
 
@@ -135,30 +144,30 @@ const Settings = () => {
         <div className="px-6 border-b border-gray-800 flex space-x-8 bg-[#111827] overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={`py-4 text-sm font-semibold transition-all relative whitespace-nowrap ${
-                activeTab === tab ? 'text-primary' : 'text-gray-500 hover:text-gray-300'
+                activeTab === tab.key ? 'text-primary' : 'text-gray-500 hover:text-gray-300'
               }`}
             >
-              {tab}
-              {activeTab === tab && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-lg shadow-primary/50"></div>}
+              {tab.label}
+              {activeTab === tab.key && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-primary shadow-lg shadow-primary/50"></div>}
             </button>
           ))}
         </div>
 
         <div className="p-8">
-          {activeTab === 'General' && (
+          {activeTab === 'general' && (
             <GeneralTab 
               panelName={panelName} setPanelName={setPanelName}
               defaultPort={defaultPort} setDefaultPort={setDefaultPort}
               autoBackup={autoBackup} setAutoBackup={setAutoBackup}
               autoPluginUpdates={autoPluginUpdates} setAutoPluginUpdates={setAutoPluginUpdates}
-              onSave={() => toast.success('Local settings saved')}
+              onSave={() => toast.success(t('settings.local_save_success'))}
             />
           )}
 
-          {activeTab === 'Server Engine' && (
+          {activeTab === 'server_engine' && (
             <ServerEngineTab 
               steamCmdPath={steamCmdPath} setSteamCmdPath={setSteamCmdPath}
               installDir={installDir} setInstallDir={setInstallDir}
@@ -169,7 +178,7 @@ const Settings = () => {
             />
           )}
 
-          {activeTab === 'System Health' && (
+          {activeTab === 'system_health' && (
             <SystemHealthTab 
               healthData={healthData} 
               healthLoading={healthLoading || repairHealthMutation.isPending} 
@@ -180,13 +189,13 @@ const Settings = () => {
 
 
 
-          {activeTab === 'Activity Log' && <ActivityLogTab />}
+          {activeTab === 'activity_log' && <ActivityLogTab />}
 
-          {!['General', 'Server Engine', 'System Health', 'Activity Log'].includes(activeTab) && (
+          {!['general', 'server_engine', 'system_health', 'activity_log'].includes(activeTab) && (
             <div className="py-20 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300">
               <RefreshCw className="text-primary w-12 h-12 animate-spin-slow opacity-20 mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">{activeTab} Section</h3>
-              <p className="text-gray-500 max-w-sm">Coming soon in the next update.</p>
+              <h3 className="text-xl font-bold text-white mb-2">{tabs.find(t => t.key === activeTab)?.label} {t('settings.section_title')}</h3>
+              <p className="text-gray-500 max-w-sm">{t('settings.coming_soon')}</p>
             </div>
           )}
         </div>

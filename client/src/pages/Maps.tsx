@@ -16,6 +16,7 @@ import {
 import { apiFetch } from '../utils/api'
 import toast from 'react-hot-toast'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 interface CS2Map {
   id: string
@@ -35,6 +36,7 @@ interface Instance {
 }
 
 const Maps = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState<'all' | 'Defusal' | 'Hostage' | 'Workshop'>('all')
@@ -74,7 +76,7 @@ const Maps = () => {
         setCurrentConfig(data.content)
       }
     } catch (error) {
-      toast.error('Failed to load map config')
+      toast.error(t('maps.config_load_error'))
     }
   }
 
@@ -88,13 +90,13 @@ const Maps = () => {
         body: JSON.stringify({ content: currentConfig })
       })
       if (response.ok) {
-        toast.success('Map config saved successfully')
+        toast.success(t('maps.config_save_success'))
         setEditingMapConfig(null)
       } else {
-        toast.error('Failed to save config')
+        toast.error(t('maps.config_save_error'))
       }
     } catch (error) {
-      toast.error('Connection error')
+      toast.error(t('maps.connection_error'))
     } finally {
       setIsSavingConfig(false)
     }
@@ -147,11 +149,11 @@ const Maps = () => {
       })
     },
     onSuccess: () => {
-      toast.success('Map change requested!')
+      toast.success(t('maps.map_change_success'))
       queryClient.invalidateQueries({ queryKey: ['servers'] })
     },
     onError: (error: any) => {
-      toast.error(error.message || 'RCON Failure - Is the server online?')
+      toast.error(error.message || t('maps.map_change_error'))
     }
   })
 
@@ -162,13 +164,13 @@ const Maps = () => {
       body: JSON.stringify({ workshop_id: workshopId, map_file: mapFile })
     }).then(res => res.json()),
     onSuccess: () => {
-      toast.success('Workshop map added!')
+      toast.success(t('maps.workshop_added'))
       setNewWorkshopId('')
       setNewMapFile('')
       setIsModalOpen(false)
       queryClient.invalidateQueries({ queryKey: ['workshop-maps'] })
     },
-    onError: () => toast.error('Failed to add workshop map')
+    onError: () => toast.error(t('maps.workshop_add_error'))
   })
 
   const removeWorkshopMutation = useMutation({
@@ -176,7 +178,7 @@ const Maps = () => {
       method: 'DELETE'
     }).then(res => res.json()),
     onSuccess: () => {
-      toast.success('Workshop map removed')
+      toast.success(t('maps.workshop_removed'))
       queryClient.invalidateQueries({ queryKey: ['workshop-maps'] })
     }
   })
@@ -199,13 +201,13 @@ const Maps = () => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <MapIcon className="text-primary" /> Map Explorer
+            <MapIcon className="text-primary" /> {t('maps.title')}
           </h2>
-          <p className="text-sm text-gray-500 mt-1">Deploy battlegrounds or workshop content to your node</p>
+          <p className="text-sm text-gray-500 mt-1">{t('maps.subtitle')}</p>
         </div>
 
         <div className="flex flex-col items-end">
-          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
+          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">{t('maps.switch_server')}</span>
           <div className="relative group">
             <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
             <select 
@@ -213,7 +215,7 @@ const Maps = () => {
               value={selectedServerId || ''}
               onChange={(e) => setSelectedServerId(Number(e.target.value))}
             >
-              <option value="" disabled>Select server...</option>
+              <option value="" disabled>{t('maps.select_server')}</option>
               {servers.map(s => (
                 <option key={s.id} value={s.id} className="bg-[#0c1424]">{s.name}</option>
               ))}
@@ -228,7 +230,7 @@ const Maps = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
             <input 
               type="text" 
-              placeholder="Search maps..."
+              placeholder={t('maps.search_placeholder')}
               className="w-full bg-[#111827] border border-gray-800 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:border-primary transition-all outline-none"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -236,13 +238,13 @@ const Maps = () => {
           </div>
 
           <div className="bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden p-2">
-            {['all', 'Defusal', 'Hostage', 'Workshop'].map(cat => (
+            {[{key: 'all', label: t('maps.all_maps')}, {key: 'Defusal', label: t('maps.defusal_maps')}, {key: 'Hostage', label: t('maps.hostage_maps')}, {key: 'Workshop', label: t('maps.workshop_maps')}].map(cat => (
               <button
-                key={cat}
-                onClick={() => setActiveCategory(cat as any)}
-                className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === cat ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                key={cat.key}
+                onClick={() => setActiveCategory(cat.key as any)}
+                className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === cat.key ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-300'}`}
               >
-                {cat} Maps
+                {cat.label}
               </button>
             ))}
           </div>
@@ -251,7 +253,7 @@ const Maps = () => {
             onClick={() => setIsModalOpen(true)}
             className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary text-white py-4 rounded-xl font-bold text-xs uppercase tracking-[0.2em] transition-all shadow-lg shadow-primary/20"
           >
-            <Plus size={16} /> Add Workshop
+            <Plus size={16} /> {t('maps.add_workshop')}
           </button>
         </div>
 
@@ -269,7 +271,7 @@ const Maps = () => {
                   <div className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full animate-pulse ${isServerOnline ? 'bg-green-500' : 'bg-gray-500'}`}></span>
                     <span className="text-[10px] font-black text-primary uppercase tracking-widest">
-                      {isServerOnline ? 'Active Now' : 'Server Offline'}
+                      {isServerOnline ? t('maps.active_now') : t('maps.server_offline')}
                     </span>
                   </div>
                   <h3 className="text-white font-bold">
@@ -283,7 +285,7 @@ const Maps = () => {
                   disabled={changeMapMutation.isPending}
                   className="px-6 py-2 bg-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all disabled:opacity-50"
                 >
-                  {changeMapMutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : 'Restart'}
+                  {changeMapMutation.isPending ? <RefreshCcw size={16} className="animate-spin" /> : t('maps.restart')}
                 </button>
               )}
             </div>
@@ -292,7 +294,7 @@ const Maps = () => {
           {workshopLoading ? (
             <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-800 rounded-3xl">
               <Loader2 className="animate-spin text-primary mb-4" />
-              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Connecting to Steam Cloud...</p>
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{t('maps.connecting_steam')}</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
@@ -355,7 +357,7 @@ const Maps = () => {
             <div className="p-6 border-b border-gray-800 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <Globe className="text-primary" size={20} />
-                <h3 className="text-white font-bold">Add Workshop Content</h3>
+                <h3 className="text-white font-bold">{t('maps.add_workshop_title')}</h3>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white transition-colors">
                 <X size={20} />
@@ -363,10 +365,10 @@ const Maps = () => {
             </div>
             <div className="p-8 space-y-5">
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3 ml-1">Workshop Map ID</label>
+                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3 ml-1">{t('maps.workshop_id_label')}</label>
                 <input 
                   type="text" 
-                  placeholder="e.g. 3070247085"
+                  placeholder={t('maps.workshop_id_placeholder')}
                   className="w-full bg-[#0c1424] border border-gray-800 rounded-2xl py-4 px-6 text-white focus:border-primary transition-all outline-none text-lg font-mono placeholder:text-gray-700"
                   value={newWorkshopId}
                   onChange={(e) => setNewWorkshopId(e.target.value)}
@@ -375,16 +377,16 @@ const Maps = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3 ml-1">Internal Map Name (Optional)</label>
+                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3 ml-1">{t('maps.map_name_label')}</label>
                 <input 
                   type="text" 
-                  placeholder="e.g. awp_lego_2"
+                  placeholder={t('maps.map_name_placeholder')}
                   className="w-full bg-[#0c1424] border border-gray-800 rounded-2xl py-4 px-6 text-white focus:border-primary transition-all outline-none text-lg font-mono placeholder:text-gray-700"
                   value={newMapFile}
                   onChange={(e) => setNewMapFile(e.target.value)}
                 />
                 <p className="mt-3 text-[10px] text-gray-600 flex items-center gap-2">
-                  <Plus size={10} /> This is the name used for CFG files and RCON
+                  <Plus size={10} /> {t('maps.map_name_hint')}
                 </p>
               </div>
 
@@ -393,7 +395,7 @@ const Maps = () => {
                 disabled={!newWorkshopId || addWorkshopMutation.isPending}
                 className="w-full bg-primary hover:bg-blue-600 disabled:opacity-50 text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs transition-all shadow-xl shadow-primary/20"
               >
-                {addWorkshopMutation.isPending ? 'Verifying...' : 'Link to Server'}
+                {addWorkshopMutation.isPending ? t('maps.verifying') : t('maps.link_to_server')}
               </button>
             </div>
           </div>
@@ -409,7 +411,7 @@ const Maps = () => {
                   <Settings size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">Config Editor: {editingMapConfig.displayName}</h3>
+                  <h3 className="text-lg font-bold text-white">{t('maps.config_editor_title')} {editingMapConfig.displayName}</h3>
                   <p className="text-[10px] text-gray-500 font-mono tracking-widest mt-0.5 uppercase">quatrix_maps/{editingMapConfig.name}.cfg</p>
                 </div>
               </div>
@@ -425,9 +427,7 @@ const Maps = () => {
               <textarea 
                 className="w-full h-full min-h-[400px] bg-transparent text-primary/90 p-8 font-mono text-sm outline-none resize-none leading-relaxed selection:bg-primary/20"
                 spellCheck={false}
-                placeholder="// Enter map-specific commands here...
-// e.g. mp_roundtime 1.92
-// mp_freezetime 5"
+                placeholder={t('maps.config_placeholder')}
                 value={currentConfig}
                 onChange={(e) => setCurrentConfig(e.target.value)}
                 autoFocus
@@ -437,14 +437,14 @@ const Maps = () => {
             <div className="p-6 bg-[#0d1421] border-t border-gray-800 flex justify-between items-center">
               <div className="text-[10px] text-gray-500 flex items-center gap-2 font-bold uppercase tracking-widest">
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                Auto-executed when map starts
+                {t('maps.auto_executed')}
               </div>
               <div className="flex gap-3">
                 <button 
                   onClick={() => setEditingMapConfig(null)}
                   className="px-6 py-2.5 text-xs font-bold text-gray-400 hover:text-white transition-all capitalize"
                 >
-                  Discard
+                  {t('maps.discard')}
                 </button>
                 <button 
                   onClick={saveConfig}
@@ -452,7 +452,7 @@ const Maps = () => {
                   className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-8 py-2.5 rounded-xl text-xs font-black tracking-[0.1em] transition-all shadow-xl shadow-primary/20 disabled:opacity-50"
                  >
                   {isSavingConfig ? <Loader2 className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
-                  SAVE CONFIGURATION
+                  {t('maps.save_configuration')}
                 </button>
               </div>
             </div>

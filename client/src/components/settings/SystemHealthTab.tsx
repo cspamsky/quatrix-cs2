@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Wrench
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface SystemHealthTabProps {
   healthData: any
@@ -20,6 +21,7 @@ interface SystemHealthTabProps {
 }
 
 const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoading, onRefresh, onRepair }) => {
+  const { t } = useTranslation()
   const [repairLoading, setRepairLoading] = useState(false);
   
   const handleRepair = async () => {
@@ -42,8 +44,8 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
         <div className="flex items-center gap-2">
           <Monitor className="text-primary w-6 h-6" />
           <div>
-            <h3 className="text-lg font-bold text-white tracking-tight">System Environment Check</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Verify your server meets all requirements for CS2 and plugins.</p>
+            <h3 className="text-lg font-bold text-white tracking-tight">{t('settingsHealth.title')}</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{t('settingsHealth.subtitle')}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -54,16 +56,16 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
               className="flex items-center gap-2 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-primary/20"
             >
               <Wrench size={14} className={repairLoading ? 'animate-spin' : ''} />
-              {repairLoading ? 'Repairing & Cleaning...' : 'Repair System'}
+              {repairLoading ? t('settingsHealth.repairing') : t('settingsHealth.repair_system')}
             </button>
           )}
           <button 
             onClick={onRefresh}
             disabled={healthLoading}
-            className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-white transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs font-bold transition-all disabled:opacity-50"
           >
             <RefreshCw size={14} className={healthLoading ? 'animate-spin' : ''} />
-            Refresh Check
+            {healthLoading ? t('settingsHealth.refreshing') : t('settingsHealth.refresh')}
           </button>
         </div>
       </div>

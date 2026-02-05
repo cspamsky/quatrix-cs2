@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Database, Server, RefreshCw, Copy, Check, Layers, ExternalLink } from 'lucide-react'
 import { apiFetch } from '../utils/api'
 import toast from 'react-hot-toast'
+import { useTranslation } from 'react-i18next'
 
 interface DatabaseInfo {
   host: string
@@ -20,6 +21,7 @@ interface ServerWithDB {
 }
 
 const DatabasePage = () => {
+  const { t } = useTranslation()
   const [servers, setServers] = useState<ServerWithDB[]>([])
   const [loading, setLoading] = useState(true)
   const [provisioning, setProvisioning] = useState<number | null>(null)
@@ -70,7 +72,7 @@ const DatabasePage = () => {
       }
     } catch (error) {
       console.error('Failed to fetch data:', error)
-      toast.error('Failed to load database information')
+      toast.error(t('database.load_failed'))
       setGlobalStatus('OFFLINE')
     } finally {
       setLoading(false)
@@ -84,12 +86,12 @@ const DatabasePage = () => {
       if (res.ok) {
         const data = await res.json()
         setServers(prev => prev.map(s => s.id === serverId ? { ...s, db: data.credentials } : s))
-        toast.success('Database provisioned successfully')
+        toast.success(t('database.provision_success'))
       } else {
-        toast.error('Failed to provision database')
+        toast.error(t('database.provision_failed'))
       }
     } catch (error) {
-      toast.error('Connection error')
+      toast.error(t('database.connection_error'))
     } finally {
       setProvisioning(null)
     }
@@ -104,15 +106,15 @@ const DatabasePage = () => {
       })
 
       if (response.ok) {
-        toast.success('Credentials saved successfully')
+        toast.success(t('database.credentials_saved'))
         setEditingId(null)
         fetchData()
       } else {
         const data = await response.json()
-        toast.error(data.message || 'Failed to save credentials')
+        toast.error(data.message || t('database.save_failed'))
       }
     } catch (error) {
-      toast.error('Failed to connect to server')
+      toast.error(t('database.server_connect_failed'))
     }
   }
 
@@ -129,15 +131,15 @@ const DatabasePage = () => {
       })
 
       if (response.ok) {
-        toast.success('Local database created with your credentials')
+        toast.success(t('database.local_db_created'))
         setEditingId(null)
         fetchData()
       } else {
         const data = await response.json()
-        toast.error(data.message || 'Failed to create local database')
+        toast.error(data.message || t('database.local_db_failed'))
       }
     } catch (error) {
-      toast.error('Failed to connect to server')
+      toast.error(t('database.server_connect_failed'))
     }
   }
 
@@ -150,11 +152,11 @@ const DatabasePage = () => {
       })
 
       if (response.ok) {
-        toast.success(`Auto-sync ${!current ? 'enabled' : 'disabled'}`)
+        toast.success(t('database.autosync_toggled', { status: !current ? t('common.enabled') : t('common.disabled') }))
         fetchData()
       }
     } catch (error) {
-      toast.error('Failed to update settings')
+      toast.error(t('database.settings_update_failed'))
     }
   }
 
@@ -163,7 +165,7 @@ const DatabasePage = () => {
     navigator.clipboard.writeText(text)
     setCopiedKey(key)
     setTimeout(() => setCopiedKey(null), 2000)
-    toast.success('Copied to clipboard')
+    toast.success(t('database.copied'))
   }
 
   const openManualEntry = (server: ServerWithDB) => {
@@ -196,7 +198,7 @@ const DatabasePage = () => {
           <div className="flex items-center gap-3 mb-2">
             <h2 className="text-3xl font-bold text-white tracking-tight flex items-center justify-start gap-3">
               <Database className="w-8 h-8 text-primary" />
-              Database Management
+              {t('database.title')}
             </h2>
             <div className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${
               globalStatus === 'ONLINE' ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 
@@ -208,14 +210,13 @@ const DatabasePage = () => {
             </div>
           </div>
           <p className="text-gray-400 max-w-2xl text-left">
-            Provision automated local databases or manually configure external MySQL connections. 
-            Credentials are automatically synced to supported plugins.
+            {t('database.subtitle')}
           </p>
         </div>
         <button 
           onClick={fetchData}
           className="lg:mb-1 p-3 bg-[#111827] border border-gray-800 hover:border-primary/50 text-gray-400 hover:text-primary rounded-2xl transition-all shadow-xl group"
-          title="Refresh stats"
+          title={t('database.refresh_stats')}
         >
           <RefreshCw className={`w-5 h-5 group-active:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin text-primary' : ''}`} />
         </button>
@@ -246,13 +247,13 @@ const DatabasePage = () => {
                       disabled={provisioning === server.id}
                       className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
                     >
-                      {provisioning === server.id ? 'Provisioning...' : 'Auto-Provision'}
+                      {provisioning === server.id ? t('database.provisioning') : t('database.auto_provision')}
                     </button>
                     <button
                       onClick={() => openManualEntry(server)}
                       className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-xl text-xs font-bold transition-all"
                     >
-                      Manual
+                      {t('database.manual')}
                     </button>
                   </>
                 )}
@@ -281,7 +282,7 @@ const DatabasePage = () => {
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Host</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('database.host')}</label>
                       <input 
                         className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
                         value={manualForm.host}
@@ -290,7 +291,7 @@ const DatabasePage = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Port</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('database.port')}</label>
                       <input 
                         className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
                         value={manualForm.port}
@@ -300,7 +301,7 @@ const DatabasePage = () => {
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Database Name</label>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('database.database_name')}</label>
                     <input 
                       className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
                       value={manualForm.database}
@@ -309,7 +310,7 @@ const DatabasePage = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Username</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('database.username')}</label>
                       <input 
                         className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
                         value={manualForm.user}
@@ -317,7 +318,7 @@ const DatabasePage = () => {
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Password</label>
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('database.password')}</label>
                       <input 
                         type="password"
                         className="w-full bg-black/40 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary/50 transition-all"
@@ -331,31 +332,31 @@ const DatabasePage = () => {
                       onClick={() => handleSaveManual(server.id)}
                       className="flex-1 py-2.5 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 text-xs"
                     >
-                      Save Configuration
+                      {t('database.save_config')}
                     </button>
                     {!manualForm.host || manualForm.host === 'localhost' || manualForm.host === '127.0.0.1' ? (
                       <button 
                         onClick={() => handleCustomProvision(server.id)}
                         className="flex-1 py-2.5 bg-white/10 text-white font-bold rounded-xl border border-white/10 hover:bg-white/20 transition-all text-xs"
                       >
-                        Create Local DB
+                        {t('database.create_local_db')}
                       </button>
                     ) : null}
                     <button 
                       onClick={() => setEditingId(null)}
                       className="px-6 py-2.5 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 transition-all text-xs"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </div>
               ) : server.db ? (
                 <div className="grid grid-cols-2 gap-6 animate-in fade-in duration-500">
                   {[
-                    { label: 'Host', value: `${server.db.host}:${server.db.port}`, key: `host-${server.id}` },
-                    { label: 'Database', value: server.db.database, key: `db-${server.id}` },
-                    { label: 'User', value: server.db.user, key: `user-${server.id}` },
-                    { label: 'Password', value: server.db.password || '********', key: `pass-${server.id}` }
+                    { label: t('database.host'), value: `${server.db.host}:${server.db.port}`, key: `host-${server.id}` },
+                    { label: t('database.database'), value: server.db.database, key: `db-${server.id}` },
+                    { label: t('database.user'), value: server.db.user, key: `user-${server.id}` },
+                    { label: t('database.password'), value: server.db.password || '********', key: `pass-${server.id}` }
                   ].map((field) => (
                     <div key={field.key} className="space-y-2 group">
                       <div className="flex justify-between items-center">
@@ -376,11 +377,11 @@ const DatabasePage = () => {
                   ))}
                   <div className="col-span-2 mt-2 pt-4 border-t border-gray-800/30 grid grid-cols-2 gap-4 text-center">
                     <div className="bg-white/[0.02] p-3 rounded-2xl border border-white/[0.02]">
-                       <div className="text-[9px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">Storage Size</div>
+                       <div className="text-[9px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">{t('database.storage_size')}</div>
                        <div className="text-lg font-bold text-white font-mono">{server.stats?.size || 0} <span className="text-[10px] text-gray-500">MB</span></div>
                     </div>
                     <div className="bg-white/[0.02] p-3 rounded-2xl border border-white/[0.02]">
-                       <div className="text-[9px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">Total Tables</div>
+                       <div className="text-[9px] text-gray-500 font-black uppercase tracking-[0.2em] mb-1">{t('database.total_tables')}</div>
                        <div className="text-lg font-bold text-white font-mono">{server.stats?.tables || 0}</div>
                     </div>
                   </div>
@@ -388,9 +389,9 @@ const DatabasePage = () => {
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 text-center opacity-40">
                   <Database className="w-16 h-16 text-gray-700 mb-4 stroke-1" />
-                  <h4 className="text-white font-bold mb-1">Database Offline</h4>
+                  <h4 className="text-white font-bold mb-1">{t('database.offline_title')}</h4>
                   <p className="text-xs text-gray-500 max-w-[240px]">
-                    No database active for this instance. Choose a method above to get started.
+                    {t('database.offline_message')}
                   </p>
                 </div>
               )}
@@ -400,13 +401,13 @@ const DatabasePage = () => {
               <div className="px-8 py-4 bg-primary/[0.03] border-t border-gray-800/30 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
-                  <span className="text-[11px] font-black text-primary uppercase tracking-[0.2em]">Synchronized</span>
+                  <span className="text-[11px] font-black text-primary uppercase tracking-[0.2em]">{t('database.synchronized')}</span>
                 </div>
                 <div className="text-[10px] text-gray-500 font-medium italic">
-                  {server.autoSync ? 'Injecting credentials to plugin configs...' : 'Auto-sync disabled.'}
+                  {server.autoSync ? t('database.injecting_credentials') : t('database.autosync_disabled')}
                 </div>
                 <div className="flex items-center gap-3">
-                  <label className="text-[10px] font-bold text-gray-600 uppercase">Auto-Sync</label>
+                  <label className="text-[10px] font-bold text-gray-600 uppercase">{t('database.autosync')}</label>
                   <button 
                     onClick={() => toggleAutoSync(server.id, !!server.autoSync)}
                     className={`w-10 h-5 rounded-full transition-all relative ${server.autoSync ? 'bg-primary' : 'bg-gray-800'}`}
@@ -423,8 +424,8 @@ const DatabasePage = () => {
       {servers.length === 0 && (
         <div className="col-span-full py-20 bg-[#111827] rounded-3xl border border-dashed border-gray-800 flex flex-col items-center">
           <Layers className="w-12 h-12 text-gray-800 mb-4" />
-          <h3 className="text-white font-bold">No instances found</h3>
-          <p className="text-gray-500 text-sm mt-1">Create a server instance first to manage its database.</p>
+          <h3 className="text-white font-bold">{t('database.no_instances_title')}</h3>
+          <p className="text-gray-500 text-sm mt-1">{t('database.no_instances_message')}</p>
         </div>
       )}
 

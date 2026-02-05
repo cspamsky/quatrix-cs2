@@ -12,6 +12,7 @@ import { useQuery } from '@tanstack/react-query'
 import LivePlayersTab from '../components/players/LivePlayersTab'
 import JoinLogsTab from '../components/players/JoinLogsTab'
 import BanHistoryTab from '../components/players/BanHistoryTab'
+import { useTranslation } from 'react-i18next'
 
 interface ServerInfo {
   id: number
@@ -19,10 +20,11 @@ interface ServerInfo {
   status: string
 }
 
-type TabType = 'Live Players' | 'Join Logs' | 'Ban History'
+type TabType = 'live' | 'logs' | 'bans'
 
 const Players = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('Live Players')
+  const { t } = useTranslation()
+  const [activeTab, setActiveTab] = useState<TabType>('live')
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null)
 
   // 1. Fetch Servers
@@ -40,17 +42,17 @@ const Players = () => {
   }, [servers, selectedServerId])
 
   const tabs = [
-    { id: 'Live Players', label: 'Live Players', icon: Users },
-    { id: 'Join Logs', label: 'Join Logs', icon: Clock },
-    { id: 'Ban History', label: 'Ban History', icon: ShieldAlert },
-  ] as const
+    { id: 'live' as const, label: t('players.live_players'), icon: Users },
+    { id: 'logs' as const, label: t('players.join_logs'), icon: Clock },
+    { id: 'bans' as const, label: t('players.ban_history'), icon: ShieldAlert },
+  ]
 
   return (
     <div className="p-6 font-display h-full flex flex-col">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Player Management</h2>
-          <p className="text-sm text-gray-400 mt-1">Monitor live statistics, track join logs and manage server discipline.</p>
+          <h2 className="text-2xl font-bold text-white tracking-tight">{t('players.title')}</h2>
+          <p className="text-sm text-gray-400 mt-1">{t('players.subtitle')}</p>
         </div>
         
         <div className="flex items-center gap-4">
@@ -61,7 +63,7 @@ const Players = () => {
               value={selectedServerId || ''}
               onChange={(e) => setSelectedServerId(Number(e.target.value))}
             >
-              <option value="" disabled>Select active server...</option>
+              <option value="" disabled>{t('players.select_server')}</option>
               {servers.map((s: ServerInfo) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -94,15 +96,15 @@ const Players = () => {
         </div>
 
         <div className="p-8 flex-1 overflow-y-auto scrollbar-hide">
-          {activeTab === 'Live Players' && (
+          {activeTab === 'live' && (
             <LivePlayersTab selectedServerId={selectedServerId} />
           )}
 
-          {activeTab === 'Join Logs' && (
+          {activeTab === 'logs' && (
             <JoinLogsTab selectedServerId={selectedServerId} />
           )}
 
-          {activeTab === 'Ban History' && (
+          {activeTab === 'bans' && (
             <BanHistoryTab selectedServerId={selectedServerId} />
           )}
         </div>

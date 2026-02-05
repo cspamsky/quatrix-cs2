@@ -12,6 +12,7 @@ import socket from '../utils/socket'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import ServerCard from '../components/ServerCard'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 interface Instance {
   id: number
@@ -27,6 +28,7 @@ interface Instance {
 }
 
 const Instances = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { showConfirm } = useConfirmDialog()
   const queryClient = useQueryClient()
@@ -96,10 +98,10 @@ const Instances = () => {
 
   const handleDeleteServer = useCallback(async (id: number) => {
     const confirmed = await showConfirm({
-      title: 'Delete Server Instance',
-      message: 'Are you sure you want to delete this server instance? All data will be permanently removed.',
-      confirmText: 'Delete',
-      cancelText: 'Cancel',
+      title: t('instances.delete_title'),
+      message: t('instances.delete_confirm'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
       type: 'danger'
     })
     
@@ -111,13 +113,13 @@ const Instances = () => {
         method: 'DELETE'
       })
       if (response.ok) {
-        toast.success('Server deleted successfully')
+        toast.success(t('instances.delete_success'))
         setLocalInstances(prev => prev.filter(i => i.id !== id))
         queryClient.setQueryData(['servers'], (old: Instance[] | undefined) => 
           old?.filter(i => i.id !== id)
         )
       } else {
-        toast.error('Failed to delete server')
+        toast.error(t('instances.delete_error'))
       }
     } catch (error) {
       console.error('Delete server error:', error)
@@ -137,7 +139,7 @@ const Instances = () => {
         navigate(`/instances/${id}/console`)
       } else {
         const data = await response.json()
-        alert(data.message || 'Failed to start installation')
+        alert(data.message || t('instances.install_error'))
       }
     } catch (error) {
       console.error('Install error:', error)
@@ -160,9 +162,9 @@ const Instances = () => {
           return response
         })(),
         {
-          loading: 'Starting server...',
-          success: 'Server is booting up',
-          error: (err) => err.message || 'Failed to start server'
+          loading: t('instances.start_loading'),
+          success: t('instances.start_success'),
+          error: (err) => err.message || t('instances.start_error')
         }
       )
       fetchServers()
@@ -186,9 +188,9 @@ const Instances = () => {
           return response
         })(),
         {
-          loading: 'Stopping server...',
-          success: 'Server stopped successfully',
-          error: (err) => err.message || 'Failed to stop server'
+          loading: t('instances.stop_loading'),
+          success: t('instances.stop_success'),
+          error: (err) => err.message || t('instances.stop_error')
         }
       )
       fetchServers()
@@ -212,9 +214,9 @@ const Instances = () => {
           return response
         })(),
         {
-          loading: 'Restarting server...',
-          success: 'Server will be online shortly',
-          error: (err) => err.message || 'Failed to restart server'
+          loading: t('instances.restart_loading'),
+          success: t('instances.restart_success'),
+          error: (err) => err.message || t('instances.restart_error')
         }
       )
       fetchServers()
@@ -229,11 +231,11 @@ const Instances = () => {
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(text).then(() => {
         setCopiedId(id)
-        toast.success('Address copied to clipboard')
+        toast.success(t('instances.copy_success'))
         setTimeout(() => setCopiedId(null), 2000)
       }).catch(err => {
         console.error('Failed to copy text: ', err)
-        toast.error('Failed to copy to clipboard')
+        toast.error(t('instances.copy_error'))
       })
     } else {
       // Fallback for non-secure contexts
@@ -245,11 +247,11 @@ const Instances = () => {
         document.execCommand('copy')
         document.body.removeChild(textArea)
         setCopiedId(id)
-        toast.success('Address copied to clipboard')
+        toast.success(t('instances.copy_success'))
         setTimeout(() => setCopiedId(null), 2000)
       } catch (err) {
         console.error('Fallback copy failed: ', err)
-        toast.error('Browser does not support copying')
+        toast.error(t('instances.copy_unsupported'))
       }
     }
   }, [])
@@ -271,16 +273,16 @@ const Instances = () => {
       <div className="flex-1">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Server Instances</h2>
-            <p className="text-sm text-gray-400 mt-1">Manage and monitor your dedicated CS2 server instances in real-time.</p>
+            <h2 className="text-2xl font-bold text-white tracking-tight">{t('instances.title')}</h2>
+            <p className="text-sm text-gray-400 mt-1">{t('instances.subtitle')}</p>
           </div>
           <div className="flex items-center space-x-4">
             <div className="relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
               <input 
-                aria-label="Filter instances"
+                aria-label={t('instances.filter_placeholder')}
                 className="w-64 pl-10 pr-4 py-2 bg-[#111827] border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200" 
-                placeholder="Filter instances..." 
+                placeholder={t('instances.filter_placeholder')} 
                 type="text"
               />
             </div>
@@ -289,7 +291,7 @@ const Instances = () => {
               className="bg-primary hover:bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center transition-all shadow-lg shadow-blue-500/20 active:scale-95"
             >
               <Plus className="mr-2 w-4 h-4" />
-              Create New Instance
+              {t('instances.create_new')}
             </button>
           </div>
         </header>
@@ -300,12 +302,12 @@ const Instances = () => {
           </div>
         ) : localInstances.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="text-gray-400 mb-4">No servers found. Create your first server to get started!</p>
+            <p className="text-gray-400 mb-4">{t('instances.no_servers')}</p>
             <button 
               onClick={() => navigate('/instances/create')}
               className="px-6 py-2 bg-primary hover:bg-blue-600 text-white rounded-xl font-semibold transition-all"
             >
-              Create Server
+              {t('instances.create_btn')}
             </button>
           </div>
         ) : (
@@ -340,7 +342,7 @@ const Instances = () => {
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-[#111827] rounded-xl border border-gray-800/60">
           <div className="flex items-center space-x-10">
             <div className="flex flex-col">
-              <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Total Active</span>
+              <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">{t('instances.total_active')}</span>
               <div className="flex items-baseline space-x-1">
                 <span className="text-xl font-bold text-white">{localInstances.filter(i => i.status === 'ONLINE').length}</span>
                 <span className="text-gray-500 text-sm">/ {localInstances.length}</span>
@@ -348,7 +350,7 @@ const Instances = () => {
             </div>
             <div className="w-px h-8 bg-gray-800"></div>
             <div className="flex flex-col">
-              <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Player Count</span>
+              <span className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">{t('instances.player_count')}</span>
               <div className="flex items-baseline space-x-1">
                 <span className="text-xl font-bold text-white">{localInstances.reduce((sum, i) => sum + i.current_players, 0)}</span>
                 <span className="text-gray-500 text-sm">/ {localInstances.reduce((sum, i) => sum + i.max_players, 0)}</span>

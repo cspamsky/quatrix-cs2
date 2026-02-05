@@ -13,6 +13,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import socket from '../utils/socket'
 import { generateUUID } from "../utils/uuid";
 import { COMMON_COMMANDS } from "../config/consoleCommands";
+import { useTranslation } from 'react-i18next'
 
 interface LogEntry {
   id: string;
@@ -29,6 +30,7 @@ interface Server {
 }
 
 const Console = () => {
+  const { t } = useTranslation()
   const { id } = useParams();
   const navigate = useNavigate();
   const [server, setServer] = useState<Server | null>(null);
@@ -39,8 +41,8 @@ const Console = () => {
       timestamp: new Date().toLocaleTimeString(),
       type: "INFO",
       message: id
-        ? `Connecting to Instance Console...`
-        : "Please select an instance to view live console logs.",
+        ? t('console.connecting')
+        : t('console.select_instance'),
     },
   ]);
   const [command, setCommand] = useState("");
@@ -190,8 +192,8 @@ const Console = () => {
         timestamp: new Date().toLocaleTimeString(),
         type: "INFO",
         message: id
-          ? `Connected to ${server?.name || 'Instance'} Console...`
-          : "Please select an instance to view live console logs.",
+          ? `${t('console.connected_to')} ${server?.name || 'Instance'} ${t('console.connected_to').split(' ')[0]}...`
+          : t('console.select_instance'),
       },
     ]);
   }, [id]);
@@ -242,7 +244,7 @@ const Console = () => {
             id: generateUUID(),
             timestamp: new Date().toLocaleTimeString(),
             type: "INFO",
-            message: data.message || `Action ${action} initiated`,
+            message: data.message || `${t('console.action_initiated')} ${action}`,
           },
         ]);
         // Refresh server status
@@ -316,7 +318,7 @@ const Console = () => {
           id: generateUUID(),
           timestamp: new Date().toLocaleTimeString(),
           type: "ERROR",
-          message: `Connection error: ${error}`,
+          message: `${t('console.connection_error')} ${error}`,
         },
       ]);
     }
@@ -356,7 +358,7 @@ const Console = () => {
             id: generateUUID(),
             timestamp: new Date().toLocaleTimeString(),
             type: "INFO",
-            message: "Force update/validation started...",
+            message: t('console.force_update_started'),
           },
         ]);
         // Immediately refresh status to show spinning icon
@@ -374,16 +376,16 @@ const Console = () => {
       <header className="h-20 flex items-center justify-between px-6 shrink-0">
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight">
-            Server Console
+            {t('console.title')}
           </h2>
           <p className="text-sm text-gray-400 mt-1">
-            Real-time server interaction and monitoring
+            {t('console.subtitle')}
           </p>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-end">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">{t('console.switch_server')}</span>
             <div className="relative group">
               <Server className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
               <select 
@@ -391,7 +393,7 @@ const Console = () => {
                 value={id || ''}
                 onChange={(e) => navigate(`/console/${e.target.value}`)}
               >
-                <option value="" disabled>Select server...</option>
+                <option value="" disabled>{t('console.select_server')}</option>
                 {allServers.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -408,7 +410,7 @@ const Console = () => {
             <div className="flex items-center gap-2">
               <TerminalIcon className="text-primary w-4 h-4" />
               <span className="text-sm font-semibold text-slate-200">
-                Server Live Console
+                {t('console.live_console')}
               </span>
             </div>
             {!isAutoScroll && (
@@ -419,7 +421,7 @@ const Console = () => {
                 }}
                 className="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded border border-primary/30 hover:bg-primary/30 transition-all animate-pulse"
               >
-                Auto-scroll Paused - Click to catch up
+                {t('console.auto_scroll_paused')}
               </button>
             )}
           </div>
@@ -475,7 +477,7 @@ const Console = () => {
                 )}
                 <input
                   className="w-full bg-transparent border-none focus:ring-0 text-sm font-mono placeholder:text-slate-600 p-0 outline-none text-white relative z-10"
-                  placeholder="Type console command..."
+                  placeholder={t('console.command_placeholder')}
                   type="text"
                   autoComplete="off"
                   value={command}
@@ -493,14 +495,14 @@ const Console = () => {
                 />
               </div>
               <div className="hidden group-focus-within:block text-[10px] text-slate-500 font-mono animate-pulse">
-                Press [Tab] or [→] to complete
+                {t('console.press_tab')}
               </div>
             </div>
             <button
               type="submit"
               className="bg-primary hover:bg-primary/90 text-white font-bold text-[10px] tracking-widest px-6 py-2 rounded transition-all shadow-lg shadow-primary/20"
             >
-              SEND
+              {t('console.send')}
             </button>
           </form>
         </div>
@@ -517,7 +519,7 @@ const Console = () => {
             onClick={() => handleAction("start")}
             className="flex items-center justify-center gap-2 py-3.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg hover:bg-emerald-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <Play size={18} /> Start Server
+            <Play size={18} /> {t('console.start_server')}
           </button>
           <button
             disabled={
@@ -532,7 +534,7 @@ const Console = () => {
               size={18}
               className={actionLoading ? "animate-spin" : ""}
             />{" "}
-            Restart
+            {t('console.restart')}
           </button>
           <button
             disabled={
@@ -543,7 +545,7 @@ const Console = () => {
             onClick={() => handleAction("stop")}
             className="flex items-center justify-center gap-2 py-3.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-lg hover:bg-rose-500/20 transition-all font-semibold text-sm disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            <Square size={18} /> Stop Server
+            <Square size={18} /> {t('console.stop_server')}
           </button>
           <button
             disabled={
@@ -558,7 +560,7 @@ const Console = () => {
               size={18}
               className={server?.status === "INSTALLING" ? "animate-spin" : ""}
             />{" "}
-            Force Update
+            {t('console.force_update')}
           </button>
         </div>
       </div>

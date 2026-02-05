@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import socket from '../utils/socket'
+import { useTranslation } from 'react-i18next'
 
 interface ChatLog {
   id: number;
@@ -30,6 +31,7 @@ interface ServerInfo {
 }
 
 const Chat = () => {
+  const { t } = useTranslation()
   const { id } = useParams();
   const navigate = useNavigate();
   const [allServers, setAllServers] = useState<ServerInfo[]>([]);
@@ -121,11 +123,11 @@ const Chat = () => {
           <div className="flex items-center gap-2">
             <MessageSquare className="text-primary w-6 h-6" />
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              Server Chat Logs
+              {t('chat.title')}
             </h2>
           </div>
           <p className="text-sm text-gray-400 mt-1">
-            Live monitoring and message history
+            {t('chat.subtitle')}
           </p>
         </div>
 
@@ -134,7 +136,7 @@ const Chat = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
             <input 
               type="text"
-              placeholder="Filter by name, message..."
+              placeholder={t('chat.search_placeholder')}
               className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm w-64"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -149,7 +151,7 @@ const Chat = () => {
                 value={id || ''}
                 onChange={(e) => navigate(`/chat/${e.target.value}`)}
               >
-                <option value="" disabled>Select server...</option>
+                <option value="" disabled>{t('chat.select_server')}</option>
                 {allServers.map((s) => (
                   <option key={s.id} value={s.id}>{s.name} ({s.port})</option>
                 ))}
@@ -177,7 +179,7 @@ const Chat = () => {
                      <MessageSquare size={32} />
                    </div>
                    <p className="text-sm font-medium">
-                     {searchTerm ? "No messages matching your search" : "No chat history found for this server"}
+                     {searchTerm ? t('chat.no_messages') : t('chat.no_history')}
                    </p>
                 </div>
               ) : (
@@ -195,7 +197,7 @@ const Chat = () => {
                             {log.player_name}
                           </span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider ${getTypeColor(log.type)}`}>
-                            {log.type === 'say_team' ? 'TEAM' : 'ALL'}
+                            {log.type === 'say_team' ? t('chat.team') : t('chat.all')}
                           </span>
                           <span className="text-[11px] text-gray-500 font-mono mt-0.5 ml-auto">
                             {new Date(log.created_at).toLocaleTimeString()}

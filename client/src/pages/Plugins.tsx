@@ -22,6 +22,7 @@ import { apiFetch } from '../utils/api'
 import toast from 'react-hot-toast'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 
 interface Instance {
     id: number;
@@ -41,6 +42,7 @@ interface PluginInfo {
 }
 
 const Plugins = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { showConfirm } = useConfirmDialog()
   const queryClient = useQueryClient()
@@ -111,17 +113,17 @@ const Plugins = () => {
     // Logic guards
     if (action === 'install') {
         if (pluginInfo.category === 'cssharp' && !pluginStatus.metamod?.installed) {
-            return toast.error('Metamod:Source is required before installing C# plugins');
+            return toast.error(t('plugins.metamod_required'));
         }
         if (pluginInfo.category === 'cssharp' && plugin !== 'cssharp' && !pluginStatus.cssharp?.installed) {
-            return toast.error('CounterStrikeSharp is required first');
+            return toast.error(t('plugins.cssharp_required'));
         }
     }
 
     const confirmed = await showConfirm({
-      title: `${action.charAt(0).toUpperCase() + action.slice(1)} ${pluginName}?`,
-      message: `Are you sure you want to ${action} ${pluginName}? Sub-dependencies will be handled automatically. ${action === 'uninstall' ? 'This may impact other plugins.' : 'The server should be OFFLINE for a safe installation.'}`,
-      confirmText: `${action.charAt(0).toUpperCase() + action.slice(1)} Now`,
+      title: `${t(`plugins.${action}_confirm_title`)} ${pluginName}?`,
+      message: `${t(`plugins.${action}_confirm_message`)}`,
+      confirmText: `${t(`plugins.${action}_confirm_title`)} ${t('plugins.confirm_action')}`,
       type: action === 'uninstall' ? 'danger' : 'warning'
     });
 
@@ -133,15 +135,15 @@ const Plugins = () => {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(`${pluginName} ${action}ed successfully!`);
+        toast.success(`${pluginName} ${t('plugins.action_success')}`);
         // Invalidate queries to refresh UI
         queryClient.invalidateQueries({ queryKey: ['plugin-status', selectedServer] });
         queryClient.invalidateQueries({ queryKey: ['plugin-updates', selectedServer] });
       } else {
-        toast.error(data.message || 'Action failed');
+        toast.error(data.message || t('plugins.action_failed'));
       }
     } catch (error) {
-      toast.error('Network or Server failure.');
+      toast.error(t('plugins.network_error'));
     } finally {
       setActionLoading(null);
     }
@@ -167,15 +169,15 @@ const Plugins = () => {
         const data = await response.json();
 
         if (response.ok) {
-            toast.success('Plugin processed and added to pool!');
+            toast.success(t('plugins.upload_success'));
             setUploadModalPlugin(null);
             setSelectedFile(null);
             queryClient.invalidateQueries({ queryKey: ['plugin-registry'] });
         } else {
-            toast.error(data.message || 'Upload failed');
+            toast.error(data.message || t('plugins.upload_failed'));
         }
     } catch (error) {
-        toast.error('Network error during upload');
+        toast.error(t('plugins.network_error'));
     } finally {
         setIsUploading(false);
     }
@@ -183,9 +185,9 @@ const Plugins = () => {
 
   const handleDeletePool = async (pluginId: string) => {
       const confirmed = await showConfirm({
-          title: "Remove from pool?",
-          message: `Are you sure you want to remove ${pluginId} from the central repository? Installed instances will NOT be affected, but you won't be able to reinstall it until you upload it again.`,
-          confirmText: "Delete Now",
+          title: t('plugins.remove_from_pool_title'),
+          message: t('plugins.remove_from_pool_message', { pluginId }),
+          confirmText: t('plugins.delete'),
           type: "danger"
       });
       if (!confirmed) return;
@@ -193,14 +195,14 @@ const Plugins = () => {
       try {
           const response = await apiFetch(`/api/servers/plugins/pool/${pluginId}`, { method: 'DELETE' });
           if (response.ok) {
-              toast.success(`${pluginId} removed from pool`);
+              toast.success(t('plugins.delete_success'));
               queryClient.invalidateQueries({ queryKey: ['plugin-registry'] });
           } else {
               const data = await response.json();
-              toast.error(data.message || 'Deletion failed');
+              toast.error(data.message || t('plugins.delete_failed'));
           }
       } catch (error) {
-          toast.error('Connection error');
+          toast.error(t('plugins.network_error'));
       }
   };
 
@@ -226,7 +228,7 @@ const Plugins = () => {
             handleFileSelect(files[0].path);
         }
     } catch (error) {
-        toast.error('Failed to load configuration list');
+        toast.error(t('plugins.config_load_failed'));
     } finally {
         setIsLoadingConfigs(false);
     }
@@ -244,7 +246,7 @@ const Plugins = () => {
             setEditingContent(data.content);
         }
     } catch (error) {
-        toast.error('Failed to read file content');
+        toast.error(t('plugins.config_load_failed'));
     }
   };
 
@@ -262,13 +264,13 @@ const Plugins = () => {
         });
         
         if (res.ok) {
-            toast.success('Configuration saved successfully');
+            toast.success(t('plugins.config_saved'));
         } else {
             const data = await res.json();
-            toast.error(data.message || 'Failed to save configuration');
+            toast.error(data.message || t('plugins.config_save_failed'));
         }
     } catch (error) {
-        toast.error('Network error while saving');
+        toast.error(t('plugins.network_error'));
     } finally {
         setIsSaving(false);
     }
@@ -320,14 +322,14 @@ const Plugins = () => {
         className={`flex items-center gap-3 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'instances' ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
       >
         <ServerIcon size={14} />
-        Server Management
+        {t('plugins.server_management')}
       </button>
       <button 
         onClick={() => setActiveTab('pool')}
         className={`flex items-center gap-3 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'pool' ? 'bg-orange-500 text-white shadow-xl shadow-orange-500/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
       >
         <Box size={14} />
-        Global Repository
+        {t('plugins.global_repository')}
       </button>
     </div>
   );
@@ -341,7 +343,7 @@ const Plugins = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={18} />
                 <input 
                     type="text" 
-                    placeholder="Search repository..."
+                    placeholder={t('plugins.search_repository')}
                     className="w-full bg-[#111827]/40 border border-gray-800/50 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-primary/[0.02] transition-all"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -355,7 +357,7 @@ const Plugins = () => {
                         onClick={() => setActiveCategory(cat as any)}
                         className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-300'}`}
                     >
-                        {cat}
+                        {t(`plugins.${cat === 'all' ? 'all_categories' : cat}`)}
                     </button>
                 ))}
             </div>
@@ -365,9 +367,9 @@ const Plugins = () => {
           <table className="w-full text-left border-collapse">
             <thead className="bg-[#0c1424] border-b border-gray-800/80">
               <tr>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 w-1/3">Plugin</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Repository Status</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">Actions</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 w-1/3">{t('plugins.plugin')}</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">{t('plugins.status')}</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">{t('plugins.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/20">
@@ -388,12 +390,12 @@ const Plugins = () => {
                     {info.inPool ? (
                       <div className="flex items-center gap-2 text-green-500">
                         <CheckCircle2 size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Available in Pool</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{t('plugins.installed')}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-orange-500">
                         <AlertCircle size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Missing - Upload Required</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{t('plugins.not_in_pool')}</span>
                       </div>
                     )}
                   </td>
@@ -405,7 +407,7 @@ const Plugins = () => {
                           className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500/20 transition-all border border-red-500/20"
                         >
                           <Trash2 size={14} />
-                          Remove from Pool
+                          {t('plugins.delete')}
                         </button>
                       ) : (
                         <button 
@@ -413,7 +415,7 @@ const Plugins = () => {
                           className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-primary/20 transition-all border border-primary/20"
                         >
                           <Download size={14} />
-                          Upload Content
+                          {t('plugins.upload')}
                         </button>
                       )}
                     </div>
@@ -429,17 +431,17 @@ const Plugins = () => {
 
   const renderUnifiedPluginTable = () => {
     const sections = [
-        { id: 'core', name: 'Core Foundations', icon: <Layers size={14} className="text-primary" /> },
-        { id: 'metamod', name: 'Metamod Plugin', icon: <Cpu size={14} className="text-primary" /> },
-        { id: 'cssharp', name: 'CounterStrikeSharp Plugin', icon: <Zap size={14} className="text-primary" /> }
+        { id: 'core', name: t('plugins.core_foundations'), icon: <Layers size={14} className="text-primary" /> },
+        { id: 'metamod', name: t('plugins.metamod_plugin'), icon: <Cpu size={14} className="text-primary" /> },
+        { id: 'cssharp', name: t('plugins.cssharp_plugin'), icon: <Zap size={14} className="text-primary" /> }
     ];
     
     const categories = ['all', 'core', 'metamod', 'cssharp'] as const;
     const statuses = [
-        { id: 'all', label: 'All Status', icon: <Box size={14} /> },
-        { id: 'installed', label: 'Installed', icon: <CheckCircle2 size={14} className="text-green-500" /> },
-        { id: 'not-installed', label: 'Not Installed', icon: <XCircle size={14} className="text-gray-500" /> },
-        { id: 'update', label: 'Updates', icon: <AlertCircle size={14} className="text-yellow-500" /> }
+        { id: 'all', label: t('plugins.all_status'), icon: <Box size={14} /> },
+        { id: 'installed', label: t('plugins.installed'), icon: <CheckCircle2 size={14} className="text-green-500" /> },
+        { id: 'not-installed', label: t('plugins.not_installed'), icon: <XCircle size={14} className="text-gray-500" /> },
+        { id: 'update', label: t('plugins.updates_available'), icon: <AlertCircle size={14} className="text-yellow-500" /> }
     ] as const;
 
     return (
@@ -451,7 +453,7 @@ const Plugins = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={18} />
                 <input 
                     type="text" 
-                    placeholder="Search plugins on this server..."
+                    placeholder={t('plugins.search_plugins')}
                     className="w-full bg-[#111827]/40 border border-gray-800/50 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-primary/[0.02] transition-all"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -465,7 +467,7 @@ const Plugins = () => {
                         onClick={() => setActiveCategory(cat)}
                         className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0 ${activeCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-500 hover:text-gray-300'}`}
                     >
-                        {cat}
+                        {t(`plugins.${cat === 'all' ? 'all_categories' : cat}`)}
                     </button>
                 ))}
             </div>
@@ -491,7 +493,7 @@ const Plugins = () => {
                 onClick={() => setSelectedTag(null)}
                 className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border shrink-0 ${!selectedTag ? 'bg-primary/10 border-primary text-primary' : 'border-gray-800 text-gray-500 hover:border-gray-700'}`}
             >
-                All Tags
+                {t('plugins.all_tags')}
             </button>
             {allTags.map(tag => (
                 <button
@@ -509,10 +511,10 @@ const Plugins = () => {
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 z-30 bg-[#0c1424] border-b border-gray-800/80">
               <tr>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 w-1/4">Plugin</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 hidden lg:table-cell">Description / Tags</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 w-1/6">Version</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right w-1/6">Actions</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 w-1/4">{t('plugins.plugin')}</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 hidden lg:table-cell">{t('plugins.status')}</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 w-1/6">{t('plugins.version')}</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right w-1/6">{t('plugins.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/20">
@@ -530,12 +532,12 @@ const Plugins = () => {
                         </div>
                         <span className="text-[11px] font-black text-gray-300 uppercase tracking-[0.2em]">{section.name}</span>
                         {section.id === 'metamod' && !pluginStatus['metamod']?.installed && (
-                            <span className="text-[8px] font-bold text-yellow-500/60 bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10 uppercase ml-2">Req. Metamod:Source</span>
+                            <span className="text-[8px] font-bold text-yellow-500/60 bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10 uppercase ml-2">{t('plugins.requires_metamod')}</span>
                         )}
                         {section.id === 'cssharp' && !pluginStatus['cssharp']?.installed && (
-                            <span className="text-[8px] font-bold text-yellow-500/60 bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10 uppercase ml-2">Req. CounterStrikeSharp</span>
+                            <span className="text-[8px] font-bold text-yellow-500/60 bg-yellow-500/5 px-2 py-0.5 rounded border border-yellow-500/10 uppercase ml-2">{t('plugins.requires_cssharp')}</span>
                         )}
-                        <span className="ml-auto text-[10px] text-gray-600 font-bold uppercase tracking-widest">{sectionPlugins.length} found</span>
+                        <span className="ml-auto text-[10px] text-gray-600 font-bold uppercase tracking-widest">{sectionPlugins.length} {t('plugins.found')}</span>
                       </div>
                     </td>
                   </tr>
@@ -561,16 +563,16 @@ const Plugins = () => {
                             <div>
                               <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">{info.name}</div>
                               <span className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 inline-block ${isInstalled ? 'bg-green-500/10 text-green-500' : 'bg-gray-800/60 text-gray-500'}`}>
-                              {isInstalled ? 'Installed' : 'Not Loaded'}
+                              {isInstalled ? t('plugins.installed') : t('plugins.not_installed')}
                               </span>
                               {info.isCustom && (
                                 <span className="text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 ml-1 inline-block bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                                  Custom
+                                  {t('plugins.custom')}
                                 </span>
                               )}
                               {!info.inPool && (
                                 <span className="text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 ml-1 inline-block bg-orange-500/10 text-orange-500 border border-orange-500/20">
-                                  Missing in Pool
+                                  {t('plugins.not_in_pool')}
                                 </span>
                               )}
                             </div>
@@ -593,7 +595,7 @@ const Plugins = () => {
                             </span>
                             {hasUpdate && isInstalled && (
                               <div className="flex items-center gap-1 mt-1">
-                                <span className="text-[9px] font-black text-yellow-500 animate-pulse uppercase">Update</span>
+                                <span className="text-[9px] font-black text-yellow-500 animate-pulse uppercase">{t('plugins.update')}</span>
                                 <span className="text-[9px] text-yellow-500/50 font-medium">→ v{updates.latestVersion}</span>
                               </div>
                             )}
@@ -654,7 +656,7 @@ const Plugins = () => {
                                   className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-primary/10 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
                                 >
                                   {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                                  {info.inPool ? 'Install' : 'Locked'}
+                                  {info.inPool ? t('plugins.install') : t('plugins.not_in_pool')}
                                 </button>
                               </div>
                             )}
@@ -673,13 +675,13 @@ const Plugins = () => {
                                 <Box size={24} />
                             </div>
                             <div>
-                                <h4 className="text-white font-bold uppercase tracking-widest text-sm italic">Atmosphere is Empty</h4>
-                                <p className="text-xs text-gray-500 mt-1">Create your first server instance to begin modding.</p>
+                                <h4 className="text-white font-bold uppercase tracking-widest text-sm italic">{t('plugins.no_instances_title')}</h4>
+                                <p className="text-xs text-gray-500 mt-1">{t('plugins.no_instances_message')}</p>
                                 <button 
                                     onClick={() => navigate('/instances')}
                                     className="mt-6 px-8 py-3 bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-primary/20 transition-all"
                                 >
-                                    Go to Command Center
+                                    {t('plugins.go_to_instances')}
                                 </button>
                             </div>
                         </div>
@@ -695,8 +697,8 @@ const Plugins = () => {
                                 <Search size={24} className="text-gray-700" />
                             </div>
                             <div>
-                                <h4 className="text-gray-400 font-bold uppercase tracking-widest text-sm">No Signal Found</h4>
-                                <p className="text-xs text-gray-600 mt-1">Try adjusting your filters or search query.</p>
+                                <h4 className="text-gray-400 font-bold uppercase tracking-widest text-sm">{t('plugins.no_results_title')}</h4>
+                                <p className="text-xs text-gray-600 mt-1">{t('plugins.no_results_message')}</p>
                                 <button 
                                     onClick={() => {
                                         setSearchQuery('');
@@ -706,7 +708,7 @@ const Plugins = () => {
                                     }}
                                     className="mt-4 text-primary text-[10px] font-black uppercase tracking-widest hover:underline"
                                 >
-                                    Clear all filters
+                                    {t('plugins.clear_filters')}
                                 </button>
                             </div>
                         </div>
@@ -725,7 +727,7 @@ const Plugins = () => {
     return (
         <div className="p-6 flex flex-col items-center justify-center min-h-[60vh]">
             <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
-            <p className="text-gray-400 font-bold animate-pulse uppercase tracking-[0.2em] text-xs">Synchronizing Galaxy...</p>
+            <p className="text-gray-400 font-bold animate-pulse uppercase tracking-[0.2em] text-xs">{t('plugins.synchronizing')}</p>
         </div>
     );
   }
@@ -735,10 +737,10 @@ const Plugins = () => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
-              {activeTab === 'instances' ? 'Instance Plugins' : 'Plugin Repository'}
+              {activeTab === 'instances' ? t('plugins.instance_plugins') : t('plugins.plugin_repository')}
             </h2>
             <p className="text-sm text-gray-400 mt-1">
-              {activeTab === 'instances' ? 'Manage active modules for your selected server instance' : 'Global pool of verified and custom plugin assets'}
+              {activeTab === 'instances' ? t('plugins.instance_subtitle') : t('plugins.repository_subtitle')}
             </p>
         </div>
         
@@ -748,12 +750,12 @@ const Plugins = () => {
             className="flex items-center gap-2 px-4 py-2 bg-orange-500/10 text-orange-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-orange-500/20 transition-all border border-orange-500/20"
           >
             <Layers size={14} />
-            Upload ZIP
+            {t('plugins.upload_zip')}
           </button>
           
           {activeTab === 'instances' && (
             <div className="flex flex-col items-end animate-in fade-in slide-in-from-right-4 duration-300">
-              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">{t('plugins.switch_server')}</span>
               <div className="relative group">
                 <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
                 <select 
@@ -761,7 +763,7 @@ const Plugins = () => {
                   value={selectedServer || ''}
                   onChange={(e) => setSelectedServer(e.target.value)}
                 >
-                  <option value="" disabled>Select server...</option>
+                  <option value="" disabled>{t('plugins.select_server')}</option>
                   {instances.map((inst: Instance) => (
                     <option key={inst.id} value={inst.id} className="bg-[#0c1424]">{inst.name}</option>
                   ))}
@@ -801,7 +803,7 @@ const Plugins = () => {
             <div className="flex flex-1 min-h-0">
               {/* Sidebar (File List) */}
               <div className="w-1/4 border-r border-gray-800 bg-[#111827]/40 overflow-y-auto">
-                <div className="p-3 uppercase text-[9px] font-black text-gray-600 tracking-widest">Available Files</div>
+                <div className="p-3 uppercase text-[9px] font-black text-gray-600 tracking-widest">{t('plugins.available_files')}</div>
                 {isLoadingConfigs ? (
                     <div className="p-6 flex justify-center">
                         <Loader2 size={24} className="text-primary animate-spin" />
@@ -828,20 +830,20 @@ const Plugins = () => {
                   value={editingContent}
                   onChange={(e) => setEditingContent(e.target.value)}
                   spellCheck={false}
-                  placeholder="// No content or loading..."
+                  placeholder={t('plugins.no_content')}
                 />
               </div>
             </div>
 
             {/* Footer */}
             <div className="px-6 py-4 border-t border-gray-800 bg-[#111827]/40 flex items-center justify-between">
-              <span className="text-[10px] text-gray-500 font-medium">Changes are applied immediately after saving.</span>
+              <span className="text-[10px] text-gray-500 font-medium">{t('plugins.changes_applied')}</span>
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setConfigModalPlugin(null)}
                   className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-300 transition-all uppercase tracking-widest"
                 >
-                  Cancel
+                  {t('plugins.cancel')}
                 </button>
                 <button 
                   disabled={isSaving || !selectedFilePath}
@@ -849,7 +851,7 @@ const Plugins = () => {
                   className="flex items-center gap-2 bg-primary text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
                 >
                   {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  Save Changes
+                  {isSaving ? t('plugins.saving') : t('plugins.save')}
                 </button>
               </div>
             </div>
@@ -869,7 +871,7 @@ const Plugins = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                    {uploadModalPlugin.id === 'unknown' ? 'Global Plugin Upload' : 'Upload to Pool'}
+                    {uploadModalPlugin.id === 'unknown' ? t('plugins.upload_custom_plugin') : t('plugins.upload')}
                   </h3>
                   <p className="text-[10px] text-gray-500 font-mono tracking-tight mt-0.5">{uploadModalPlugin.name}</p>
                 </div>
@@ -888,8 +890,7 @@ const Plugins = () => {
                 <div className="p-4 bg-orange-500/5 border border-orange-500/10 rounded-2xl flex items-start gap-3">
                   <AlertCircle size={16} className="text-orange-500 shrink-0 mt-0.5" />
                   <p className="text-[11px] text-gray-400 leading-relaxed">
-                    This plugin is missing in the central pool. Please upload the official <strong className="text-orange-500">.ZIP, .RAR or .TAR.GZ</strong> file. 
-                    The system will automatically extract and flatten the contents.
+                    {t('plugins.upload_instruction')}
                   </p>
                 </div>
 
@@ -907,7 +908,7 @@ const Plugins = () => {
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-bold text-white">
-                        {selectedFile ? selectedFile.name : 'Select plugin file'}
+                        {selectedFile ? selectedFile.name : t('plugins.select_zip')}
                       </p>
                       <p className="text-[10px] text-gray-500 mt-1 font-mono uppercase tracking-widest">
                         {selectedFile ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB` : 'MAX 50MB'}
@@ -924,7 +925,7 @@ const Plugins = () => {
                   className="flex-1 px-4 py-3 bg-gray-800/40 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-gray-800 transition-all border border-gray-800"
                   disabled={isUploading}
                 >
-                  Cancel
+                  {t('plugins.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -934,12 +935,12 @@ const Plugins = () => {
                   {isUploading ? (
                     <>
                       <Loader2 size={16} className="animate-spin" />
-                      Uploading...
+                      {t('plugins.uploading')}
                     </>
                   ) : (
                     <>
                       <Layers size={16} />
-                      Start Upload
+                      {t('plugins.upload')}
                     </>
                   )}
                 </button>

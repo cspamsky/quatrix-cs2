@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface ConfirmDialogOptions {
   title: string
@@ -24,12 +25,13 @@ export const useConfirmDialog = () => {
 }
 
 export const ConfirmDialogProvider = ({ children }: { children: ReactNode }) => {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [options, setOptions] = useState<ConfirmDialogOptions>({
     title: '',
     message: '',
-    confirmText: 'Confirm',
-    cancelText: 'Cancel',
+    confirmText: t('common.save'),
+    cancelText: t('common.cancel'),
     type: 'danger'
   })
   const [resolvePromise, setResolvePromise] = useState<((value: boolean) => void) | null>(null)
@@ -37,8 +39,8 @@ export const ConfirmDialogProvider = ({ children }: { children: ReactNode }) => 
   const showConfirm = (opts: ConfirmDialogOptions): Promise<boolean> => {
     setOptions({
       ...opts,
-      confirmText: opts.confirmText || 'Confirm',
-      cancelText: opts.cancelText || 'Cancel',
+      confirmText: opts.confirmText || t('common.save'),
+      cancelText: opts.cancelText || t('common.cancel'),
       type: opts.type || 'danger'
     })
     setIsOpen(true)

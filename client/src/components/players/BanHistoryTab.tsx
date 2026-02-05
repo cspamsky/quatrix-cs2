@@ -12,6 +12,7 @@ import {
 import toast from 'react-hot-toast'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../utils/api'
+import { useTranslation } from 'react-i18next'
 
 interface BanRecord {
   id: number
@@ -32,6 +33,7 @@ interface BanHistoryTabProps {
 }
 
 const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [showActiveOnly, setShowActiveOnly] = useState(true)
@@ -58,15 +60,15 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
     mutationFn: (banId: number) => 
       apiFetch(`/api/servers/${selectedServerId}/bans/${banId}/unban`, { method: 'POST' }),
     onSuccess: () => {
-      toast.success('Player unbanned successfully')
+      toast.success(t('players.player_unbanned'))
       queryClient.invalidateQueries({ queryKey: ['bans', selectedServerId] })
     },
-    onError: () => toast.error('Failed to unban player')
+    onError: () => toast.error(t('players.unban_failed'))
   })
 
   const handleRefresh = async () => {
     await refetch()
-    toast.success('Ban history updated')
+    toast.success(t('players.ban_history_updated'))
   }
 
   const filteredBans = bans.filter((ban: BanRecord) => 
@@ -81,7 +83,7 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
           <div className="flex items-center gap-4">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-red-500" />
-              Incident Records
+              {t('players.incident_records')}
             </h3>
           </div>
 
@@ -96,7 +98,7 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
               <div className="w-10 h-5 bg-gray-800 rounded-full peer peer-checked:bg-primary transition-all duration-300"></div>
               <div className="absolute left-1 top-1 w-3 h-3 bg-white rounded-full peer-checked:translate-x-5 transition-all duration-300"></div>
             </div>
-            <span className="text-xs font-bold text-gray-400 group-hover:text-white transition-colors uppercase tracking-widest">Active Bans Only</span>
+            <span className="text-xs font-bold text-gray-400 group-hover:text-white transition-colors uppercase tracking-widest">{t('players.active_bans_only')}</span>
           </label>
         </div>
 
@@ -105,7 +107,7 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
             <input 
               className="w-64 pl-10 pr-4 py-2 bg-[#1d1d1d]/30 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200" 
-              placeholder="Search bans..." 
+              placeholder={t('players.search_bans')}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -126,22 +128,22 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#1d1d1d]/30 text-gray-400 text-[10px] uppercase font-black tracking-widest">
-                <th className="px-6 py-4 border-b border-gray-800/50">Player</th>
-                <th className="px-6 py-4 border-b border-gray-800/50">Reason</th>
-                <th className="px-6 py-4 border-b border-gray-800/50">Ban Date</th>
-                <th className="px-6 py-4 border-b border-gray-800/50">Status</th>
-                <th className="px-6 py-4 border-b border-gray-800/50 text-right">Actions</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">{t('players.player')}</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">{t('players.reason')}</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">{t('players.ban_date')}</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">{t('players.status')}</th>
+                <th className="px-6 py-4 border-b border-gray-800/50 text-right">{t('players.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/30">
               {loading ? (
                 <tr>
-                   <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">Loading records...</td>
+                   <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">{t('players.loading_records')}</td>
                 </tr>
               ) : filteredBans.length === 0 ? (
                 <tr>
                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">
-                     No ban records found.
+                     {t('players.no_ban_records')}
                    </td>
                 </tr>
               ) : (
@@ -163,7 +165,7 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
                         <span className="text-sm text-gray-300 font-medium">{ban.reason}</span>
                         <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bold uppercase">
                           <User size={10} />
-                          By {ban.banned_by}
+                          {t('players.by')} {ban.banned_by}
                         </div>
                       </div>
                     </td>
@@ -175,7 +177,7 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
                         </div>
                         <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bold uppercase">
                           <Clock size={10} />
-                          {ban.duration === 0 ? 'Permanent' : `${ban.duration}m`}
+                          {ban.duration === 0 ? t('players.permanent') : `${ban.duration}m`}
                         </div>
                       </div>
                     </td>
@@ -183,12 +185,12 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
                       {ban.is_active ? (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]">
                           <ShieldAlert size={10} />
-                          Active
+                          {t('players.active')}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-500/10 text-green-500 border border-green-500/20">
                           <ShieldCheck size={10} />
-                          Expired
+                          {t('players.expired')}
                         </span>
                       )}
                     </td>
@@ -200,11 +202,11 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
                           className="px-4 py-2 bg-green-500/10 text-green-500 hover:bg-green-500 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 ml-auto border border-green-500/20"
                         >
                           <Unlock size={14} />
-                          Unban
+                          {t('players.unban')}
                         </button>
                       ) : (
                         <span className="text-[10px] text-gray-600 font-bold uppercase">
-                          Resolved {ban.unbanned_at ? formatDate(ban.unbanned_at) : ''}
+                          {t('players.resolved')} {ban.unbanned_at ? formatDate(ban.unbanned_at) : ''}
                         </span>
                       )}
                     </td>

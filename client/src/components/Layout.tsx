@@ -11,33 +11,36 @@ import {
   Menu,
   X,
   MessageSquare,
-  Database
+  Database,
+  Globe
 } from 'lucide-react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { useState, useEffect, Suspense } from 'react'
 import { Oval } from 'react-loading-icons'
+import { useTranslation } from 'react-i18next'
 
 
 
 const Layout = () => {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/instances', icon: Layers, label: 'Instances' },
-    { path: '/chat', icon: MessageSquare, label: 'Chat Logs' },
-    { path: '/console', icon: Terminal, label: 'Server Console' },
-    { path: '/maps', icon: MapIcon, label: 'Map Management' },
-    { path: '/players', icon: Users, label: 'Player Management' },
-    { path: '/plugins', icon: Puzzle, label: 'Plugins' },
-    { path: '/admins', icon: ShieldCheck, label: 'Admin Management' },
-    { path: '/database', icon: Database, label: 'Database' },
-    { path: '/settings', icon: Settings, label: 'Settings' },
+    { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { path: '/instances', icon: Layers, label: t('nav.instances') },
+    { path: '/chat', icon: MessageSquare, label: t('nav.chat') },
+    { path: '/console', icon: Terminal, label: t('nav.console') },
+    { path: '/maps', icon: MapIcon, label: t('nav.maps') },
+    { path: '/players', icon: Users, label: t('nav.players') },
+    { path: '/plugins', icon: Puzzle, label: t('nav.plugins') },
+    { path: '/admins', icon: ShieldCheck, label: t('nav.admins') },
+    { path: '/database', icon: Database, label: t('nav.database') },
+    { path: '/settings', icon: Settings, label: t('nav.settings') },
   ]
 
-  const [user, setUser] = useState<any>(() => JSON.parse(localStorage.getItem('user') || '{"username": "User"}'))
+  const [user, setUser] = useState<any>(() => JSON.parse(localStorage.getItem('user') || `{"username": "${t('common.user')}"}`))
   const displayName = user.username || 'User'
   
   useEffect(() => {
@@ -144,6 +147,29 @@ const Layout = () => {
           })}
         </nav>
 
+        <div className="px-4 py-2 border-t border-gray-800">
+           <div className="flex items-center justify-between px-2 py-1 bg-white/5 rounded-lg border border-white/5 mb-2">
+             <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+               <Globe size={12} />
+               <span>Language</span>
+             </div>
+             <div className="flex gap-1">
+               <button 
+                onClick={() => i18n.changeLanguage('tr')}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${i18n.language.startsWith('tr') ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+               >
+                 TR
+               </button>
+               <button 
+                onClick={() => i18n.changeLanguage('en')}
+                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${i18n.language.startsWith('en') ? 'bg-primary text-white shadow-lg shadow-primary/30' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+               >
+                 EN
+               </button>
+             </div>
+           </div>
+        </div>
+
         <div className="p-4 border-t border-gray-800">
           <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
             <Link to="/profile" className="flex items-center gap-3 flex-1 min-w-0 group">
@@ -156,7 +182,7 @@ const Layout = () => {
                 <p className="text-sm font-semibold text-white truncate group-hover:text-primary transition-colors">{displayName}</p>
                 <p className="text-[10px] text-green-500 truncate font-bold flex items-center gap-1.5 uppercase tracking-wider">
                   <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                  Online
+                  {t('common.online')}
                 </p>
               </div>
             </Link>

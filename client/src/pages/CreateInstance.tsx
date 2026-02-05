@@ -11,8 +11,10 @@ import {
   Globe
 } from 'lucide-react'
 import { SERVER_REGIONS } from '../config/regions'
+import { useTranslation } from 'react-i18next'
 
 const CreateInstance = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -79,7 +81,7 @@ const CreateInstance = () => {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to create server')
+        throw new Error(data.message || t('createInstance.create_error'))
       }
 
       navigate('/instances')
@@ -94,8 +96,8 @@ const CreateInstance = () => {
     <div className="p-6 font-display">
       {/* Breadcrumbs & Header */}
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white tracking-tight">Create New CS2 Instance</h2>
-        <p className="text-sm text-gray-400 mt-1">Configure and deploy a new Counter-Strike 2 dedicated server using our setup wizard.</p>
+        <h2 className="text-2xl font-bold text-white tracking-tight">{t('createInstance.title')}</h2>
+        <p className="text-sm text-gray-400 mt-1">{t('createInstance.subtitle')}</p>
       </div>
 
       <div className="bg-[#111827] rounded-2xl border border-gray-800 overflow-hidden shadow-2xl">
@@ -104,17 +106,17 @@ const CreateInstance = () => {
           <div className="flex justify-between items-center max-w-2xl">
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 1 ? 'bg-primary text-white' : 'bg-gray-800 text-gray-500'}`}>1</div>
-              <span className={`font-semibold hidden sm:block ${step >= 1 ? 'text-primary' : 'text-gray-500'}`}>Details</span>
+              <span className={`font-semibold hidden sm:block ${step >= 1 ? 'text-primary' : 'text-gray-500'}`}>{t('createInstance.step_details')}</span>
             </div>
             <div className={`h-px flex-1 mx-4 ${step > 1 ? 'bg-primary' : 'bg-gray-800'}`}></div>
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 2 ? 'bg-primary text-white' : 'bg-gray-800 text-gray-500'}`}>2</div>
-              <span className={`font-semibold hidden sm:block ${step >= 2 ? 'text-primary' : 'text-gray-500'}`}>Map</span>
+              <span className={`font-semibold hidden sm:block ${step >= 2 ? 'text-primary' : 'text-gray-500'}`}>{t('createInstance.step_map')}</span>
             </div>
             <div className={`h-px flex-1 mx-4 ${step > 2 ? 'bg-primary' : 'bg-gray-800'}`}></div>
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all ${step >= 3 ? 'bg-primary text-white' : 'bg-gray-800 text-gray-500'}`}>3</div>
-              <span className={`font-semibold hidden sm:block ${step >= 3 ? 'text-primary' : 'text-gray-500'}`}>Advanced</span>
+              <span className={`font-semibold hidden sm:block ${step >= 3 ? 'text-primary' : 'text-gray-500'}`}>{t('createInstance.step_advanced')}</span>
             </div>
           </div>
         </div>
@@ -132,14 +134,14 @@ const CreateInstance = () => {
                 <div className="pb-4 border-b border-gray-800 mb-6">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <Info className="text-primary" size={20} />
-                    Basic Server Information
+                    {t('createInstance.basic_info_title')}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">Provide the essential details for your new CS2 instance.</p>
+                  <p className="text-sm text-gray-500 mt-1">{t('createInstance.basic_info_subtitle')}</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <label htmlFor="serverName" className="block text-sm font-bold text-gray-400">Server Name</label>
+                    <label htmlFor="serverName" className="block text-sm font-bold text-gray-400">{t('createInstance.server_name')}</label>
                     <input 
                       id="serverName"
                       type="text" 
@@ -147,12 +149,12 @@ const CreateInstance = () => {
                       value={formData.serverName}
                       onChange={handleInputChange}
                       className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600" 
-                      placeholder="My Awesome CS2 Server"
+                      placeholder={t('createInstance.server_name_placeholder')}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="maxPlayers" className="block text-sm font-bold text-gray-400">Max Players</label>
+                    <label htmlFor="maxPlayers" className="block text-sm font-bold text-gray-400">{t('createInstance.max_players')}</label>
                     <input 
                       id="maxPlayers"
                       type="number" 
@@ -164,7 +166,7 @@ const CreateInstance = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="port" className="block text-sm font-bold text-gray-400">Server Port</label>
+                    <label htmlFor="port" className="block text-sm font-bold text-gray-400">{t('createInstance.server_port')}</label>
                     <input 
                       id="port"
                       type="text" 
@@ -176,7 +178,7 @@ const CreateInstance = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="region" className="block text-sm font-bold text-gray-400">Server Region</label>
+                    <label htmlFor="region" className="block text-sm font-bold text-gray-400">{t('createInstance.server_region')}</label>
                     <div className="relative">
                       <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
                       <select 
@@ -187,7 +189,7 @@ const CreateInstance = () => {
                         className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
                       >
                         {SERVER_REGIONS.map((r: any) => (
-                          <option key={r.id} value={r.id}>{r.name}</option>
+                          <option key={r.id} value={r.id}>{t(`regions.${r.code}`)}</option>
                         ))}
                       </select>
                     </div>
@@ -202,13 +204,13 @@ const CreateInstance = () => {
                 <div className="pb-4 border-b border-gray-800 mb-6">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <MapIcon className="text-primary" size={20} />
-                    Map Configuration
+                    {t('createInstance.map_config_title')}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">Choose the initial map for your server.</p>
+                  <p className="text-sm text-gray-500 mt-1">{t('createInstance.map_config_subtitle')}</p>
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="initialMap" className="block text-sm font-bold text-gray-400">Initial Map</label>
+                  <label htmlFor="initialMap" className="block text-sm font-bold text-gray-400">{t('createInstance.initial_map')}</label>
                   <select 
                     id="initialMap"
                     name="initialMap"
@@ -235,15 +237,15 @@ const CreateInstance = () => {
                 <div className="pb-4 border-b border-gray-800 mb-6">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <Settings2 className="text-primary" size={20} />
-                    Advanced Configuration
+                    {t('createInstance.advanced_config_title')}
                   </h3>
-                  <p className="text-sm text-gray-500 mt-1">Optional settings for enhanced server control.</p>
+                  <p className="text-sm text-gray-500 mt-1">{t('createInstance.advanced_config_subtitle')}</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label htmlFor="glstToken" className="block text-sm font-bold text-gray-400">
-                      GSLT Token <span className="text-red-500">*</span>
+                      {t('createInstance.gslt_token')} <span className="text-red-500">*</span>
                     </label>
                     <input 
                       id="glstToken"
@@ -252,13 +254,13 @@ const CreateInstance = () => {
                       value={formData.glstToken}
                       onChange={handleInputChange}
                       className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600" 
-                      placeholder="Your GameServer Login Token"
+                      placeholder={t('createInstance.gslt_placeholder')}
                     />
                   </div>
 
                   <div className="space-y-2">
                     <label htmlFor="steamApiKey" className="block text-sm font-bold text-gray-400">
-                      Steam Web API Key <span className="text-red-500">*</span>
+                      {t('createInstance.steam_api_key')} <span className="text-red-500">*</span>
                     </label>
                     <input 
                       id="steamApiKey"
@@ -267,12 +269,12 @@ const CreateInstance = () => {
                       value={formData.steamApiKey}
                       onChange={handleInputChange}
                       className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600" 
-                      placeholder="For workshop content"
+                      placeholder={t('createInstance.steam_api_placeholder')}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="serverPassword" className="block text-sm font-bold text-gray-400">Server Password</label>
+                    <label htmlFor="serverPassword" className="block text-sm font-bold text-gray-400">{t('createInstance.server_password')}</label>
                     <input 
                       id="serverPassword"
                       type="password" 
@@ -280,13 +282,13 @@ const CreateInstance = () => {
                       value={formData.serverPassword}
                       onChange={handleInputChange}
                       className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600" 
-                      placeholder="Leave empty for public"
+                      placeholder={t('createInstance.server_password_placeholder')}
                     />
                   </div>
 
                   <div className="space-y-2">
                     <label htmlFor="rconPassword" className="block text-sm font-bold text-gray-400">
-                      RCON Password <span className="text-red-500">*</span>
+                      {t('createInstance.rcon_password')} <span className="text-red-500">*</span>
                     </label>
                     <input 
                       id="rconPassword"
@@ -295,12 +297,12 @@ const CreateInstance = () => {
                       value={formData.rconPassword}
                       onChange={handleInputChange}
                       className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600" 
-                      placeholder="Auto-generated if empty"
+                      placeholder={t('createInstance.rcon_placeholder')}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="gameAlias" className="block text-sm font-bold text-gray-400">Game Alias</label>
+                    <label htmlFor="gameAlias" className="block text-sm font-bold text-gray-400">{t('createInstance.game_alias')}</label>
                     <select 
                       id="gameAlias"
                       name="gameAlias"
@@ -308,20 +310,20 @@ const CreateInstance = () => {
                       onChange={handleInputChange}
                       className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
                     >
-                      <option value="">Default (Use Game Mode)</option>
-                      <option value="competitive">Competitive</option>
-                      <option value="casual">Casual</option>
-                      <option value="deathmatch">Deathmatch</option>
-                      <option value="wingman">Wingman</option>
-                      <option value="armsrace">Arms Race</option>
-                      <option value="demolition">Demolition</option>
-                      <option value="training">Training</option>
-                      <option value="custom">Custom</option>
+                      <option value="">{t('createInstance.game_alias_default')}</option>
+                      <option value="competitive">{t('createInstance.game_alias_competitive')}</option>
+                      <option value="casual">{t('createInstance.game_alias_casual')}</option>
+                      <option value="deathmatch">{t('createInstance.game_alias_deathmatch')}</option>
+                      <option value="wingman">{t('createInstance.game_alias_wingman')}</option>
+                      <option value="armsrace">{t('createInstance.game_alias_armsrace')}</option>
+                      <option value="demolition">{t('createInstance.game_alias_demolition')}</option>
+                      <option value="training">{t('createInstance.game_alias_training')}</option>
+                      <option value="custom">{t('createInstance.game_alias_custom')}</option>
                     </select>
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="additionalArgs" className="block text-sm font-bold text-gray-400">Additional Launch Arguments</label>
+                    <label htmlFor="additionalArgs" className="block text-sm font-bold text-gray-400">{t('createInstance.additional_args')}</label>
                     <input 
                       id="additionalArgs"
                       type="text" 
@@ -329,7 +331,7 @@ const CreateInstance = () => {
                       value={formData.additionalArgs}
                       onChange={handleInputChange}
                       className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600" 
-                      placeholder="-tickrate 128 +sv_infinite_ammo 1"
+                      placeholder={t('createInstance.additional_args_placeholder')}
                     />
                   </div>
                 </div>
@@ -345,8 +347,8 @@ const CreateInstance = () => {
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.hibernate ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                     <div className="flex flex-col">
-                        <span className="text-sm text-gray-300 font-semibold">Enable Hibernation</span>
-                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">Saves CPU when empty</span>
+                        <span className="text-sm text-gray-300 font-semibold">{t('createInstance.enable_hibernation')}</span>
+                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">{t('createInstance.hibernation_desc')}</span>
                     </div>
                   </div>
 
@@ -360,8 +362,8 @@ const CreateInstance = () => {
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.validateFiles ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                     <div className="flex flex-col">
-                        <span className="text-sm text-gray-300 font-semibold">Validate Files</span>
-                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">Run steamcmd validation</span>
+                        <span className="text-sm text-gray-300 font-semibold">{t('createInstance.validate_files')}</span>
+                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">{t('createInstance.validate_desc')}</span>
                     </div>
                   </div>
                  <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
@@ -373,7 +375,7 @@ const CreateInstance = () => {
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoStart ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
-                    <span className="text-sm text-gray-300">Auto-start server after creation</span>
+                    <span className="text-sm text-gray-300">{t('createInstance.auto_start')}</span>
                   </div>
 
                   <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
@@ -385,7 +387,7 @@ const CreateInstance = () => {
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.sourceTV ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
-                    <span className="text-sm text-gray-300">Enable SourceTV</span>
+                    <span className="text-sm text-gray-300">{t('createInstance.enable_sourcetv')}</span>
                   </div>
 
                   <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-gray-800 rounded-xl hover:border-gray-700 transition-all">
@@ -397,7 +399,7 @@ const CreateInstance = () => {
                     >
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.vac ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
-                    <span className="text-sm text-gray-300">Enable VAC (Valve Anti-Cheat)</span>
+                    <span className="text-sm text-gray-300">{t('createInstance.enable_vac')}</span>
                   </div>
                 </div>
               </div>
@@ -413,7 +415,7 @@ const CreateInstance = () => {
             className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-gray-800"
           >
             <ChevronLeft size={18} />
-            Previous
+            {t('createInstance.previous')}
           </button>
           
           <div className="flex gap-4">
@@ -422,7 +424,7 @@ const CreateInstance = () => {
                 onClick={nextStep}
                 className="px-10 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 active:scale-95"
               >
-                Next Step
+                {t('createInstance.next_step')}
                 <ChevronRight size={18} />
               </button>
             ) : (
@@ -432,7 +434,7 @@ const CreateInstance = () => {
                 className="px-12 py-3 bg-primary hover:bg-blue-600 text-white rounded-xl font-bold text-sm transition-all flex items-center gap-2 shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Rocket size={18} />
-                {loading ? 'Creating...' : 'Launch Instance'}
+                {loading ? t('createInstance.creating') : t('createInstance.launch_instance')}
               </button>
             )}
           </div>

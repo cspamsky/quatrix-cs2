@@ -15,6 +15,7 @@ import {
   FileText
 } from 'lucide-react'
 import { getMapImage } from '../utils/mapImages'
+import { useTranslation } from 'react-i18next'
 
 interface Instance {
   id: number
@@ -69,6 +70,7 @@ const ServerCard = memo(({
   onSettings,
   onFiles
 }: ServerCardProps) => {
+  const { t } = useTranslation()
   return (
     <div 
       className={`bg-[#111827] rounded-xl border border-gray-800/50 overflow-hidden flex flex-col group hover:border-primary/50 transition-all duration-300 ${
@@ -87,25 +89,25 @@ const ServerCard = memo(({
           {instance.status === 'ONLINE' && (
             <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-500/10 text-green-500 border border-green-500/20 flex items-center backdrop-blur-md shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse"></span>
-              ONLINE
+              {t('serverCard.status_online')}
             </div>
           )}
           {instance.status === 'OFFLINE' && (
             <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-500/10 text-gray-400 border border-gray-500/20 flex items-center backdrop-blur-md shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-gray-500 mr-1.5"></span>
-              OFFLINE
+              {t('serverCard.status_offline')}
             </div>
           )}
           {instance.status === 'STARTING' && (
               <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 flex items-center backdrop-blur-md shadow-sm">
               <div className="w-2 h-2 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin mr-1.5"></div>
-              STARTING
+              {t('serverCard.status_starting')}
             </div>
           )}
           {instance.status === 'INSTALLING' && (
               <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-orange-500/10 text-orange-500 border border-orange-500/20 flex items-center backdrop-blur-md shadow-sm">
               <div className="w-2 h-2 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mr-1.5"></div>
-              INSTALLING
+              {t('serverCard.status_installing')}
             </div>
           )}
         </div>
@@ -116,7 +118,7 @@ const ServerCard = memo(({
           </p>
           {instance.workshop_map_image && (
              <div className="px-1.5 py-0.5 rounded-md bg-blue-500/20 border border-blue-500/30 text-[8px] font-black text-blue-400 uppercase tracking-tighter backdrop-blur-sm">
-                Workshop
+                {t('serverCard.workshop')}
              </div>
           )}
         </div>
@@ -131,22 +133,22 @@ const ServerCard = memo(({
         <div className="space-y-3 mb-6">
           <div className="flex justify-between items-center text-xs">
             <span className="text-gray-400 flex items-center">
-              <Users className="w-3.5 h-3.5 mr-2 opacity-70" /> Players
+              <Users className="w-3.5 h-3.5 mr-2 opacity-70" /> {t('serverCard.players')}
             </span>
             <span className="text-white font-medium">{instance.current_players} / {instance.max_players}</span>
           </div>
           <div className="flex justify-between items-center text-xs">
             <span className="text-gray-400 flex items-center">
-              <Hash className="w-3.5 h-3.5 mr-2 opacity-70" /> IP Address
+              <Hash className="w-3.5 h-3.5 mr-2 opacity-70" /> {t('serverCard.ip_address')}
             </span>
             <button
               type="button"
-              aria-label="Copy server address"
-              title="Copy server address"
+              aria-label={t('serverCard.copy_address')}
+              title={t('serverCard.copy_address')}
               className="flex items-center gap-1.5 text-primary hover:text-blue-400 transition-colors group/ip bg-transparent border-0 p-0"
               onClick={() => onCopy(`${serverIp}:${instance.port}`, instance.id.toString())}
             >
-              <span className="font-mono">{serverIp || 'Detecting...'}{serverIp ? `:${instance.port}` : ''}</span>
+              <span className="font-mono">{serverIp || t('serverCard.detecting')}{serverIp ? `:${instance.port}` : ''}</span>
               {copiedId === instance.id.toString() ? (
                 <Check size={12} />
               ) : (
@@ -171,7 +173,7 @@ const ServerCard = memo(({
               ) : (
                 <Download className="w-3 h-3 mr-1.5" />
               )}
-              {instance.status === 'INSTALLING' ? 'Installing...' : 'Install Server'}
+              {instance.status === 'INSTALLING' ? t('serverCard.installing') : t('serverCard.install_server')}
             </button>
           ) : (
             <>
@@ -186,7 +188,7 @@ const ServerCard = memo(({
                   ) : (
                     <Play className="w-3 h-3 mr-1.5" />
                   )}
-                  {startingId === instance.id ? 'Starting...' : 'Start'}
+                  {startingId === instance.id ? t('serverCard.starting') : t('serverCard.start')}
                 </button>
               ) : (
                 <>
@@ -200,14 +202,14 @@ const ServerCard = memo(({
                     ) : (
                       <Square className="w-3 h-3 mr-1.5 fill-current" />
                     )}
-                    {stoppingId === instance.id ? 'Stopping...' : 'Stop'}
+                    {stoppingId === instance.id ? t('serverCard.stopping') : t('serverCard.stop')}
                   </button>
                   <button 
                     onClick={() => onRestart(instance.id)}
                     disabled={restartingId === instance.id}
                     className="p-2 bg-gray-800/40 hover:bg-amber-500/10 hover:text-amber-500 rounded transition-all border border-gray-800/40 disabled:opacity-50"
-                    title="Restart Server"
-                    aria-label="Restart Server"
+                    title={t('serverCard.restart')}
+                    aria-label={t('serverCard.restart')}
                   >
                     <RotateCcw className={`w-3.5 h-3.5 ${restartingId === instance.id ? 'animate-spin' : ''}`} />
                   </button>
@@ -217,19 +219,19 @@ const ServerCard = memo(({
                 onClick={() => onConsole(instance.id)}
                 className="flex-1 bg-gray-800/40 hover:bg-primary/10 hover:text-primary py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40"
               >
-                <Terminal className="w-3 h-3 mr-1.5" /> Console
+                <Terminal className="w-3 h-3 mr-1.5" /> {t('serverCard.console')}
               </button>
             </>
           )}
           <button 
-            aria-label="Server settings"
+            aria-label={t('serverCard.settings')}
             onClick={() => onSettings(instance.id)}
             className="p-2 bg-gray-800/40 hover:bg-gray-700/40 rounded transition-all border border-gray-800/40 text-gray-400 hover:text-white"
           >
             <Settings className="w-3.5 h-3.5" />
           </button>
           <button 
-            aria-label="File Manager"
+            aria-label={t('serverCard.file_manager')}
             onClick={() => onFiles(instance.id)}
             disabled={!instance.isInstalled}
             className="p-2 bg-gray-800/40 hover:bg-gray-700/40 rounded transition-all border border-gray-800/40 text-gray-400 hover:text-white disabled:opacity-30"
@@ -237,7 +239,7 @@ const ServerCard = memo(({
             <FileText className="w-3.5 h-3.5" />
           </button>
           <button 
-            aria-label="Delete server"
+            aria-label={t('serverCard.delete_server')}
             onClick={() => onDelete(instance.id)}
             disabled={deletingId === instance.id}
             className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded transition-all border border-red-500/20 text-red-500 flex items-center justify-center disabled:opacity-50"
