@@ -516,19 +516,106 @@ class ServerManager {
 
   // --- System Health ---
   public async getSystemHealth(): Promise<any> {
-      // Simplified health check using systeminformation
-      const [cpu, mem, disk] = await Promise.all([si.cpu(), si.mem(), si.fsSize()]);
-      return {
-          os: { platform: process.platform },
-          cpu: { cores: cpu.cores, model: cpu.brand },
-          ram: { total: mem.total, free: mem.free },
-          disk: { total: disk[0]?.size || 0, free: disk[0]?.available || 0 }
-      };
+      try {
+          const [cpuInfo, mem, disk] = await Promise.all([si.cpu(), si.mem(), si.fsSize()]);
+          
+          // 1. Check for AVX Support (Linux specific check)
+          let hasAVX = false;
+          try {
+              const { stdout } = await execAsync("lscpu | grep Flags | grep -i avx");
+              hasAVX = stdout.length > 0;
+          } catch {
+              // Fallback check in CPU flags if lscpu fails
+              hasAVX = cpuInfo.flags.includes('avx') || cpuInfo.flags.includes('avx2');
+          }
+
+          // 2. Check for .NET 8 Runtime
+          let dotnetStatus = 'missing';
+          let dotnetVersions: string[] = [];
+          try {
+              const { stdout } = await execAsync("dotnet --list-runtimes");
+              dotnetVersions = stdout.split('\n').filter(l => l.trim());
+              if (stdout.includes("Microsoft.NETCore.App 8")) {
+                  dotnetStatus = 'good';
+              }
+          } catch {}
+
+          // 3. Check for Steam SDK
+          const homeDir = process.env.HOME || "/home/quatrix";
+          const sdkPath = path.join(homeDir, ".steam", "sdk64", "steamclient.so");
+          const steamSdkStatus = fs.existsSync(sdkPath) ? 'good' : 'missing';
+
+          // 4. Garbage Check (Core dumps)
+          let garbageCount = 0;
+          let garbageSize = 0;
+          try {
+              const { stdout } = await execAsync("find . -name 'core.*' -type f -exec du -b {} +");
+              const lines = stdout.split('\n').filter(l => l.trim());
+              garbageCount = lines.length;
+              garbageSize = lines.reduce((acc, line) => acc + parseInt(line.split('\t')[0] || "0"), 0);
+          } catch {}
+
+          return {
+              os: { platform: process.platform },
+              cpu: { 
+                  cores: cpuInfo.cores, 
+                  model: cpuInfo.brand,
+                  avx: hasAVX
+              },
+              ram: { 
+                  total: mem.total, 
+                  free: mem.free,
+                  status: mem.total > 8 * 1024 * 1024 * 1024 ? 'good' : 'low'
+              },
+              disk: { 
+                  total: disk[0]?.size || 0, 
+                  free: disk[0]?.available || 0,
+                  status: (disk[0]?.available || 0) > 40 * 1024 * 1024 * 1024 ? 'good' : 'low',
+                  garbage: {
+                      count: garbageCount,
+                      size: garbageSize
+                  }
+              },
+              runtimes: {
+                  dotnet: {
+                      status: dotnetStatus,
+                      versions: dotnetVersions
+                  },
+                  steam_sdk: {
+                      status: steamSdkStatus
+                  }
+              }
+          };
+      } catch (error) {
+          console.error("[HEALTH] Failed to get system health:", error);
+          throw error;
+      }
   }
 
   public async repairSystemHealth() {
-      // Stub
-      return { success: true };
+      console.log("[HEALTH] Starting system repair...");
+      try {
+          // 1. Ensure Steam SDK
+          await this.ensureSteamSdk();
+
+          // 2. Clean Garbage (Core Dumps)
+          try {
+              await execAsync("find . -name 'core.*' -type f -delete");
+              console.log("[HEALTH] Cleaned core dumps.");
+          } catch (e) {
+              console.warn("[HEALTH] Failed to clean core dumps:", e);
+          }
+
+          // 3. Fix permissions on instances
+          try {
+              await execAsync(`chmod -R +x ${this.installDir}/*/game/bin/linux64/cs2`);
+          } catch {}
+
+          return { success: true, message: "System repaired successfully. Steam SDK linked and garbage cleaned." };
+      } catch (error: any) {
+          console.error("[HEALTH] Repair failed:", error);
+          return { success: false, message: error.message };
+      }
   }
 
   // --- Orphan Recovery ---

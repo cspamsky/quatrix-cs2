@@ -88,6 +88,16 @@ router.get("/system/health", async (req: any, res) => {
     }
 });
 
+// POST /api/system/health/repair
+router.post("/system/health/repair", async (req: any, res) => {
+    try {
+        const result = await serverManager.repairSystemHealth();
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ message: "Failed to perform system repair" });
+    }
+});
+
 // GET /api/system-info
 router.get("/system-info", async (req: any, res) => {
     try {
