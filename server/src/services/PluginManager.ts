@@ -353,10 +353,25 @@ export class PluginManager {
               return { name: defName, category: 'cssharp', folderName: defName };
           }
           
-          // 1b. Check for Metamod:Source specifically
-          const hasMetamod = addonsItems.some(i => i.toLowerCase() === "metamod");
-          if (hasMetamod || (suggestedId && suggestedId.toLowerCase().includes("mmsource"))) {
-              return { name: 'Metamod:Source', category: 'metamod', folderName: 'metamod' };
+          // 1b. Check for Metamod:Source specifically (Core vs Plugin)
+          const metamodPath = path.join(addonsPath, "metamod");
+          const hasMetamodDir = addonsItems.some(i => i.toLowerCase() === "metamod");
+          
+          if (hasMetamodDir) {
+              const metamodItems = await fs.promises.readdir(metamodPath).catch(() => []);
+              const hasBin = metamodItems.some(i => i.toLowerCase() === "bin");
+              const isMMSource = hasBin || (suggestedId && suggestedId.toLowerCase().includes("mmsource"));
+
+              if (isMMSource) {
+                  return { name: 'Metamod:Source', category: 'metamod', folderName: 'metamod' };
+              } else {
+                  // It's a metamod plugin, find the VDF name
+                  const vdfFile = metamodItems.find(i => i.toLowerCase().endsWith(".vdf"));
+                  if (vdfFile) {
+                      const pName = vdfFile.replace(/\.vdf$/i, "");
+                      return { name: pName, category: 'metamod', folderName: pName };
+                  }
+              }
           }
 
           const mmName = suggestedId || addonsItems[0] || "UnknownMM";
