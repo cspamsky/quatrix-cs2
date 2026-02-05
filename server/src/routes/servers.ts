@@ -250,6 +250,10 @@ router.post("/", createServerLimiter, (req: any, res) => {
  
     const serverId = info.lastInsertRowid as number;
 
+    // Emit socket event for real-time UI update (e.g. server list)
+    const io = req.app.get('io');
+    if (io) io.emit('server_update', { serverId });
+
     // If auto_start is enabled, trigger installation immediately
     if (auto_start) {
       const io = req.app.get('io');

@@ -12,9 +12,10 @@ import {
 } from 'lucide-react'
 import socket from '../utils/socket'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 const Dashboard = () => {
+  const queryClient = useQueryClient()
   const [stats, setStats] = useState<any>({
     cpu: '0.0',
     ram: '0.0',
@@ -69,10 +70,15 @@ const Dashboard = () => {
       setStats(data)
     }
 
+    const onServerUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['server-stats'] })
+    }
+
     // Attach listeners
     socket.on('connect', onConnect)
     socket.on('disconnect', onDisconnect)
     socket.on('stats', onStats)
+    socket.on('server_update', onServerUpdate)
 
     // Check initial state (in case we missed the event)
     if (socket.connected) {
@@ -84,6 +90,7 @@ const Dashboard = () => {
       socket.off('connect', onConnect)
       socket.off('disconnect', onDisconnect)
       socket.off('stats', onStats)
+      socket.off('server_update', onServerUpdate)
     }
   }, [])
 
