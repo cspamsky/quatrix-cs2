@@ -61,6 +61,7 @@ const Plugins = () => {
   const [editingContent, setEditingContent] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
+  const [activeTab, setActiveTab] = useState<'instances' | 'pool'>('instances');
 
   // Upload Modal State
   const [uploadModalPlugin, setUploadModalPlugin] = useState<{id: string, name: string} | null>(null);
@@ -302,6 +303,110 @@ const Plugins = () => {
     Array.from(new Set(allPlugins.flatMap(p => p.tags || []))).sort(),
   [allPlugins]);
 
+  // Filters for Pool Tab
+  const poolPlugins = useMemo(() => {
+    return allPlugins.filter(plugin => {
+        const matchesSearch = plugin.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                             plugin.id.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = activeCategory === 'all' || plugin.category === activeCategory;
+        return matchesSearch && matchesCategory;
+    });
+  }, [allPlugins, searchQuery, activeCategory]);
+
+  const renderPoolTable = () => {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 shrink-0">
+            <div className="relative flex-1 group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={18} />
+                <input 
+                    type="text" 
+                    placeholder="Search repository..."
+                    className="w-full bg-[#111827]/40 border border-gray-800/50 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-primary/[0.02] transition-all"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </div>
+            
+            <div className="flex items-center gap-2 bg-[#111827]/40 border border-gray-800/50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide">
+                {['all', 'core', 'metamod', 'cssharp'].map(cat => (
+                    <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat as any)}
+                        className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                        {cat}
+                    </button>
+                ))}
+            </div>
+        </div>
+
+        <div className="bg-[#111827]/40 border border-gray-800/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-[#0c1424] border-b border-gray-800/80">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 w-1/3">Plugin</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Repository Status</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800/20">
+              {poolPlugins.map((info) => (
+                <tr key={info.id} className="group hover:bg-primary/[0.01] transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center bg-gray-800/40 text-gray-500 border border-gray-800/40`}>
+                        {info.category === 'metamod' ? <Cpu size={18} /> : info.category === 'cssharp' ? <Zap size={18} /> : <Layers size={18} />}
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">{info.name}</div>
+                        <div className="text-[10px] text-gray-500 font-mono mt-0.5">{info.id}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {info.inPool ? (
+                      <div className="flex items-center gap-2 text-green-500">
+                        <CheckCircle2 size={14} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Available in Pool</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-orange-500">
+                        <AlertCircle size={14} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Missing - Upload Required</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      {info.inPool ? (
+                        <button 
+                          onClick={() => handleDeletePool(info.id)}
+                          className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500/20 transition-all border border-red-500/20"
+                        >
+                          <Trash2 size={14} />
+                          Remove from Pool
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={() => setUploadModalPlugin({ id: info.id, name: info.name })}
+                          className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-primary/20 transition-all border border-primary/20"
+                        >
+                          <Download size={14} />
+                          Upload Content
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const renderUnifiedPluginTable = () => {
     const sections = [
         { id: 'core', name: 'Core Foundations', icon: <Layers size={14} className="text-primary" /> },
@@ -325,7 +430,7 @@ const Plugins = () => {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors" size={18} />
                 <input 
                     type="text" 
-                    placeholder="Search plugins by name, description or ID..."
+                    placeholder="Search plugins on this server..."
                     className="w-full bg-[#111827]/40 border border-gray-800/50 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-primary/[0.02] transition-all"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -474,7 +579,7 @@ const Plugins = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-2 text-right">
                             {isInstalled ? (
                               <>
                                 {hasUpdate && (
@@ -508,15 +613,6 @@ const Plugins = () => {
                               </>
                             ) : (
                               <div className="flex items-center gap-2">
-                                {info.inPool && (
-                                  <button 
-                                    onClick={() => handleDeletePool(pid)}
-                                    className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all ml-auto"
-                                    title="Delete from Pool"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                )}
                                 {!info.inPool && (
                                   <button 
                                     onClick={() => setUploadModalPlugin({ id: pid, name: info.name })}
@@ -550,7 +646,30 @@ const Plugins = () => {
               );
             })}
 
-            {filteredPlugins.length === 0 && (
+            {/* Empty Server State Integrated in Table */}
+            {instances.length === 0 && !instancesLoading && (
+                <tr>
+                    <td colSpan={4} className="px-6 py-20 text-center">
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="w-16 h-16 rounded-full bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500">
+                                <Box size={24} />
+                            </div>
+                            <div>
+                                <h4 className="text-white font-bold uppercase tracking-widest text-sm italic">Atmosphere is Empty</h4>
+                                <p className="text-xs text-gray-500 mt-1">Create your first server instance to begin modding.</p>
+                                <button 
+                                    onClick={() => navigate('/instances')}
+                                    className="mt-6 px-8 py-3 bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-primary/20 transition-all"
+                                >
+                                    Go to Command Center
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            )}
+
+            {filteredPlugins.length === 0 && instances.length > 0 && (
                 <tr>
                     <td colSpan={4} className="px-6 py-20 text-center">
                         <div className="flex flex-col items-center gap-4">
@@ -595,10 +714,31 @@ const Plugins = () => {
 
   return (
     <div className="p-6 font-display overflow-y-auto max-h-[calc(100vh-64px)] scrollbar-hide">
+      <div className="flex items-center gap-1 bg-[#111827]/40 p-1 rounded-2xl border border-gray-800/50 mb-8 self-start">
+        <button 
+          onClick={() => setActiveTab('instances')}
+          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'instances' ? 'bg-primary text-white shadow-xl shadow-primary/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+        >
+          <ServerIcon size={14} />
+          Server Management
+        </button>
+        <button 
+          onClick={() => setActiveTab('pool')}
+          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'pool' ? 'bg-orange-500 text-white shadow-xl shadow-orange-500/20' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}
+        >
+          <Box size={14} />
+          Global Repository
+        </button>
+      </div>
+
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Plugin Galaxy</h2>
-            <p className="text-sm text-gray-400 mt-1">One-click deployment for professional CS2 server environments</p>
+            <h2 className="text-2xl font-bold text-white tracking-tight">
+              {activeTab === 'instances' ? 'Instance Plugins' : 'Plugin Repository'}
+            </h2>
+            <p className="text-sm text-gray-400 mt-1">
+              {activeTab === 'instances' ? 'Manage active modules for your selected server instance' : 'Global pool of verified and custom plugin assets'}
+            </p>
         </div>
         
         <div className="flex items-end gap-4">
@@ -610,26 +750,28 @@ const Plugins = () => {
             Upload ZIP
           </button>
           
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
-            <div className="relative group">
-              <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-              <select 
-                className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm min-w-[200px]"
-                value={selectedServer || ''}
-                onChange={(e) => setSelectedServer(e.target.value)}
-              >
-                <option value="" disabled>Select server...</option>
-                {instances.map((inst: Instance) => (
-                  <option key={inst.id} value={inst.id} className="bg-[#0c1424]">{inst.name}</option>
-                ))}
-              </select>
+          {activeTab === 'instances' && (
+            <div className="flex flex-col items-end animate-in fade-in slide-in-from-right-4 duration-300">
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">Switch Server</span>
+              <div className="relative group">
+                <ServerIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
+                <select 
+                  className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:ring-2 focus:ring-primary/50 transition-all outline-none text-sm min-w-[200px]"
+                  value={selectedServer || ''}
+                  onChange={(e) => setSelectedServer(e.target.value)}
+                >
+                  <option value="" disabled>Select server...</option>
+                  {instances.map((inst: Instance) => (
+                    <option key={inst.id} value={inst.id} className="bg-[#0c1424]">{inst.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </header>
 
-      {renderUnifiedPluginTable()}
+      {activeTab === 'instances' ? renderUnifiedPluginTable() : renderPoolTable()}
 
       {/* Config Editor Modal */}
       {configModalPlugin && (
@@ -806,14 +948,6 @@ const Plugins = () => {
         </div>
       )}
 
-      {instances.length === 0 && !instancesLoading && (
-        <div className="flex flex-col items-center justify-center py-20 bg-gray-900/30 rounded-3xl border-2 border-dashed border-gray-800">
-            <Box size={60} className="text-gray-700 mb-6" />
-            <h3 className="text-xl font-bold text-gray-400">Atmosphere is Empty</h3>
-            <p className="text-sm text-gray-500 mt-2 mb-8">Create your first server instance to begin modding.</p>
-            <button onClick={() => navigate('/instances')} className="bg-primary text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:scale-105 transition-all">Command Center</button>
-        </div>
-      )}
     </div>
   )
 }
