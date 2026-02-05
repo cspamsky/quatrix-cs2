@@ -28,6 +28,29 @@ db.exec(`
   )
 `);
 
+// Migration to add profile columns if they don't exist
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN avatar_url TEXT`);
+  db.exec(`ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER DEFAULT 0`);
+  db.exec(`ALTER TABLE users ADD COLUMN two_factor_secret TEXT`);
+  console.log("Migration: Added profile columns to users table.");
+} catch (error) {
+  // Columns already exist
+}
+
+// Create user_sessions table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_id TEXT UNIQUE NOT NULL, -- Short ID or hash of the JWT
+    device_info TEXT,
+    ip_address TEXT,
+    last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  )
+`);
+
 // Migration to remove fullname and email columns if they exist
 try {
   const tableInfo = db.pragma('table_info(users)') as any[];

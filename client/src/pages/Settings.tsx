@@ -6,12 +6,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 // Sub-components
 import GeneralTab from '../components/settings/GeneralTab'
-import SecurityTab from '../components/settings/SecurityTab'
+// SecurityTab removed - integrated into Profile page
 import ServerEngineTab from '../components/settings/ServerEngineTab'
 import SystemHealthTab from '../components/settings/SystemHealthTab'
 import ActivityLogTab from '../components/settings/ActivityLogTab'
 
-type TabType = 'General' | 'Security' | 'Notifications' | 'API Keys' | 'Activity Log' | 'Server Engine' | 'System Health'
+type TabType = 'General' | 'Notifications' | 'API Keys' | 'Activity Log' | 'Server Engine' | 'System Health'
 
 const Settings = () => {
   const queryClient = useQueryClient()
@@ -108,7 +108,7 @@ const Settings = () => {
     onError: () => toast.error('Failed to repair system health')
   })
 
-  const tabs: TabType[] = ['General', 'Server Engine', 'System Health', 'Security', 'Notifications', 'API Keys', 'Activity Log']
+  const tabs: TabType[] = ['General', 'Server Engine', 'System Health', 'Notifications', 'API Keys', 'Activity Log']
 
   const handleSaveEngineSettings = () => {
     updateSettingsMutation.mutate({ steamcmd_path: steamCmdPath, install_dir: installDir })
@@ -178,11 +178,11 @@ const Settings = () => {
             />
           )}
 
-          {activeTab === 'Security' && <SecurityTab />}
+
 
           {activeTab === 'Activity Log' && <ActivityLogTab />}
 
-          {!['General', 'Server Engine', 'System Health', 'Security', 'Activity Log'].includes(activeTab) && (
+          {!['General', 'Server Engine', 'System Health', 'Activity Log'].includes(activeTab) && (
             <div className="py-20 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300">
               <RefreshCw className="text-primary w-12 h-12 animate-spin-slow opacity-20 mb-4" />
               <h3 className="text-xl font-bold text-white mb-2">{activeTab} Section</h3>

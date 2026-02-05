@@ -24,6 +24,7 @@ import bansRouter from "./routes/bans.js";
 import adminsRouter from "./routes/admins.js";
 import chatRouter from "./routes/chat.js";
 import logsRouter from "./routes/logs.js";
+import profileRouter from "./routes/profile.js";
 import { databaseManager } from "./services/DatabaseManager.js";
 
 // Environment variables are loaded via --env-file in package.json dev script
@@ -38,6 +39,9 @@ const io = new Server(httpServer, {
 
 // Make io accessible to routes
 app.set('io', io);
+
+// Static uploads folder
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Inject Socket.IO into ServerManager for real-time updates
 console.log(`[DEBUG] serverManager type: ${typeof serverManager}`);
@@ -101,6 +105,7 @@ app.use('/api/servers', adminsRouter); // /api/servers/:id/admins
 app.use('/api/logs', logsRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/maps', mapsRouter);
+app.use('/api/profile', profileRouter);
 
 
 // --- Serve Frontend in Production ---

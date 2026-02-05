@@ -37,8 +37,17 @@ const Layout = () => {
     { path: '/settings', icon: Settings, label: 'Settings' },
   ]
 
-  const user = JSON.parse(localStorage.getItem('user') || '{"username": "User"}')
+  const [user, setUser] = useState<any>(() => JSON.parse(localStorage.getItem('user') || '{"username": "User"}'))
   const displayName = user.username || 'User'
+  
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const updatedUser = JSON.parse(localStorage.getItem('user') || '{"username": "User"}')
+      setUser(updatedUser)
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
   
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -137,16 +146,20 @@ const Layout = () => {
 
         <div className="p-4 border-t border-gray-800">
           <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
-            <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-bold text-primary shrink-0">
-              {getInitials(displayName)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{displayName}</p>
-              <p className="text-[10px] text-green-500 truncate font-bold flex items-center gap-1.5 uppercase tracking-wider">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                Online
-              </p>
-            </div>
+            <Link to="/profile" className="flex items-center gap-3 flex-1 min-w-0 group">
+              <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-bold text-primary shrink-0 group-hover:border-primary/60 transition-colors overflow-hidden">
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                ) : getInitials(displayName)}
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-semibold text-white truncate group-hover:text-primary transition-colors">{displayName}</p>
+                <p className="text-[10px] text-green-500 truncate font-bold flex items-center gap-1.5 uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                  Online
+                </p>
+              </div>
+            </Link>
             <button 
               onClick={handleLogout} 
               className="text-gray-500 hover:text-red-400 transition-colors p-1.5 hover:bg-red-400/10 rounded-lg"

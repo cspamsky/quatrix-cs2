@@ -25,6 +25,7 @@ const BanHistory = lazy(() => import('./pages/BanHistory'))
 const Admins = lazy(() => import('./pages/Admins'))
 const Chat = lazy(() => import('./pages/Chat'))
 const Database = lazy(() => import('./pages/Database'))
+const Profile = lazy(() => import('./pages/Profile')) 
 
 // Loading component with react-loading-icons
 const PageLoader = () => (
@@ -96,6 +97,7 @@ const App = () => {
               <Route path="/plugins" element={<Plugins />} />
               <Route path="/admins" element={<Admins />} />
               <Route path="/database" element={<Database />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/chat/:id" element={<Chat />} />
               <Route path="/chat" element={<Chat />} />
             </Route>

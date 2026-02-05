@@ -46,6 +46,8 @@ Real-time map and workshop synchronization. Quatrix automatically discovers work
 | **Admin Manager**       | Native CounterStrikeSharp integration for real-time permission management.       | ✅     |
 | **Web Explorer**        | Integrated file manager for real-time config editing without SFTP.               | ✅     |
 | **Self-Healing**        | Auto-detects and repairs invalid file structures before server boot.             | ✅     |
+| **Advanced Profile**    | Integrated avatar uploads, password management, and account settings.            | ✅     |
+| **Elite Security**      | 2-Factor Authentication (TOTP) and real-time session orchestration.              | ✅     |
 
 ---
 
@@ -77,6 +79,7 @@ graph TD
 - **Backend**: Node.js 20+ (LTS), Express 5 (Alpha Features), Socket.IO 4.8.
 - **Database**: Better-SQLite3 (Synchronous/High-Performance IO).
 - **Automation**: SteamCMD Integration, Automated systemd Service Provisioning, Unified Linux Installer.
+- **Security**: TOTP 2FA (otplib), JWT Session Tracking with JTI, Real-time Session Revocation.
 
 ---
 
@@ -113,6 +116,7 @@ sudo journalctl -u quatrix -f    # Live orchestration logs
 - [x] **Core Isolation Engine**: Stable granular symlinking and instance roots.
 - [x] **Smart Admin UI**: Real-time CounterStrikeSharp permission management.
 - [x] **Metric Telemetry**: High-fidelity resource monitoring.
+- [x] **Elite Security Layer**: 2FA (TOTP) and Granular Session Management.
 - [ ] **Infrastructure Backups**: Automated snapshots of plugin configs and DB states.
 - [ ] **External DB Cluster**: Integrated MariaDB support for global ranks.
 - [ ] **Global API**: RCON pooling for 3rd party integrations.
