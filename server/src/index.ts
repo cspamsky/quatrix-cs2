@@ -158,19 +158,41 @@ export const logActivity = (type: string, message: string, severity: 'INFO' | 'W
 // GET /api/system-info
 app.get("/api/system-info", authenticateToken, async (req, res) => {
   try {
-    const [cpu, mem, os] = await Promise.all([
-      si.cpu(),
-      si.mem(),
-      si.osInfo()
+    const [cpu, mem, os, base] = await Promise.all([
+      si.cpu().catch(e => { console.error("[SI] CPU Error:", e); return {} as any; }),
+      si.mem().catch(e => { console.error("[SI] MEM Error:", e); return { total: 0 } as any; }),
+      si.osInfo().catch(e => { console.error("[SI] OS Error:", e); return { distro: 'Generic', release: 'OS', hostname: 'unknown' } as any; }),
+      si.baseboard().catch(() => ({}) as any)
     ]);
     
+    // Better CPU String
+    let cpuModel = "Processor";
+    if (cpu.brand || cpu.manufacturer) {
+        cpuModel = `${cpu.manufacturer || ''} ${cpu.brand || ''}`.trim();
+    } else if (process.env.PROCESSOR_IDENTIFIER) {
+        cpuModel = process.env.PROCESSOR_IDENTIFIER;
+    }
+
+    // Memory Guard: If si.mem().total is 0 but we might have OS level info or previous 
+    let totalMem = Math.round((mem.total || 0) / (1024 * 1024));
+    if (totalMem === 0 && process.platform === 'win32') {
+        // Fallback for Windows if WMI fails
+        try {
+            const osMem = os.totalmem; // Some si versions put it here
+            if (osMem) totalMem = Math.round(osMem / (1024 * 1024));
+        } catch {}
+    }
+
+    console.log(`[SYSTEM] Stats: CPU=${cpuModel}, RAM=${totalMem}MB, OS=${os.distro}`);
+    
     res.json({
-      cpuModel: `${cpu.manufacturer} ${cpu.brand}`,
-      totalMemory: Math.round(mem.total / (1024 * 1024)), // MB
+      cpuModel,
+      totalMemory: totalMem,
       os: `${os.distro} ${os.release}`,
       hostname: os.hostname
     });
   } catch (error) {
+    console.error("[API] system-info failure:", error);
     res.status(500).json({ message: "Failed to fetch system info" });
   }
 });

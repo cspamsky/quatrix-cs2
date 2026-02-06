@@ -1,1 +1,0 @@
-ALTER TABLE `sa_servers` ADD `rcon_password` VARCHAR(128) NULL;

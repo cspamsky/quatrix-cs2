@@ -17,9 +17,9 @@ const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// quatrix/server/src/services -> quatrix/
+// quatrix/server/src/services -> quatrix/data/plugin_pool
 const PROJECT_ROOT = path.join(__dirname, "../../../");
-const POOL_DIR = path.join(PROJECT_ROOT, "plugin_pool");
+const POOL_DIR = path.join(PROJECT_ROOT, "data", "plugin_pool");
 
 export class PluginManager {
   public pluginRegistry = pluginRegistry;

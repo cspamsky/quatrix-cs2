@@ -1,9 +1,0 @@
-{
-  "example_command": {
-    "flags": [
-      "@css/custom-permission"
-    ],
-    "check_type": "all",
-    "enabled": true
-  }
-}

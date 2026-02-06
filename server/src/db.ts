@@ -2,8 +2,13 @@ import Database from 'better-sqlite3';
 import type { Database as DatabaseType } from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-const projectRoot = process.cwd();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// quatrix/server/src/db.ts -> quatrix/
+const projectRoot = path.resolve(__dirname, '../../');
 const defaultDataDir = path.join(projectRoot, 'data');
 const defaultInstallDir = path.join(defaultDataDir, 'instances');
 

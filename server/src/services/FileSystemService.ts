@@ -1,5 +1,9 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class FileSystemService {
   private baseDir: string;
@@ -7,7 +11,9 @@ class FileSystemService {
   private instancesDir: string;
 
   constructor() {
-    this.baseDir = path.resolve(process.cwd(), "data"); // Default path matching db.ts
+    // quatrix/server/src/services/FileSystemService.ts -> quatrix/data
+    const projectRoot = path.resolve(__dirname, "../../../");
+    this.baseDir = path.join(projectRoot, "data"); 
     this.coreDir = path.join(this.baseDir, "core", "cs2");
     this.instancesDir = path.join(this.baseDir, "instances");
   }

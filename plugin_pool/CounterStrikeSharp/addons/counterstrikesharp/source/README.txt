@@ -1,1 +1,0 @@
-Place your source code for plugins here.
