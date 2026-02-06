@@ -31,6 +31,10 @@ class FileSystemService {
     return path.join(this.instancesDir, id.toString(), subPath);
   }
 
+  public getSteamRuntimePath(subPath: string = ""): string {
+    return path.join(this.baseDir, "steamrt", subPath);
+  }
+
   /**
    * Prepares the filesystem for a new instance using Granular Symlinking.
    * Ensures that 'game/csgo/cfg' and 'game/csgo/maps' are writable directories,
@@ -193,7 +197,50 @@ class FileSystemService {
       }
     }
 
+    // 6. Final SO file population
+    await this.ensureSoFiles(id);
+
     return true;
+  }
+
+  /**
+   * Ensures that essential .so files are copied from game/bin to game/csgo/bin
+   * This is required because of how Side-Loading works in Source2 on Linux.
+   */
+  public async ensureSoFiles(id: string | number) {
+      const instancePath = this.getInstancePath(id);
+      const sourcePath = path.join(instancePath, "game", "bin", "linuxsteamrt64");
+      const destPath = path.join(instancePath, "game", "csgo", "bin", "linuxsteamrt64");
+
+      if (!fs.existsSync(sourcePath)) return;
+      if (!fs.existsSync(destPath)) {
+          await fs.promises.mkdir(destPath, { recursive: true });
+      }
+
+      try {
+          const files = await fs.promises.readdir(sourcePath);
+          for (const file of files) {
+              if (file.endsWith(".so")) {
+                  const srcFile = path.join(sourcePath, file);
+                  const dstFile = path.join(destPath, file);
+                  
+                  // Copy if doesn't exist or is different size
+                  let shouldCopy = true;
+                  try {
+                      const srcStat = await fs.promises.stat(srcFile);
+                      const dstStat = await fs.promises.stat(dstFile);
+                      if (srcStat.size === dstStat.size) shouldCopy = false;
+                  } catch {}
+
+                  if (shouldCopy) {
+                      await fs.promises.copyFile(srcFile, dstFile);
+                  }
+              }
+          }
+          console.log(`[FileSystem] Instance ${id} .so files synchronized.`);
+      } catch (err) {
+          console.error(`[FileSystem] Failed to sync .so files for instance ${id}:`, err);
+      }
   }
 
   private async createSymlinks(sourceBase: string, targetBase: string, items: string[]) {

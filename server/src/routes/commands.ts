@@ -1,6 +1,7 @@
 import { Router } from "express";
 import db from "../db.js";
 import { serverManager } from "../serverManager.js";
+import { taskService } from "../services/TaskService.js";
 import { authenticateToken } from "../middleware/auth.js";
 
 const router = Router();
@@ -85,18 +86,22 @@ router.post("/:id/install", async (req: any, res) => {
         db.prepare("UPDATE servers SET status = 'INSTALLING' WHERE id = ?").run(id);
         if (io) io.emit('status_update', { serverId: id, status: 'INSTALLING' });
 
+        const taskId = `install-${id}-${Date.now()}`;
+        taskService.createTask(taskId, "server_install", { serverId: id });
+
         serverManager.installOrUpdateServer(id, (data: string) => {
             if (io) io.emit(`console:${id}`, data);
-        }).then(() => {
+        }, taskId).then(() => {
             db.prepare("UPDATE servers SET status = 'OFFLINE', is_installed = 1 WHERE id = ?").run(id);
             if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
         }).catch((err: any) => {
-            console.error(`[SYSTEM] Installation failed for ${id}:`, err); // Log the actual error
+            console.error(`[SYSTEM] Installation failed for ${id}:`, err); 
             db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
             if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
+            taskService.failTask(taskId, err.message || "Installation failed");
         });
 
-        res.json({ message: "Installation started" });
+        res.json({ message: "Installation started", taskId });
     } catch (error) {
         res.status(500).json({ message: "Failed to start installation" });
     }

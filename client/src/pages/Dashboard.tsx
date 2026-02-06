@@ -1,324 +1,238 @@
-import { apiFetch } from '../utils/api'
-import { useState, useEffect } from 'react'
 import { 
+  Plus, 
+  Terminal, 
+  Users, 
+  Map as MapIcon, 
+  Server,
+  Activity,
   Cpu,
   Database,
-  Network,
-  ArrowDown,
-  ArrowUp,
-  Monitor,
-  Server,
-  Terminal
+  Clock,
+  ChevronRight,
+  ClipboardList,
+  AlertTriangle,
+  Bell,
+  HardDrive
 } from 'lucide-react'
-import socket from '../utils/socket'
-
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
+import { formatDistanceToNow } from 'date-fns'
+import { tr, enUS } from 'date-fns/locale'
+import socket from '../utils/socket'
+import MonitoringSection from '../components/MonitoringSection'
+import { apiFetch } from '../utils/api'
 
 const Dashboard = () => {
-  const { t } = useTranslation()
-  const queryClient = useQueryClient()
-  const [stats, setStats] = useState<any>({
-    cpu: '0.0',
-    ram: '0.0',
+  const { t, i18n } = useTranslation()
+  const navigate = useNavigate()
+  const dateLocale = i18n.language.startsWith('tr') ? tr : enUS
+  const [activities, setActivities] = useState<any[]>([])
+  const [isConnected, setIsConnected] = useState(socket.connected)
+  
+  // State for real-time stats and history
+  const [stats, setStats] = useState({
+    cpu: '0',
+    ram: '0',
     memUsed: '0',
     memTotal: '0',
-    netIn: '0',
-    netOut: '0'
+    networkIn: '0 KB/s',
+    networkOut: '0 KB/s',
+    diskRead: '0 KB/s',
+    diskWrite: '0 KB/s'
   })
+  const [statsHistory, setStatsHistory] = useState<any[]>([])
 
-  const [isConnected, setIsConnected] = useState(socket.connected)
-
-  // Use React Query for system info
-  const { data: systemInfo = {
-    os: t('common.loading'),
-    arch: t('common.loading'),
-    hostname: t('common.loading'),
-  } } = useQuery({
+  const { data: systemInfo } = useQuery({
     queryKey: ['system-info'],
-    queryFn: () => apiFetch('/api/system-info').then(res => res.json()),
+    queryFn: () => apiFetch('/api/system-info').then(res => res.json())
   })
 
-  // Use React Query for server stats
-  const { data: serverStats = {
-    totalServers: 0,
-    activeServers: 0,
-    totalPlayers: 0
-  } } = useQuery({
-    queryKey: ['server-stats'],
-    queryFn: () => apiFetch('/api/stats').then(res => res.json()),
+  const { data: serverStats } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: () => apiFetch('/api/servers/stats').then(res => res.json()),
+    refetchInterval: 10000
   })
-
-  // Fetch workshop maps to count them
-  const { data: workshopMaps = [] } = useQuery({
-    queryKey: ['workshop-maps-count'],
-    queryFn: () => apiFetch('/api/maps/workshop').then(res => res.json()),
-  })
-
-  const staticMapCount = 10 // de_dust2, de_mirage, ..., cs_italy, cs_office
-  const totalMapsCount = staticMapCount + workshopMaps.length
 
   useEffect(() => {
-    // Socket Connection Handlers
-    const onConnect = () => {
+    function onConnect() {
       setIsConnected(true)
     }
 
-    const onDisconnect = () => {
+    function onDisconnect() {
       setIsConnected(false)
     }
 
-    const onStats = (data: any) => {
-      setStats(data)
-    }
-
-    const onServerUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['server-stats'] })
-    }
-
-    // Attach listeners
     socket.on('connect', onConnect)
     socket.on('disconnect', onDisconnect)
-    socket.on('stats', onStats)
-    socket.on('server_update', onServerUpdate)
+    
+    socket.on('stats', (data: any) => {
+      setStats(data)
+      setStatsHistory(prev => [...prev, data].slice(-30))
+    })
+    
+    socket.on('stats_history', (data: any[]) => {
+      setStatsHistory(data)
+    })
 
-    // Check initial state (in case we missed the event)
-    if (socket.connected) {
-      setIsConnected(true)
-    }
+    socket.on('recent_activity', (data: any[]) => {
+      setActivities(data)
+    })
 
+    socket.on('activity', (data: any) => {
+      setActivities(prev => [data, ...prev].slice(0, 10))
+    })
 
     return () => {
       socket.off('connect', onConnect)
       socket.off('disconnect', onDisconnect)
-      socket.off('stats', onStats)
-      socket.off('server_update', onServerUpdate)
+      socket.off('stats')
+      socket.off('stats_history')
+      socket.off('recent_activity')
+      socket.off('activity')
     }
   }, [])
 
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'SUCCESS': return 'text-green-400 bg-green-400/10'
+      case 'WARNING': return 'text-yellow-400 bg-yellow-400/10'
+      case 'CRITICAL': return 'text-red-400 bg-red-400/10'
+      case 'INFO': return 'text-blue-400 bg-blue-400/10'
+      default: return 'text-gray-400 bg-gray-400/10'
+    }
+  }
 
-  const user = JSON.parse(localStorage.getItem('user') || '{"username": "User"}')
-  const displayName = user.fullname || user.username || 'User'
-  const firstName = displayName.split(' ')[0]
+  const getActivityIcon = (type: string) => {
+    if (type.includes('CPU')) return Cpu;
+    if (type.includes('RAM') || type.includes('MEM')) return Database;
+    if (type.includes('CRITICAL')) return AlertTriangle;
+    if (type.includes('SERVER')) return Server;
+    if (type.includes('BACKUP')) return HardDrive;
+    return Bell;
+  }
+
+  const stats_items = [
+    { label: t('dashboard.servers'), value: serverStats?.servers || 0, icon: Server, color: 'text-blue-500', sub: t('dashboard.active_instances') },
+    { label: t('dashboard.players'), value: serverStats?.players || 0, icon: Users, color: 'text-green-500', sub: t('dashboard.online_total') },
+    { label: t('dashboard.uptime'), value: '99.9%', icon: Activity, color: 'text-purple-500', sub: t('dashboard.server_health') },
+    { label: t('dashboard.maps'), value: serverStats?.maps || 0, icon: MapIcon, color: 'text-orange-500', sub: t('dashboard.available_maps') },
+  ]
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-8">
-        <div className="animate-in slide-in-from-left duration-500">
-          <h2 className="text-2xl font-bold text-white tracking-tight">
-            {t('dashboard.welcome', { name: firstName })}
-          </h2>
-          <p className="text-sm text-gray-400 mt-1">{t('dashboard.subtitle')}</p>
+    <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Welcome Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-white tracking-tight leading-tight">
+            {t('dashboard.welcome', { name: JSON.parse(localStorage.getItem('user') || '{}').username || 'User' })}
+          </h1>
+          <p className="text-gray-400 mt-1 font-medium">{t('dashboard.subtitle')}</p>
         </div>
-        <div className="flex shrink-0 animate-in slide-in-from-right duration-500">
-          {isConnected ? (
-            <div className="flex gap-2 items-center bg-green-500/10 text-green-500 px-4 py-2 rounded-xl text-sm font-medium border border-green-500/20 w-full md:w-auto justify-center">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              {t('dashboard.ws_connected')}
-            </div>
-          ) : (
-            <div className="flex gap-2 items-center bg-red-500/10 text-red-500 px-4 py-2 rounded-xl text-sm font-medium border border-red-500/20 w-full md:w-auto justify-center">
-              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-              {t('dashboard.ws_disconnected')}
-            </div>
-          )}
+        <div className="flex items-center gap-3 px-4 py-2 bg-[#111827] rounded-2xl border border-gray-800/60 shadow-lg shadow-black/10">
+          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+          <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">
+            {isConnected ? t('dashboard.ws_connected') : t('dashboard.ws_disconnected')}
+          </span>
         </div>
       </div>
 
-      {/* Quick Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-[#111827] border border-gray-800/50 p-6 rounded-xl flex items-center gap-4 hover:border-blue-500/30 transition-all">
-          <div className="p-3 rounded-xl bg-blue-500/10 text-blue-500">
-            <Monitor size={32} />
+      {/* Stats Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats_items.map((item, index) => (
+          <div key={index} className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 hover:border-white/10 transition-all hover:translate-y-[-2px] group shadow-lg shadow-black/20">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">{item.label}</span>
+              <div className={`p-2 rounded-lg bg-white/5 ${item.color} group-hover:scale-110 transition-transform`}>
+                <item.icon size={18} />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-white">{item.value}</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-2 font-medium opacity-80">{item.sub}</p>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">{t('dashboard.os')}</p>
-            <p className="text-lg font-bold text-white truncate">{systemInfo.os}</p>
-          </div>
-        </div>
-        <div className="bg-[#111827] border border-gray-800/50 p-6 rounded-xl flex items-center gap-4 hover:border-purple-500/30 transition-all">
-          <div className="p-3 rounded-xl bg-purple-500/10 text-purple-500">
-            <Cpu size={32} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">{t('dashboard.arch')}</p>
-            <p className="text-lg font-bold text-white truncate">{systemInfo.arch}</p>
-          </div>
-        </div>
-        <div className="bg-[#111827] border border-gray-800/50 p-6 rounded-xl flex items-center gap-4 hover:border-orange-500/30 transition-all">
-          <div className="p-3 rounded-xl bg-orange-500/10 text-orange-500">
-            <Server size={32} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">{t('dashboard.hostname')}</p>
-            <p className="text-lg font-bold text-white truncate">{systemInfo.hostname}</p>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Server Statistics & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-        {/* Server Statistics */}
-        <div className="bg-[#111827] border border-gray-800/50 rounded-xl p-6 transition-all hover:bg-[#111827]/80">
-          <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-            <Server className="text-primary" size={20} />
-            {t('dashboard.stats_title')}
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-[#0F172A]/50 p-4 rounded-lg border border-gray-800/30">
-              <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">{t('dashboard.active_servers')}</p>
-              <p className="text-3xl font-bold text-green-400">{serverStats.activeServers}</p>
-              <p className="text-xs text-gray-400 mt-1">{t('dashboard.active_desc', { count: serverStats.activeServers, offline: serverStats.totalServers - serverStats.activeServers })}</p>
-            </div>
-            <div className="bg-[#0F172A]/50 p-4 rounded-lg border border-gray-800/30">
-              <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">{t('dashboard.total_players')}</p>
-              <p className="text-3xl font-bold text-blue-400">{serverStats.totalPlayers}</p>
-              <p className="text-xs text-gray-400 mt-1">{t('dashboard.players_desc')}</p>
-            </div>
-            <div className="bg-[#0F172A]/50 p-4 rounded-lg border border-gray-800/30">
-              <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">{t('dashboard.total_instances')}</p>
-              <p className="text-3xl font-bold text-purple-400">{serverStats.totalServers}</p>
-              <p className="text-xs text-gray-400 mt-1">{t('dashboard.instances_desc')}</p>
-            </div>
-            <div className="bg-[#0F172A]/50 p-4 rounded-lg border border-gray-800/30">
-              <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-2">{t('dashboard.total_maps')}</p>
-              <p className="text-3xl font-bold text-orange-400">{totalMapsCount}</p>
-              <p className="text-xs text-gray-400 mt-1">{t('dashboard.maps_desc')}</p>
-            </div>
-          </div>
-        </div>
+      {/* Real-time Monitoring Section (Integrated Mega Cards) */}
+      <MonitoringSection 
+        data={statsHistory} 
+        systemInfo={systemInfo} 
+        currentStats={stats} 
+      />
 
-        {/* Quick Actions */}
-        <div className="bg-[#111827] border border-gray-800/50 rounded-xl p-6 transition-all hover:bg-[#111827]/80">
-          <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
-            <Terminal className="text-primary" size={20} />
-            {t('dashboard.actions_title')}
-          </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <button 
-              onClick={() => window.location.href = '/console'}
-              className="flex flex-col items-center gap-3 p-4 bg-[#0F172A]/50 rounded-lg border border-gray-800/30 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group"
-            >
-              <div className="p-3 rounded-lg bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20 transition-all">
-                <Terminal size={24} />
-              </div>
-              <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">{t('dashboard.action_console')}</span>
-            </button>
-
-            <button 
-              onClick={() => window.location.href = '/instances/create'}
-              className="flex flex-col items-center gap-3 p-4 bg-[#0F172A]/50 rounded-lg border border-gray-800/30 hover:border-green-500/50 hover:bg-green-500/5 transition-all group"
-            >
-              <div className="p-3 rounded-lg bg-green-500/10 text-green-500 group-hover:bg-green-500/20 transition-all">
-                <Server size={24} />
-              </div>
-              <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">{t('dashboard.action_new_server')}</span>
-            </button>
-
-            <button 
-              onClick={() => window.location.href = '/players'}
-              className="flex flex-col items-center gap-3 p-4 bg-[#0F172A]/50 rounded-lg border border-gray-800/30 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group"
-            >
-              <div className="p-3 rounded-lg bg-purple-500/10 text-purple-500 group-hover:bg-purple-500/20 transition-all">
-                <Database size={24} />
-              </div>
-              <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">{t('dashboard.action_manage_players')}</span>
-            </button>
-
-            <button 
-              onClick={() => window.location.href = '/maps'}
-              className="flex flex-col items-center gap-3 p-4 bg-[#0F172A]/50 rounded-lg border border-gray-800/30 hover:border-orange-500/50 hover:bg-orange-500/5 transition-all group"
-            >
-              <div className="p-3 rounded-lg bg-orange-500/10 text-orange-500 group-hover:bg-orange-500/20 transition-all">
-                <Monitor size={24} />
-              </div>
-              <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-colors">{t('dashboard.action_map_manager')}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Performance Metrics */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-        {/* CPU Usage */}
-        <div className="bg-[#111827] border border-gray-800/50 p-6 rounded-xl hover:border-primary/30 transition-all">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2 text-primary font-semibold">
-              <Cpu size={20} />
-              {t('dashboard.cpu_usage')}
-            </div>
-            <span className={`text-2xl font-bold ${parseFloat(stats.cpu) > 80 ? 'text-red-500' : parseFloat(stats.cpu) > 50 ? 'text-orange-400' : 'text-green-400'}`}>
-              {stats.cpu}%
-            </span>
-          </div>
-          <div className="space-y-4">
-            <div className="text-xs text-gray-500 mb-1 flex justify-between">
-              <span>{t('dashboard.cores')}: 16 ({t('dashboard.logical')})</span>
-              <span>{t('dashboard.system_load')}</span>
-            </div>
-            <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-1000 ease-out ${parseFloat(stats.cpu) > 80 ? 'bg-red-500' : parseFloat(stats.cpu) > 50 ? 'bg-orange-400' : 'bg-primary'}`} 
-                style={{ width: `${stats.cpu}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        {/* RAM Usage */}
-        <div className="bg-[#111827] border border-gray-800/50 p-6 rounded-xl hover:border-green-500/30 transition-all">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2 text-primary font-semibold">
-              <Database size={20} />
-              {t('dashboard.ram_usage')}
-            </div>
-            <span className={`text-2xl font-bold ${parseFloat(stats.ram) > 80 ? 'text-red-500' : parseFloat(stats.ram) > 60 ? 'text-orange-400' : 'text-green-400'}`}>
-              {stats.ram}%
-            </span>
-          </div>
-          <div className="space-y-4">
-            <div className="text-xs text-gray-500 mb-1 flex justify-between">
-              <span>{t('dashboard.used')}: {stats.memUsed} GB</span>
-              <span>{t('dashboard.total')}: {stats.memTotal} GB</span>
-            </div>
-            <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-1000 ease-out ${parseFloat(stats.ram) > 80 ? 'bg-red-500' : parseFloat(stats.ram) > 60 ? 'bg-orange-400' : 'bg-green-500'}`} 
-                style={{ width: `${stats.ram}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Network Usage */}
-        <div className="bg-[#111827] border border-gray-800/50 p-6 rounded-xl hover:border-orange-500/30 transition-all">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2 text-primary font-semibold">
-              <Network size={20} />
-              {t('dashboard.net_traffic')}
-            </div>
-          </div>
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <ArrowDown className="text-green-400" size={20} />
-                <div>
-                  <p className="text-xs text-gray-500 uppercase">{t('dashboard.incoming')}</p>
-                  <p className="text-xl font-bold text-gray-200">{stats.netIn} MB/s</p>
+      {/* Activity Feed Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        
+        {/* Activity Feed */}
+        <div className="xl:col-span-3 bg-[#111827] rounded-2xl border border-gray-800/60 overflow-hidden flex flex-col shadow-lg shadow-black/20 h-full min-h-[220px]">
+          <div className="flex-1 divide-y divide-gray-800/40 overflow-y-auto max-h-[160px] custom-scrollbar">
+            {activities.length > 0 ? activities.map((activity, idx) => (
+              <div key={activity.id || idx} className="px-6 py-3 flex items-center justify-between hover:bg-white/[0.01] transition-all group">
+                <div className="flex items-center gap-4">
+                  <div className={`p-1.5 rounded-lg ${getSeverityColor(activity.severity)}`}>
+                    {(() => {
+                        const Icon = getActivityIcon(activity.type);
+                        return <Icon size={14} />
+                    })()}
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-gray-200">{activity.message}</div>
+                    <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">{activity.type.replace('_', ' ')}</div>
+                  </div>
+                </div>
+                <div className="text-[10px] text-gray-400 font-medium flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                  <Clock size={10} />
+                  {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true, locale: dateLocale })}
                 </div>
               </div>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <ArrowUp className="text-blue-400" size={20} />
-                <div>
-                  <p className="text-xs text-gray-500 uppercase">{t('dashboard.outgoing')}</p>
-                  <p className="text-xl font-bold text-gray-200">{stats.netOut} MB/s</p>
+            )) : (
+              <div className="px-6 py-12 text-center opacity-30 flex flex-col items-center justify-center h-full">
+                <div className="p-4 rounded-full bg-gray-800/50 mb-4">
+                  <ClipboardList size={32} className="text-gray-600" />
                 </div>
+                <p className="text-sm font-medium">{t('dashboard.no_activity')}</p>
               </div>
-            </div>
+            )}
           </div>
+          
+          <button 
+            onClick={() => navigate('/settings?tab=activity')}
+            className="w-full py-2.5 px-6 text-[10px] font-bold text-gray-400 hover:text-white border-t border-gray-800/40 hover:bg-white/[0.02] transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+              {t('dashboard.view_all_logs')}
+            </div>
+            <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
+          </button>
         </div>
+      </div>
+
+      {/* Quick Actions Bar */}
+      <div className="pt-4">
+          <h2 className="text-sm font-black text-gray-500 uppercase tracking-[0.2em] mb-4 pl-1">{t('dashboard.actions_title')}</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { icon: Terminal, label: t('dashboard.action_console'), path: '/console' },
+              { icon: Plus, label: t('dashboard.action_new_server'), path: '/instances/create' },
+              { icon: Users, label: t('dashboard.action_manage_players'), path: '/players' },
+              { icon: MapIcon, label: t('dashboard.action_map_rotation'), path: '/maps' },
+            ].map((action, i) => (
+              <button 
+                key={i}
+                onClick={() => navigate(action.path)}
+                className="flex items-center gap-4 p-4 bg-[#111827] rounded-2xl border border-gray-800/60 hover:border-primary/50 hover:bg-primary/5 transition-all group shadow-lg shadow-black/10"
+              >
+                <div className="p-2.5 rounded-xl bg-gray-800/50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                  <action.icon size={18} />
+                </div>
+                <span className="text-[10px] font-black text-gray-400 group-hover:text-white uppercase tracking-wider">{action.label}</span>
+              </button>
+            ))}
+          </div>
       </div>
     </div>
   )

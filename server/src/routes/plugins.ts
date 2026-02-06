@@ -75,6 +75,26 @@ router.get("/:id/plugins/:plugin/configs", async (req: any, res) => {
     }
 });
 
+// POST /api/servers/:id/plugins/:plugin/configs
+router.post("/:id/plugins/:plugin/configs", async (req: any, res) => {
+    const { id, plugin } = req.params;
+    const { filePath, content } = req.body;
+
+    if (!filePath || content === undefined) {
+        return res.status(400).json({ message: "File path and content are required" });
+    }
+
+    try {
+        const server: any = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(id, req.user.id);
+        if (!server) return res.status(404).json({ message: "Server not found" });
+
+        await serverManager.savePluginConfigFile(id, plugin as any, filePath, content);
+        res.json({ message: "Configuration saved successfully" });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // Generic Plugin Action (Install/Uninstall/Update)
 router.post("/:id/plugins/:plugin/:action", async (req: any, res) => {
     const { id, plugin, action } = req.params;

@@ -9,6 +9,7 @@ import { steamManager } from "./services/SteamManager.js";
 import { fileSystemService } from "./services/FileSystemService.js";
 import { lockService } from "./services/LockService.js";
 import { runtimeService } from "./services/RuntimeService.js";
+import { taskService } from "./services/TaskService.js";
 import type { PluginId } from "./config/plugins.js";
 
 import { promisify } from "util";
@@ -378,7 +379,7 @@ class ServerManager {
   }
 
   // --- Validation ---
-  private async validateServerFiles(id: string, appId: string) {
+  private async validateServerFiles(id: string, appId: string, taskId?: string) {
       if (!this.steamCmdExe) throw new Error("SteamCMD not initialized");
       
       const instancePath = fileSystemService.getInstancePath(id);
@@ -405,8 +406,14 @@ class ServerManager {
           p.stderr.on("data", (d: any) => console.error(`[STEAMCMD:${id}] ${d.toString().trim()}`));
           
           p.on("close", (code: number) => {
-              if (code === 0) resolve();
-              else reject(new Error(`SteamCMD validation exited with code ${code}`));
+              if (code === 0) {
+                if (taskId) taskService.completeTask(taskId, "Validation successful");
+                resolve();
+              } else {
+                const error = `SteamCMD validation exited with code ${code}`;
+                if (taskId) taskService.failTask(taskId, error);
+                reject(new Error(error));
+              }
           });
       });
   }
@@ -471,15 +478,15 @@ class ServerManager {
 
   // --- Installation & Updates ---
 
-  public async ensureSteamCMD() {
-      if (await steamManager.ensureSteamCMD(this.steamCmdExe)) return true;
+  public async ensureSteamCMD(taskId?: string) {
+      if (await steamManager.ensureSteamCMD(this.steamCmdExe, taskId)) return true;
       try {
-          await steamManager.downloadSteamCmd(this.steamCmdExe);
+          await steamManager.downloadSteamCmd(this.steamCmdExe, taskId);
           return true;
       } catch { return false; }
   }
 
-  public async installOrUpdateServer(id: string | number, onLog?: any) {
+  public async installOrUpdateServer(id: string | number, onLog?: any, taskId?: string) {
       if (!await lockService.acquireInstanceLock(id, 'UPDATE')) {
           console.warn(`[LOCK] Installation rejected for ${id}: Instance already has an active UPDATE lock.`);
           throw new Error(`Instance ${id} is locked.`);
@@ -490,7 +497,7 @@ class ServerManager {
           if (await lockService.acquireCoreLock()) {
               console.log("[SYSTEM] Starting Core Update (Downloading CS2 base files)... This might take 10-15 minutes.");
               try {
-                  await steamManager.installToPath(fileSystemService.getCorePath(), this.steamCmdExe, onLog);
+                  await steamManager.installToPath(fileSystemService.getCorePath(), this.steamCmdExe, onLog, taskId);
                   console.log("[SYSTEM] Core Update successful.");
               } catch (e: any) {
                   console.error("[SYSTEM] Core Update failed:", e.message);
@@ -545,7 +552,28 @@ class ServerManager {
           const sdkPath = path.join(homeDir, ".steam", "sdk64", "steamclient.so");
           const steamSdkStatus = fs.existsSync(sdkPath) ? 'good' : 'missing';
 
-          // 4. Garbage Check (Core dumps)
+          // 4. Check for Steam Runtime 3.0
+          const runtimePath = fileSystemService.getSteamRuntimePath();
+          const runtimeStatus = fs.existsSync(path.join(runtimePath, "run")) ? 'good' : 'missing';
+
+          // 5. Check for Unprivileged User Namespaces
+          let namespacesStatus = 'unknown';
+          let namespacesMessage = '';
+          try {
+              const { stdout } = await execAsync("sysctl kernel.unprivileged_userns_clone");
+              if (stdout.includes("= 1")) {
+                  namespacesStatus = 'good';
+                  namespacesMessage = 'Enabled';
+              } else {
+                  namespacesStatus = 'warning';
+                  namespacesMessage = 'Disabled';
+              }
+          } catch {
+              namespacesStatus = 'info';
+              namespacesMessage = 'Not available on this kernel';
+          }
+
+          // 6. Garbage Check (Core dumps)
           let garbageCount = 0;
           let garbageSize = 0;
           try {
@@ -583,6 +611,13 @@ class ServerManager {
                   },
                   steam_sdk: {
                       status: steamSdkStatus
+                  },
+                  steam_runtime: {
+                      status: runtimeStatus
+                  },
+                  namespaces: {
+                      status: namespacesStatus,
+                      message: namespacesMessage
                   }
               }
           };
@@ -598,7 +633,14 @@ class ServerManager {
           // 1. Ensure Steam SDK
           await this.ensureSteamSdk();
 
-          // 2. Clean Garbage (Core Dumps)
+          // 2. Ensure Steam Runtime
+          const runtimePath = fileSystemService.getSteamRuntimePath();
+          if (!fs.existsSync(path.join(runtimePath, "run"))) {
+              console.log("[HEALTH] Steam Runtime missing or incomplete. Starting installation...");
+              await steamManager.installSteamRuntime(runtimePath, this.steamCmdExe);
+          }
+
+          // 3. Clean Garbage (Core Dumps)
           try {
               await execAsync("find . -name 'core.*' -type f -delete");
               console.log("[HEALTH] Cleaned core dumps.");
@@ -606,12 +648,22 @@ class ServerManager {
               console.warn("[HEALTH] Failed to clean core dumps:", e);
           }
 
-          // 3. Fix permissions on instances
-          try {
-              await execAsync(`chmod -R +x ${this.installDir}/*/game/bin/linux64/cs2`);
-          } catch {}
+          // 4. Fix permissions and sync .so files on instances
+          const servers = db.prepare("SELECT id FROM servers").all() as { id: number }[];
+          for (const server of servers) {
+              try {
+                  const binPath = path.join(this.installDir, server.id.toString(), "game", "bin", "linuxsteamrt64", "cs2");
+                  if (fs.existsSync(binPath)) {
+                      await fs.promises.chmod(binPath, 0o755);
+                  }
+                  // Force sync .so files
+                  await fileSystemService.ensureSoFiles(server.id);
+              } catch (err) {
+                  console.warn(`[HEALTH] Failed to repair instance ${server.id}:`, err);
+              }
+          }
 
-          return { success: true, message: "System repaired successfully. Steam SDK linked and garbage cleaned." };
+          return { success: true, message: "System repaired successfully. Steam SDK linked, Steam Runtime installed, and instances synchronized." };
       } catch (error: any) {
           console.error("[HEALTH] Repair failed:", error);
           return { success: false, message: error.message };
@@ -660,6 +712,9 @@ class ServerManager {
   async uninstallPlugin(id: string | number, pid: PluginId) { return pluginManager.uninstallPlugin(this.installDir, id, pid); }
   async updatePlugin(id: string | number, pid: PluginId) { return pluginManager.updatePlugin(this.installDir, id, pid); }
   async getPluginConfigFiles(id: string | number, pid: PluginId) { return pluginManager.getPluginConfigFiles(this.installDir, id, pid); }
+  async savePluginConfigFile(id: string | number, pid: PluginId, filePath: string, content: string) { 
+    return pluginManager.savePluginConfigFile(this.installDir, id, pid, filePath, content); 
+  }
 }
 
 export const serverManager = new ServerManager();

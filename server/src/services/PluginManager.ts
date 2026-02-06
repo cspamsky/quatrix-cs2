@@ -10,6 +10,7 @@ import db from "../db.js";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { databaseManager } from "./DatabaseManager.js";
+import { taskService } from "./TaskService.js";
 
 const execAsync = promisify(exec);
 
@@ -433,7 +434,11 @@ export class PluginManager {
     installDir: string,
     instanceId: string | number,
     pluginId: string,
+    taskId?: string
   ): Promise<void> {
+    if (taskId) {
+        taskService.updateTask(taskId, { status: "running", message: `Installing ${pluginId}...`, progress: 10 });
+    }
     const csgoDir = path.join(installDir, instanceId.toString(), "game", "csgo");
     const registry = await this.getRegistry(instanceId);
     const pluginInfo = registry[pluginId];
@@ -536,6 +541,10 @@ export class PluginManager {
 
     if (pluginId === "metamod") await this.configureMetamod(csgoDir);
     console.log(`[PLUGIN] ${pluginInfo.name} sync complete.`);
+    
+    if (taskId) {
+        taskService.completeTask(taskId, `${pluginInfo.name} installed`);
+    }
   }
 
   private async findContentRoot(searchDir: string): Promise<string> {
@@ -818,12 +827,13 @@ export class PluginManager {
             } else if (item.isFile()) {
                 const ext = path.extname(item.name).toLowerCase();
                 const content = await fs.promises.readFile(fullPath, 'utf8');
+                const creds = await getCreds();
 
+                // 1. JSON Injection
                 if (ext === '.json' && (content.includes('"Database"') || content.includes('"Host"') || content.includes('"MySQL"'))) {
                     try {
                         const config = JSON.parse(content);
                         let changed = false;
-                        const creds = await getCreds();
 
                         const keysMapping: Record<string, any> = {
                             "DatabaseHost": creds.host,
@@ -838,7 +848,7 @@ export class PluginManager {
                             "Database": creds.database
                         };
 
-                        // 1. Check top level keys
+                        // Check top level keys
                         for (const [key, val] of Object.entries(keysMapping)) {
                             if (config.hasOwnProperty(key) && typeof config[key] !== 'object') {
                                 config[key] = val;
@@ -846,7 +856,7 @@ export class PluginManager {
                             }
                         }
 
-                        // 2. Check nested "Database" or "MySQL" objects
+                        // Check nested "Database" or "MySQL" objects
                         const subObjects = ["Database", "MySQL", "mysql", "database"];
                         for (const subKey of subObjects) {
                             if (config[subKey] && typeof config[subKey] === 'object') {
@@ -860,11 +870,41 @@ export class PluginManager {
                         }
 
                         if (changed) {
-                            console.log(`[DB] Injected credentials into ${fullPath}`);
+                            console.log(`[DB] Injected credentials into JSON: ${fullPath}`);
                             await fs.promises.writeFile(fullPath, JSON.stringify(config, null, 2));
                         }
                     } catch (e) {
                         // Skip non-valid or non-standard JSON
+                    }
+                } 
+                // 2. TOML / CFG Injection (Regex based for common formats)
+                else if ((ext === '.toml' || ext === '.cfg') && (content.includes('Database') || content.includes('MySQL') || content.includes('Host'))) {
+                    let newContent = content;
+                    let changed = false;
+
+                    const patterns = [
+                        { regex: /(DatabaseHost\s*=\s*")([^"]*)(")/gi, val: creds.host },
+                        { regex: /(DatabaseUser\s*=\s*")([^"]*)(")/gi, val: creds.user },
+                        { regex: /(DatabasePassword\s*=\s*")([^"]*)(")/gi, val: creds.password },
+                        { regex: /(DatabaseName\s*=\s*")([^"]*)(")/gi, val: creds.database },
+                        { regex: /(DatabasePort\s*=\s*)(\d+)/gi, val: creds.port },
+                        // CFG style (no equals)
+                        { regex: /(DatabaseHost\s+")([^"]*)(")/gi, val: creds.host },
+                        { regex: /(DatabaseUser\s+")([^"]*)(")/gi, val: creds.user },
+                        { regex: /(DatabasePassword\s+")([^"]*)(")/gi, val: creds.password },
+                        { regex: /(DatabaseName\s+")([^"]*)(")/gi, val: creds.database }
+                    ];
+
+                    for (const p of patterns) {
+                        if (p.regex.test(newContent)) {
+                            newContent = newContent.replace(p.regex, `$1${p.val}$3`);
+                            changed = true;
+                        }
+                    }
+
+                    if (changed) {
+                        console.log(`[DB] Injected credentials into ${ext.toUpperCase()}: ${fullPath}`);
+                        await fs.promises.writeFile(fullPath, newContent);
                     }
                 }
             }
@@ -968,6 +1008,45 @@ export class PluginManager {
           await fs.promises.rm(poolPath, { recursive: true, force: true });
           console.log(`[POOL] Plugin ${pluginId} deleted from central repository.`);
       }
+  }
+
+  /**
+   * Saves a configuration file for a specific plugin in a server instance.
+   * Includes security checks to prevent directory traversal.
+   */
+  async savePluginConfigFile(
+    installDir: string,
+    instanceId: string | number,
+    pluginId: string,
+    relativeFilePath: string,
+    content: string
+  ): Promise<void> {
+    const id = instanceId.toString();
+    const serverPath = path.join(installDir, id);
+    const csgoDir = path.join(serverPath, "game", "csgo");
+    
+    // 1. Resolve absolute path and prevent traversal
+    const fullPath = path.resolve(serverPath, relativeFilePath);
+    if (!fullPath.startsWith(serverPath)) {
+      throw new Error("Security Violation: Path traversal detected.");
+    }
+
+    // 2. Validate file extension
+    const ext = path.extname(fullPath).toLowerCase();
+    const allowedExts = [".json", ".cfg", ".txt", ".ini", ".toml"];
+    if (!allowedExts.includes(ext)) {
+      throw new Error(`Forbidden file extension: ${ext}`);
+    }
+
+    // 3. Ensure directory exists
+    const dir = path.dirname(fullPath);
+    if (!fs.existsSync(dir)) {
+      await fs.promises.mkdir(dir, { recursive: true });
+    }
+
+    // 4. Save file
+    await fs.promises.writeFile(fullPath, content, "utf8");
+    console.log(`[PLUGIN] Config saved for ${pluginId}: ${relativeFilePath}`);
   }
 }
 

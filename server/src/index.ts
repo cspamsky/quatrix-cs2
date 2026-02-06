@@ -10,6 +10,7 @@ import { apiLimiter } from "./middleware/rateLimiter.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { authenticateToken } from "./middleware/auth.js";
 
 // Routes
 import authRouter from "./routes/auth.js";
@@ -22,10 +23,14 @@ import playersRouter from "./routes/players.js";
 import mapsRouter from "./routes/maps.js";
 import bansRouter from "./routes/bans.js";
 import adminsRouter from "./routes/admins.js";
+import backupRoutes from "./routes/backups.js";
 import chatRouter from "./routes/chat.js";
 import logsRouter from "./routes/logs.js";
 import profileRouter from "./routes/profile.js";
 import { databaseManager } from "./services/DatabaseManager.js";
+import { taskService } from "./services/TaskService.js";
+import { monitoringService } from "./services/MonitoringService.js";
+import { backupService } from "./services/BackupService.js";
 
 // Environment variables are loaded via --env-file in package.json dev script
 const __filename = fileURLToPath(import.meta.url);
@@ -43,14 +48,14 @@ app.set('io', io);
 // Static uploads folder
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Inject Socket.IO into ServerManager for real-time updates
+// Inject Socket.IO into Services for real-time updates
 console.log(`[DEBUG] serverManager type: ${typeof serverManager}`);
 console.log(`[DEBUG] has setSocketIO: ${typeof serverManager?.setSocketIO === 'function'}`);
 if (serverManager && typeof serverManager.setSocketIO === 'function') {
   serverManager.setSocketIO(io);
-} else {
-  console.error('[CRITICAL] serverManager.setSocketIO is not a function!', serverManager);
 }
+
+taskService.setSocketIO(io);
 
 const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
@@ -103,6 +108,7 @@ app.use('/api/servers', playersRouter); // /api/servers/:id/players
 app.use('/api/servers', bansRouter); // /api/servers/:id/bans
 app.use('/api/servers', adminsRouter); // /api/servers/:id/admins
 app.use('/api/logs', logsRouter);
+app.use('/api/backups', backupRoutes);
 app.use('/api/chat', chatRouter);
 app.use('/api/maps', mapsRouter);
 app.use('/api/profile', profileRouter);
@@ -133,49 +139,68 @@ if (isProduction) {
   console.log(`\x1b[33m[WARN]\x1b[0m Running in development mode. Frontend should be started separately via 'npm run dev'.`);
 }
 
+/**
+ * Global Activity Logger
+ */
+export const logActivity = (type: string, message: string, severity: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS' = 'INFO', userId?: number) => {
+    try {
+        db.prepare("INSERT INTO activity_logs (user_id, type, message, severity) VALUES (?, ?, ?, ?)").run(userId || null, type, message, severity);
+        io.emit('activity', { type, message, severity, created_at: new Date().toISOString() });
+    } catch (err) {
+        console.error("[ACTIVITY] Failed to log activity:", err);
+    }
+};
+
+// GET /api/system-info
+app.get("/api/system-info", authenticateToken, async (req, res) => {
+  try {
+    const [cpu, mem, os] = await Promise.all([
+      si.cpu(),
+      si.mem(),
+      si.osInfo()
+    ]);
+    
+    res.json({
+      cpuModel: `${cpu.manufacturer} ${cpu.brand}`,
+      totalMemory: Math.round(mem.total / (1024 * 1024)), // MB
+      os: `${os.distro} ${os.release}`,
+      hostname: os.hostname
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch system info" });
+  }
+});
+
 // --- Background Tasks ---
 
 // WebSocket client counter
 let connectedClients = 0;
 io.on('connection', (socket: Socket) => {
   connectedClients++;
+  
+  // Send initial telemetry history
+  socket.emit('stats_history', monitoringService.getStatsHistory());
+  
+  // Send recent activities
+  try {
+      const recentActivities = db.prepare("SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 10").all();
+      socket.emit('recent_activity', recentActivities);
+  } catch (e) {}
+
+  // Send active tasks
+  socket.emit('active_tasks', taskService.getTasks());
+
   socket.on('disconnect', () => {
     connectedClients--;
   });
 });
 
-// 1. Stats Collection (Every 2 seconds)
-let lastNetworkStats: any = null;
-setInterval(async () => {
-  if (connectedClients === 0) return;
-  try {
-    const [cpu, mem, net] = await Promise.all([
-      si.currentLoad().catch(() => ({ currentLoad: 0 })),
-      si.mem().catch(() => ({ active: 0, total: 1 })),
-      si.networkStats().catch(() => [])
-    ]);
-    
-    let netIn = 0, netOut = 0;
-    if (lastNetworkStats && net?.length > 0) {
-      const currentNet = net[0];
-      const lastNet = lastNetworkStats[0];
-      if (currentNet?.rx_bytes !== undefined) {
-        netIn = Math.max(0, (currentNet.rx_bytes - lastNet.rx_bytes) / 1024 / 1024 / 2);
-        netOut = Math.max(0, (currentNet.tx_bytes - lastNet.tx_bytes) / 1024 / 1024 / 2);
-      }
-    }
-    lastNetworkStats = net;
+// 1. Stats Collection (Moved to MonitoringService)
+monitoringService.setSocketIO(io);
+monitoringService.start();
 
-    io.emit("stats", {
-      cpu: typeof cpu.currentLoad === 'number' ? cpu.currentLoad.toFixed(1) : "0",
-      ram: (mem.total > 0) ? ((mem.active / mem.total) * 100).toFixed(1) : "0",
-      memUsed: (mem.active / 1024 / 1024 / 1024).toFixed(1),
-      memTotal: (mem.total / 1024 / 1024 / 1024).toFixed(1),
-      netIn: netIn.toFixed(2),
-      netOut: netOut.toFixed(2)
-    });
-  } catch (err) { /* silent stats fail */ }
-}, 2000);
+// 2. Backup Scheduling
+backupService.startScheduledBackups();
 
 // 2. Map Sync Task (Every 10 seconds)
 setInterval(async () => {

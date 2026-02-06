@@ -49,6 +49,8 @@ interface ServerCardProps {
   onConsole: (id: number) => void
   onSettings: (id: number) => void
   onFiles: (id: number) => void
+  isSelected?: boolean
+  onSelect?: (id: number) => void
 }
 
 const ServerCard = memo(({
@@ -68,14 +70,16 @@ const ServerCard = memo(({
   onCopy,
   onConsole,
   onSettings,
-  onFiles
+  onFiles,
+  isSelected = false,
+  onSelect
 }: ServerCardProps) => {
   const { t } = useTranslation()
   return (
     <div 
       className={`bg-[#111827] rounded-xl border border-gray-800/50 overflow-hidden flex flex-col group hover:border-primary/50 transition-all duration-300 ${
         instance.status === 'OFFLINE' ? 'opacity-70 grayscale-[0.5]' : ''
-      }`}
+      } ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`}
     >
       <div className="relative h-32 overflow-hidden bg-gray-900">
         <img 
@@ -111,6 +115,17 @@ const ServerCard = memo(({
             </div>
           )}
         </div>
+
+        {onSelect && (
+          <div className="absolute top-3 right-3 z-20">
+            <input 
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onSelect(instance.id)}
+              className="w-4 h-4 rounded border-white/20 bg-black/40 text-primary focus:ring-primary focus:ring-offset-gray-900 cursor-pointer backdrop-blur-md"
+            />
+          </div>
+        )}
 
         <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center">
           <p className="text-white text-[10px] font-bold tracking-widest uppercase opacity-80 truncate max-w-[150px]">

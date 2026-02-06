@@ -191,6 +191,18 @@ try {
   db.exec(`ALTER TABLE servers ADD COLUMN region INTEGER DEFAULT 3`);
 } catch (error) {}
 
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN auto_update INTEGER DEFAULT 0`);
+} catch (error) {}
+
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN cpu_priority INTEGER DEFAULT 0`);
+} catch (error) {}
+
+try {
+  db.exec(`ALTER TABLE servers ADD COLUMN ram_limit INTEGER DEFAULT 0`);
+} catch (error) {}
+
 // Create settings table
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
@@ -328,5 +340,20 @@ db.exec(`
 // Create index for join logs
 db.exec(`CREATE INDEX IF NOT EXISTS idx_join_logs_server_id ON join_logs(server_id)`);
 db.exec(`CREATE INDEX IF NOT EXISTS idx_join_logs_created_at ON join_logs(created_at)`);
+
+// Create activity_logs table for administrative events
+db.exec(`
+  CREATE TABLE IF NOT EXISTS activity_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    type TEXT NOT NULL, -- 'SERVER_START', 'PLUGIN_INSTALL', etc.
+    message TEXT NOT NULL,
+    severity TEXT DEFAULT 'INFO', -- 'INFO', 'WARNING', 'ERROR', 'SUCCESS'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  )
+`);
+
+db.exec(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at)`);
 
 export default db;

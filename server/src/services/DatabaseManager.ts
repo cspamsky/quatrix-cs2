@@ -86,22 +86,30 @@ export class DatabaseManager {
 
         const id = serverId.toString();
         
-        // Check if already exists in local storage
+        // 1. Check local cache
         const existing = await this.getDatabaseCredentials(id);
-        if (existing) return existing;
-
+        
         const dbName = `quatrix_srv_${id}`;
         const dbUser = `quatrix_u_${id}`;
-        const dbPass = Math.random().toString(36).slice(-12);
+        // Reuse password if we have it in cache, otherwise generate
+        const dbPass = existing?.password || Math.random().toString(36).slice(-12);
 
         try {
-            console.log(`[DB] Provisioning database ${dbName} for server ${id}...`);
+            console.log(`[DB] Ensuring database ${dbName} exists for server ${id}...`);
             
-            // Create Database
+            // 2. Create Database if not exists
             await this.pool.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
             
-            // Create User and Grant Privileges
-            await this.pool.query(`CREATE USER IF NOT EXISTS '${dbUser}'@'%' IDENTIFIED BY '${dbPass}'`);
+            // 3. Create User/Grant (using a robust approach)
+            // Note: In MariaDB/MySQL 5.7+, IDENTIFIED BY for existing user might require different syntax 
+            // but CREATE USER IF NOT EXISTS ... IDENTIFIED BY works for creating.
+            try {
+                await this.pool.query(`CREATE USER IF NOT EXISTS '${dbUser}'@'%' IDENTIFIED BY '${dbPass}'`);
+            } catch (userErr) {
+                // If user exists but host differs or other issue, we try to force password reset if possible
+                await this.pool.query(`SET PASSWORD FOR '${dbUser}'@'%' = PASSWORD('${dbPass}')`).catch(() => {});
+            }
+
             await this.pool.query(`GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${dbUser}'@'%'`);
             await this.pool.query(`FLUSH PRIVILEGES`);
 
@@ -110,7 +118,8 @@ export class DatabaseManager {
                 port: this.config.port,
                 database: dbName,
                 user: dbUser,
-                password: dbPass
+                password: dbPass,
+                autoSync: true // default new provisioned ones to autoSync
             };
 
             await this.saveCredentials(id, creds);

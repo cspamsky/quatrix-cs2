@@ -12,7 +12,8 @@ import {
   X,
   MessageSquare,
   Database,
-  Globe
+  Globe,
+  Archive
 } from 'lucide-react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { useState, useEffect, Suspense } from 'react'
@@ -37,16 +38,30 @@ const Layout = () => {
     { path: '/plugins', icon: Puzzle, label: t('nav.plugins') },
     { path: '/admins', icon: ShieldCheck, label: t('nav.admins') },
     { path: '/database', icon: Database, label: t('nav.database') },
+    { path: '/backups', icon: Archive, label: t('nav.backups') },
     { path: '/settings', icon: Settings, label: t('nav.settings') },
   ]
 
-  const [user, setUser] = useState<any>(() => JSON.parse(localStorage.getItem('user') || `{"username": "${t('common.user')}"}`))
-  const displayName = user.username || 'User'
+  const [user, setUser] = useState<any>(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : { username: 'User' };
+    } catch (e) {
+      return { username: 'User' };
+    }
+  });
+  
+  const displayName = user?.username || 'User'
   
   useEffect(() => {
     const handleStorageChange = () => {
-      const updatedUser = JSON.parse(localStorage.getItem('user') || '{"username": "User"}')
-      setUser(updatedUser)
+      try {
+        const stored = localStorage.getItem('user');
+        const updatedUser = stored ? JSON.parse(stored) : { username: 'User' };
+        setUser(updatedUser)
+      } catch (e) {
+        setUser({ username: 'User' })
+      }
     }
     window.addEventListener('storage', handleStorageChange)
     return () => window.removeEventListener('storage', handleStorageChange)
@@ -57,6 +72,8 @@ const Layout = () => {
     localStorage.removeItem('user')
     navigate('/login')
   }
+
+  const [avatarError, setAvatarError] = useState(false)
 
   const getInitials = (name: string | undefined) => {
     if (!name) return 'U'
@@ -174,8 +191,13 @@ const Layout = () => {
           <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
             <Link to="/profile" className="flex items-center gap-3 flex-1 min-w-0 group">
               <div className="w-10 h-10 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center font-bold text-primary shrink-0 group-hover:border-primary/60 transition-colors overflow-hidden">
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                {user?.avatar_url && !avatarError ? (
+                  <img 
+                    src={user.avatar_url} 
+                    alt={displayName} 
+                    className="w-full h-full object-cover" 
+                    onError={() => setAvatarError(true)}
+                  />
                 ) : getInitials(displayName)}
               </div>
               <div className="flex-1 min-w-0 text-left">

@@ -36,6 +36,8 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
   const hasIssues = 
     healthData?.runtimes?.dotnet?.status !== 'good' || 
     healthData?.runtimes?.steam_sdk?.status !== 'good' ||
+    healthData?.runtimes?.steam_runtime?.status !== 'good' ||
+    healthData?.runtimes?.namespaces?.status === 'warning' ||
     (healthData?.disk?.garbage?.count > 0);
 
   return (
@@ -196,12 +198,48 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({ healthData, healthLoa
                       <Activity size={16} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white">Steam SDK (steamclient.so)</p>
+                      <p className="text-sm font-bold text-white">{t('settingsHealth.so_files')}</p>
                       <p className="text-[10px] text-gray-500">Required for server initialization</p>
                     </div>
                   </div>
                   <span className={`text-[10px] font-black uppercase tracking-widest ${healthData?.runtimes?.steam_sdk?.status === 'good' ? 'text-green-500' : 'text-red-500'}`}>
                     {healthData?.runtimes?.steam_sdk?.status === 'good' ? 'Ready' : 'Missing'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Steam Runtime Card */}
+              <div className={`p-4 rounded-xl border ${healthData?.runtimes?.steam_runtime?.status === 'good' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${healthData?.runtimes?.steam_runtime?.status === 'good' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                      <Terminal size={16} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">{t('settingsHealth.steam_runtime')}</p>
+                      <p className="text-[10px] text-gray-500">Cross-distro compatibility wrapper</p>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${healthData?.runtimes?.steam_runtime?.status === 'good' ? 'text-green-500' : 'text-red-500'}`}>
+                    {healthData?.runtimes?.steam_runtime?.status === 'good' ? 'Installed' : 'Missing'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Unprivileged Namespaces Card */}
+              <div className={`p-4 rounded-xl border ${healthData?.runtimes?.namespaces?.status === 'good' ? 'bg-green-500/5 border-green-500/20' : healthData?.runtimes?.namespaces?.status === 'warning' ? 'bg-orange-500/5 border-orange-500/20' : 'bg-gray-500/5 border-gray-800/20'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${healthData?.runtimes?.namespaces?.status === 'good' ? 'bg-green-500/10 text-green-500' : healthData?.runtimes?.namespaces?.status === 'warning' ? 'bg-orange-500/10 text-orange-500' : 'bg-gray-500/10 text-gray-400'}`}>
+                      <Shield size={16} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">{t('settingsHealth.unprivileged_namespaces')}</p>
+                      <p className="text-[10px] text-gray-500">{healthData?.runtimes?.namespaces?.message || 'Check manually'}</p>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${healthData?.runtimes?.namespaces?.status === 'good' ? 'text-green-500' : healthData?.runtimes?.namespaces?.status === 'warning' ? 'text-orange-500' : 'text-gray-500'}`}>
+                    {healthData?.runtimes?.namespaces?.status === 'good' ? 'Enabled' : healthData?.runtimes?.namespaces?.status === 'warning' ? 'Action Req' : 'N/A'}
                   </span>
                 </div>
               </div>

@@ -103,22 +103,53 @@ class RuntimeService {
         // Now that FileSystemService COPIES the binary instead of symlinking,
         // using the absolute path of the local copy preserves the instance root.
         const relativeBinPath = path.join("game", "bin", "linuxsteamrt64", "cs2");
-        const cs2Exe = path.join(instancePath, relativeBinPath);
+        const cs2BinLocal = path.join(instancePath, relativeBinPath);
+
+        // Steam Runtime Check
+        const runtimeWrapper = fileSystemService.getSteamRuntimePath("run");
+        const useRuntime = fs.existsSync(runtimeWrapper);
+        
+        // Performance Orchestration: CPU Priority & RAM Limits
+        // CPU Priority (nice: -20 to 19, default 0. Lower is higher priority)
+        const cpuPriority = options.cpu_priority !== undefined ? parseInt(options.cpu_priority) : 0;
+        
+        // RAM Limit (MB -> KB for ulimit)
+        const ramLimitMb = options.ram_limit !== undefined ? parseInt(options.ram_limit) : 0;
+        
+        let executable = useRuntime ? runtimeWrapper : cs2BinLocal;
+        let finalArgs = [];
+
+        // If we have performance tunables, we might need a wrapper or use 'nice' command
+        if (cpuPriority !== 0) {
+            finalArgs.push("-n", cpuPriority.toString(), executable);
+            executable = "nice";
+        }
 
         // 3. Prepare Arguments
         const mapName = options.map || "de_dust2";
         const isWorkshopID = (m: string) => /^\d+$/.test(m);
         
         // Group 1: Engine/Dash Parameters (Order matters for some engine initializations)
-        const args = [
-            "-dedicated",
-            "-usercon",
-            "-console"
-        ];
+        const args = [];
+        
+        if (useRuntime && executable !== "nice") {
+            args.unshift(cs2BinLocal); // Actual binary is first for runtime wrapper
+        } else if (useRuntime && executable === "nice") {
+            // finalArgs already contains [ "-n", cpuPriority, runtimeWrapper ]
+            // We need to add cs2BinLocal to args
+            args.unshift(cs2BinLocal);
+        }
 
+        // Essential headless / console flags
+        args.push("-dedicated", "-console", "-usercon");
+        args.push("--graphics-provider", '""'); // Force headless mode
+
+        if (options.auto_update) args.push("-autoupdate");
         if (options.steam_api_key) args.push("-authkey", options.steam_api_key);
+        
         args.push("-maxplayers", (options.max_players || 16).toString());
         args.push("-tickrate", (options.tickrate || 128).toString());
+        
         if (options.vac_enabled === false) args.push("-insecure");
 
         // Group 2: Console Variables / Plus Parameters
@@ -140,7 +171,7 @@ class RuntimeService {
             args.push("+tv_autorecord", "0");
         }
 
-        // Feature Parity: Additional Launch Arguments (mixed, usually best late)
+        // Feature Parity: Additional Launch Arguments
         if (options.additional_args) {
             const extraArgs = options.additional_args.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
             if (extraArgs.length > 0) {
@@ -148,15 +179,24 @@ class RuntimeService {
             }
         }
 
-        // Map parameter - usually best last to ensure all cvars are set
+        // Map parameter
         args.push(isWorkshopID(mapName) ? "+host_workshop_map" : "+map", mapName);
+
+        // Combine nice/wrapper/binary args
+        let combinedArgs = [...finalArgs, ...args];
+
+        // Apply RAM Limit via shell if set
+        if (ramLimitMb > 0) {
+            const limitKb = ramLimitMb * 1024;
+            const fullCommand = `${executable} ${combinedArgs.map(a => `"${a}"`).join(" ")}`;
+            executable = "sh";
+            combinedArgs = ["-c", `ulimit -v ${limitKb} && exec ${fullCommand}`];
+        }
 
         // 4. Environment (Linux Only)
         const env: NodeJS.ProcessEnv = { ...process.env };
-        const binDir = path.dirname(cs2Exe);
+        const binDir = path.dirname(cs2BinLocal);
         
-        // CS2 Linux needs LD_LIBRARY_PATH set to its bin directory
-        // Fix: Add ~/.steam/sdk64 for Steam client initialization (fixes "Universe is invalid")
         const homeDir = process.env.HOME || "/home/quatrix";
         const steamSdk64 = path.join(homeDir, ".steam", "sdk64");
         
@@ -169,17 +209,17 @@ class RuntimeService {
         
         env.LD_LIBRARY_PATH = libraryPaths.join(":");
 
-        // 5. Spawn with file redirection to prevent SIGPIPE on backend exit
+        // 5. Spawn with file redirection
         const logFilePath = path.join(instancePath, "console.log");
         const logFd = fs.openSync(logFilePath, 'a');
 
-        console.log(`[Runtime] Spawning instance ${id}: ${cs2Exe} ${args.join(" ")}`);
+        console.log(`[Runtime] Spawning instance ${id}: ${executable} ${combinedArgs.join(" ")}`);
         
-        const proc = spawn(cs2Exe, args, {
+        const proc = spawn(executable, combinedArgs, {
             cwd: instancePath,
             env,
-            detached: true, // Detached on Linux
-            stdio: ['ignore', logFd, logFd] // Redirect both stdout and stderr to the log file
+            detached: true,
+            stdio: ['ignore', logFd, logFd]
         });
 
         // Close the FD in our process as the child now has its own copy

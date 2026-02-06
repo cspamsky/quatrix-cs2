@@ -251,14 +251,14 @@ const Plugins = () => {
   };
 
   const handleSaveConfig = async () => {
-    if (!selectedServer || !selectedFilePath) return;
+    if (!selectedServer || !selectedFilePath || !configModalPlugin) return;
     
     setIsSaving(true);
     try {
-        const res = await apiFetch(`/api/servers/${selectedServer}/files/write`, {
+        const res = await apiFetch(`/api/servers/${selectedServer}/plugins/${configModalPlugin.id}/configs`, {
             method: 'POST',
             body: JSON.stringify({
-                path: selectedFilePath,
+                filePath: selectedFilePath,
                 content: editingContent
             })
         });

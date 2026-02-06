@@ -79,7 +79,9 @@ export const createServerSchema = z.object({
   validate_files: z.number().int().min(0).max(1).default(0),
   additional_args: z.string().nullable().optional(),
   tickrate: z.number().int().min(1).max(128).default(128),
-  auto_start: z.boolean().optional().default(false)
+  auto_start: z.boolean().optional().default(false),
+  cpu_priority: z.number().int().min(-20).max(19).optional().default(0),
+  ram_limit: z.number().int().min(0).optional().default(0)
 });
 
 // Middleware for this router
@@ -121,6 +123,23 @@ router.get("/", (req: any, res) => {
   } catch (error) {
     console.error("Fetch servers error:", error);
     res.status(500).json({ message: "Failed to fetch servers" });
+  }
+});
+
+// GET /api/servers/stats (Dashboard summary)
+router.get("/stats", (req: any, res) => {
+  try {
+    const counts = db.prepare(`
+      SELECT 
+        (SELECT COUNT(*) FROM servers WHERE user_id = ?) as servers,
+        (SELECT COUNT(*) FROM workshop_maps) as maps,
+        (SELECT IFNULL(SUM(CAST(max_players AS INTEGER)), 0) FROM servers WHERE user_id = ?) as players
+    `).get(req.user.id, req.user.id) as any;
+    
+    res.json(counts || { servers: 0, maps: 0, players: 0 });
+  } catch (error) {
+    console.error("Fetch stats error:", error);
+    res.status(500).json({ message: "Failed to fetch dashboard stats" });
   }
 });
 
@@ -177,7 +196,7 @@ router.put("/:id", (req: any, res) => {
         name, map, max_players, port, password, rcon_password, 
         vac_enabled, gslt_token, steam_api_key, game_type, 
         game_mode, tickrate, game_alias, hibernate, 
-        validate_files, additional_args 
+        validate_files, additional_args, cpu_priority, ram_limit
     } = req.body;
   
   try {
@@ -185,18 +204,18 @@ router.put("/:id", (req: any, res) => {
     if (!server) return res.status(404).json({ message: "Server not found" });
 
     db.prepare(`
-      UPDATE servers 
       SET name = ?, map = ?, max_players = ?, port = ?, password = ?, 
           rcon_password = ?, vac_enabled = ?, gslt_token = ?, steam_api_key = ?,
           game_type = ?, game_mode = ?, tickrate = ?, game_alias = ?,
-          hibernate = ?, validate_files = ?, additional_args = ?
+          hibernate = ?, validate_files = ?, additional_args = ?,
+          cpu_priority = ?, ram_limit = ?
       WHERE id = ?
     `).run(
         name, map, max_players, port, password, rcon_password, 
         vac_enabled ? 1 : 0, gslt_token, steam_api_key, 
         game_type || 0, game_mode || 0, tickrate || 128, 
         game_alias || null, hibernate ?? 1, validate_files ?? 0, 
-        additional_args || null, id
+        additional_args || null, cpu_priority || 0, ram_limit || 0, id
     );
  
     // Emit socket event for real-time UI update
@@ -222,7 +241,7 @@ router.post("/", createServerLimiter, (req: any, res) => {
         name, port, rcon_password, map, max_players, password, 
         gslt_token, steam_api_key, vac_enabled, game_type, 
         game_mode, tickrate, auto_start, game_alias, 
-        hibernate, validate_files, additional_args 
+        hibernate, validate_files, additional_args, cpu_priority, ram_limit
     } = result.data;
     
     const result_count = db.prepare("SELECT count(*) as count FROM servers WHERE port = ?").get(port) as { count: number } | undefined;
@@ -237,15 +256,17 @@ router.post("/", createServerLimiter, (req: any, res) => {
         name, port, rcon_password, status, is_installed, user_id, 
         map, max_players, password, gslt_token, steam_api_key, 
         vac_enabled, game_type, game_mode, tickrate, auto_start,
-        game_alias, hibernate, validate_files, additional_args
+        game_alias, hibernate, validate_files, additional_args,
+        cpu_priority, ram_limit
       )
-      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         name, port, rcon_password, req.user.id, map, max_players, 
         password, gslt_token, steam_api_key, vac_enabled, 
         game_type || 0, game_mode || 0, tickrate || 128, 
         auto_start ? 1 : 0, game_alias || null, hibernate ?? 1, 
-        validate_files ?? 0, additional_args || null
+        validate_files ?? 0, additional_args || null, 
+        cpu_priority || 0, ram_limit || 0
     );
  
     const serverId = info.lastInsertRowid as number;

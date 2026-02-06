@@ -107,5 +107,27 @@ router.delete("/workshop/:id", (req, res) => {
     }
 });
 
+// POST /api/maps/workshop/:serverId - Set active workshop map for server
+router.post("/workshop/:serverId", async (req: any, res) => {
+    const { serverId } = req.params;
+    const { workshop_id } = req.body;
+
+    if (!workshop_id) {
+        return res.status(400).json({ message: "Workshop ID is required" });
+    }
+
+    try {
+        const server = db.prepare("SELECT id FROM servers WHERE id = ? AND user_id = ?").get(serverId, req.user.id);
+        if (!server) return res.status(404).json({ message: "Server not found" });
+
+        // Update server's active map to the workshop ID
+        db.prepare("UPDATE servers SET map = ? WHERE id = ?").run(workshop_id, serverId);
+        
+        res.json({ success: true, message: `Active workshop map set to ${workshop_id}` });
+    } catch (error: any) {
+        res.status(500).json({ message: "Failed to set active workshop map" });
+    }
+});
+
 export default router;
 

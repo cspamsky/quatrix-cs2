@@ -34,8 +34,11 @@ const CreateInstance = () => {
     gameAlias: 'competitive', // Default to Competitive alias
     hibernate: true,
     validateFiles: false,
+    autoUpdate: false,
     additionalArgs: '',
-    region: 3 // Default to Europe
+    region: 3, // Default to Europe
+    cpuPriority: 0,
+    ramLimit: 0
   })
 
   const nextStep = () => setStep(s => Math.min(s + 1, 3))
@@ -71,9 +74,12 @@ const CreateInstance = () => {
           game_alias: formData.gameAlias,
           hibernate: formData.hibernate ? 1 : 0,
           validate_files: formData.validateFiles ? 1 : 0,
+          auto_update: formData.autoUpdate ? 1 : 0,
           additional_args: formData.additionalArgs || null,
           auto_start: formData.autoStart,
-          region: formData.region
+          region: formData.region,
+          cpu_priority: formData.cpuPriority,
+          ram_limit: formData.ramLimit
         }),
       })
 
@@ -401,6 +407,59 @@ const CreateInstance = () => {
                     </button>
                     <span className="text-sm text-gray-300">{t('createInstance.enable_vac')}</span>
                   </div>
+
+                  <div className="flex items-center gap-3 p-4 bg-[#0F172A]/50 border border-amber-900/30 rounded-xl hover:border-amber-700/50 transition-all group">
+                    <button
+                      aria-label="Toggle Auto-Update"
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, autoUpdate: !prev.autoUpdate }))}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.autoUpdate ? 'bg-amber-600' : 'bg-gray-700'}`}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.autoUpdate ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                    <div className="flex flex-col">
+                        <span className="text-sm text-gray-300 font-semibold group-hover:text-amber-200 transition-colors">{t('createInstance.auto_update')}</span>
+                        <span className="text-[10px] text-amber-500/70 uppercase font-bold tracking-tight">{t('createInstance.auto_update_desc')}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Performance Orchestration */}
+                <div className="pt-6 border-t border-gray-800">
+                   <h3 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
+                     <Settings2 className="text-primary" size={20} />
+                     {t('createInstance.performance_orchestration')}
+                   </h3>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2">
+                          <label className="block text-sm font-bold text-gray-400">{t('createInstance.cpu_priority')}</label>
+                          <select 
+                             name="cpuPriority"
+                             value={formData.cpuPriority}
+                             onChange={handleInputChange}
+                             className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
+                          >
+                             <option value="-10">{t('serverSettings.cpu_high')}</option>
+                             <option value="0">{t('serverSettings.cpu_normal')}</option>
+                             <option value="10">{t('serverSettings.cpu_low')}</option>
+                             <option value="19">{t('serverSettings.cpu_idle')}</option>
+                          </select>
+                      </div>
+                      <div className="space-y-2">
+                          <label className="block text-sm font-bold text-gray-400">{t('createInstance.ram_limit')}</label>
+                          <select 
+                             name="ramLimit"
+                             value={formData.ramLimit}
+                             onChange={handleInputChange}
+                             className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
+                          >
+                             <option value="0">{t('serverSettings.ram_unlimited')}</option>
+                             <option value="4096">4 GB</option>
+                             <option value="8192">8 GB</option>
+                             <option value="16384">16 GB</option>
+                          </select>
+                      </div>
+                   </div>
                 </div>
               </div>
             )}
