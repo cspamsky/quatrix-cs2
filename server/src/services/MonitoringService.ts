@@ -51,7 +51,7 @@ class MonitoringService {
       } catch (error) {
         console.error("[MonitoringService] Stats collection error:", error);
       }
-    }, 2000);
+    }, 1000);
     
     console.log("\x1b[32m[SYSTEM]\x1b[0m Monitoring Service started.");
   }
@@ -60,7 +60,7 @@ class MonitoringService {
     return this.statsHistory;
   }
 
-  private async collectStats(): Promise<SystemStats> {
+  private async collectStats(): Promise<SystemStats & { healthScore: number, uptime: string }> {
     const [cpu, mem, net, disk, fs] = await Promise.all([
       si.currentLoad().catch(() => ({ currentLoad: 0 })),
       si.mem().catch(() => ({ active: 0, total: 1 })),
@@ -68,6 +68,24 @@ class MonitoringService {
       si.disksIO().catch(() => ({ rIO: 0, wIO: 0 })),
       si.fsStats().catch(() => ({ rx: 0, wx: 0 }))
     ]);
+
+    const time = si.time(); // Synchronous call
+
+    // Format Uptime (e.g. 2d 5h 30m)
+    const formatUptime = (seconds: number) => {
+      const days = Math.floor(seconds / (3600 * 24));
+      const hours = Math.floor((seconds % (3600 * 24)) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return `${days > 0 ? days + 'd ' : ''}${hours}h ${minutes}m`;
+    };
+
+    // Calculate Health Score (Basic logic)
+    let healthScore = 100;
+    if (cpu.currentLoad > 80) healthScore -= 20;
+    if ((mem.active / mem.total) > 0.9) healthScore -= 20;
+    // Lower score based on load
+    healthScore -= (cpu.currentLoad / 10);
+    healthScore = Math.max(0, Math.min(100, Math.round(healthScore)));
 
     // Network calculation: Find first active interface with traffic
     let netIn = 0, netOut = 0;
@@ -79,27 +97,54 @@ class MonitoringService {
         const lastActiveNet = this.lastNetworkStats.find((n: any) => n.iface === activeNet.iface);
 
         if (lastActiveNet) {
-          netIn = Math.max(0, (activeNet.rx_bytes - lastActiveNet.rx_bytes) / 1024 / 1024 / 2);
-          netOut = Math.max(0, (activeNet.tx_bytes - lastActiveNet.tx_bytes) / 1024 / 1024 / 2);
+          // Division by 1 since interval is now 1000ms (1s)
+          netIn = Math.max(0, (activeNet.rx_bytes - lastActiveNet.rx_bytes) / 1024 / 1024);
+          netOut = Math.max(0, (activeNet.tx_bytes - lastActiveNet.tx_bytes) / 1024 / 1024);
         }
       }
     }
     this.lastNetworkStats = net;
 
-    // Disk calculation: Try disksIO first, fallback to fsStats
+    // Disk calculation: Robust check for Windows/Linux
     let diskRead = 0, diskWrite = 0;
-    if (this.lastDiskStats) {
-        // Option A: disksIO (Raw Bytes)
-        if (disk && disk.rIO > 0) {
-            diskRead = Math.max(0, (disk.rIO - this.lastDiskStats.rIO) / 1024 / 1024 / 2);
-            diskWrite = Math.max(0, (disk.wIO - this.lastDiskStats.wIO) / 1024 / 1024 / 2);
-        } 
-        // Option B: fsStats (Filesystem level) - Better on Windows sometimes
-        else if (fs && fs.rx > 0) {
-            const lastFs = this.lastDiskStats.fs || { rx: 0, wx: 0 };
-            diskRead = Math.max(0, (fs.rx - lastFs.rx) / 1024 / 1024 / 2);
-            diskWrite = Math.max(0, (fs.wx - lastFs.wx) / 1024 / 1024 / 2);
+    
+    const getDiskSum = (d: any) => {
+        if (!d) return { rIO: 0, wIO: 0, f_rx: 0, f_wx: 0 };
+        let rIO = 0, wIO = 0, f_rx = 0, f_wx = 0;
+        
+        // Sum disksIO
+        if (Array.isArray(d)) {
+            d.forEach(item => {
+                rIO += (item.rIO || 0);
+                wIO += (item.wIO || 0);
+            });
+        } else {
+            rIO = d.rIO || 0;
+            wIO = d.wIO || 0;
         }
+
+        // Sum fsStats (stored inside disk object in lastDiskStats)
+        const fsData = d.fs || fs; 
+        if (fsData) {
+            f_rx = fsData.rx || 0;
+            f_wx = fsData.wx || 0;
+        }
+
+        return { rIO, wIO, f_rx, f_wx };
+    };
+
+    if (this.lastDiskStats) {
+        const current = getDiskSum(disk);
+        const last = getDiskSum(this.lastDiskStats);
+
+        const d_r = current.rIO - last.rIO;
+        const d_w = current.wIO - last.wIO;
+        const f_r = current.f_rx - last.f_rx;
+        const f_w = current.f_wx - last.f_wx;
+
+        // Use whichever source provides data (non-zero delta)
+        diskRead = Math.max(0, Math.max(d_r, f_r) / 1024 / 1024);
+        diskWrite = Math.max(0, Math.max(d_w, f_w) / 1024 / 1024);
     }
     this.lastDiskStats = { ...disk, fs };
 
@@ -116,7 +161,9 @@ class MonitoringService {
       netOut: netOut.toFixed(2),
       diskRead: diskRead.toFixed(2),
       diskWrite: diskWrite.toFixed(2),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      healthScore,
+      uptime: formatUptime(time.uptime)
     };
   }
 }

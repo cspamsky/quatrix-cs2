@@ -114,14 +114,32 @@ const Dashboard = () => {
   }
 
   const stats_items = [
-    { label: t('dashboard.servers'), value: serverStats?.servers || 0, icon: Server, color: 'text-blue-500', sub: t('dashboard.active_instances') },
-    { label: t('dashboard.players'), value: serverStats?.players || 0, icon: Users, color: 'text-green-500', sub: t('dashboard.online_total') },
-    { label: t('dashboard.uptime'), value: '99.9%', icon: Activity, color: 'text-purple-500', sub: t('dashboard.server_health') },
+    { 
+      label: t('dashboard.servers'), 
+      value: `${serverStats?.activeServers || 0} / ${serverStats?.totalServers || 0}`, 
+      icon: Server, 
+      color: 'text-blue-500', 
+      sub: t('dashboard.active_instances') 
+    },
+    { 
+      label: t('dashboard.players'), 
+      value: `${serverStats?.onlinePlayers || 0} / ${serverStats?.totalCapacity || 0}`, 
+      icon: Users, 
+      color: 'text-green-500', 
+      sub: t('dashboard.online_total') 
+    },
+    { 
+      label: t('dashboard.uptime'), 
+      value: (stats as any).uptime || '0h 0m', 
+      icon: Activity, 
+      color: 'text-purple-500', 
+      sub: `${t('dashboard.server_health')}: %${(stats as any).healthScore || 100}` 
+    },
     { label: t('dashboard.maps'), value: serverStats?.maps || 0, icon: MapIcon, color: 'text-orange-500', sub: t('dashboard.available_maps') },
   ]
 
   return (
-    <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="w-full p-4 sm:p-6 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -139,7 +157,7 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats_items.map((item, index) => (
           <div key={index} className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 hover:border-white/10 transition-all hover:translate-y-[-2px] group shadow-lg shadow-black/20">
             <div className="flex items-center justify-between mb-4">
@@ -163,12 +181,36 @@ const Dashboard = () => {
         currentStats={stats} 
       />
 
+      {/* Quick Actions Bar */}
+      <div>
+          <h2 className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-4 pl-1">{t('dashboard.actions_title')}</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { icon: Terminal, label: t('dashboard.action_console'), path: '/console' },
+              { icon: Plus, label: t('dashboard.action_new_server'), path: '/instances/create' },
+              { icon: Users, label: t('dashboard.action_manage_players'), path: '/players' },
+              { icon: MapIcon, label: t('dashboard.action_map_rotation'), path: '/maps' },
+            ].map((action, i) => (
+              <button 
+                key={i}
+                onClick={() => navigate(action.path)}
+                className="flex items-center gap-4 p-4 bg-[#111827] rounded-2xl border border-gray-800/60 hover:border-primary/50 hover:bg-primary/5 transition-all group shadow-lg shadow-black/10"
+              >
+                <div className="p-2.5 rounded-xl bg-gray-800/50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                  <action.icon size={18} />
+                </div>
+                <span className="text-[10px] font-black text-gray-400 group-hover:text-white uppercase tracking-wider">{action.label}</span>
+              </button>
+            ))}
+          </div>
+      </div>
+
       {/* Activity Feed Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         
         {/* Activity Feed */}
         <div className="xl:col-span-3 bg-[#111827] rounded-2xl border border-gray-800/60 overflow-hidden flex flex-col shadow-lg shadow-black/20 h-full min-h-[220px]">
-          <div className="flex-1 divide-y divide-gray-800/40 overflow-y-auto max-h-[160px] custom-scrollbar">
+          <div className="flex-1 divide-y divide-gray-800/40 overflow-y-auto max-h-[220px] custom-scrollbar">
             {activities.length > 0 ? activities.map((activity, idx) => (
               <div key={activity.id || idx} className="px-6 py-3 flex items-center justify-between hover:bg-white/[0.01] transition-all group">
                 <div className="flex items-center gap-4">
@@ -209,30 +251,6 @@ const Dashboard = () => {
             <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
-      </div>
-
-      {/* Quick Actions Bar */}
-      <div className="pt-4">
-          <h2 className="text-sm font-black text-gray-500 uppercase tracking-[0.2em] mb-4 pl-1">{t('dashboard.actions_title')}</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              { icon: Terminal, label: t('dashboard.action_console'), path: '/console' },
-              { icon: Plus, label: t('dashboard.action_new_server'), path: '/instances/create' },
-              { icon: Users, label: t('dashboard.action_manage_players'), path: '/players' },
-              { icon: MapIcon, label: t('dashboard.action_map_rotation'), path: '/maps' },
-            ].map((action, i) => (
-              <button 
-                key={i}
-                onClick={() => navigate(action.path)}
-                className="flex items-center gap-4 p-4 bg-[#111827] rounded-2xl border border-gray-800/60 hover:border-primary/50 hover:bg-primary/5 transition-all group shadow-lg shadow-black/10"
-              >
-                <div className="p-2.5 rounded-xl bg-gray-800/50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                  <action.icon size={18} />
-                </div>
-                <span className="text-[10px] font-black text-gray-400 group-hover:text-white uppercase tracking-wider">{action.label}</span>
-              </button>
-            ))}
-          </div>
       </div>
     </div>
   )

@@ -101,12 +101,19 @@ router.post("/system/health/repair", async (req: any, res) => {
 // GET /api/system-info
 router.get("/system-info", async (req: any, res) => {
     try {
-        const os = await si.osInfo();
+        const [os, mem, cpu] = await Promise.all([
+            si.osInfo(),
+            si.mem(),
+            si.cpu()
+        ]);
+        
         res.json({
             os: `${os.distro} ${os.release}`,
             arch: os.arch,
             hostname: os.hostname,
-            publicIp: cachedPublicIp
+            publicIp: cachedPublicIp,
+            cpuModel: `${cpu.manufacturer} ${cpu.brand}`,
+            totalMemory: Math.round(mem.total / 1024 / 1024) // MB
         });
     } catch (error) {
         res.status(500).json({ message: "Failed to fetch system info" });

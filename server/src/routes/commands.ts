@@ -3,6 +3,7 @@ import db from "../db.js";
 import { serverManager } from "../serverManager.js";
 import { taskService } from "../services/TaskService.js";
 import { authenticateToken } from "../middleware/auth.js";
+import { logActivity } from "../index.js";
 
 const router = Router();
 
@@ -23,6 +24,8 @@ router.post("/:id/start", async (req: any, res) => {
         db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(id);
         if (io) io.emit('status_update', { serverId: parseInt(id), status: 'ONLINE' });
 
+        logActivity('SERVER_START', `${server.name} sunucusu başlatıldı`, 'SUCCESS', req.user?.id);
+
         res.json({ message: "Server starting..." });
     } catch (error: any) {
         res.status(500).json({ message: error.message || "Failed to start server" });
@@ -35,10 +38,13 @@ router.post("/:id/stop", async (req: any, res) => {
         const id = req.params.id;
         await serverManager.stopServer(id);
         
+        const server = db.prepare("SELECT name FROM servers WHERE id = ?").get(id) as any;
         db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
         const io = req.app.get('io');
         if (io) io.emit('status_update', { serverId: parseInt(id), status: 'OFFLINE' });
         
+        logActivity('SERVER_STOP', `${server?.name || id} sunucusu durduruldu`, 'INFO', req.user?.id);
+
         res.json({ message: "Server stopping..." });
     } catch (error) {
         res.status(500).json({ message: "Failed to stop server" });
@@ -156,6 +162,9 @@ router.post("/:id/rcon", async (req: any, res) => {
             io.emit(`console:${id}`, response);
         }
         
+        const server = db.prepare("SELECT name FROM servers WHERE id = ?").get(id) as any;
+        logActivity('RCON_COMMAND', `${server?.name || id}: ${command} komutu gönderildi`, 'INFO', req.user?.id);
+
         res.json({ success: true, response });
     } catch (error: any) {
         res.status(500).json({ message: error.message || "RCON command failed" });

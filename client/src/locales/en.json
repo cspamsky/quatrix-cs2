@@ -188,7 +188,7 @@
     "action_console": "Open Console",
     "action_new_server": "New Server",
     "action_manage_players": "Manage Players",
-    "action_map_manager": "Map Manager",
+    "action_map_rotation": "Map Rotation",
     "cpu_usage": "CPU Usage",
     "ram_usage": "RAM Usage",
     "net_traffic": "Network Traffic",

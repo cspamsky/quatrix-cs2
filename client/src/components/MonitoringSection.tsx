@@ -65,7 +65,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({ data, systemInfo,
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
       {/* CPU Mega Card */}
       <div className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 shadow-lg shadow-black/20 overflow-hidden relative group transition-all hover:border-blue-500/30">
         <div className="relative z-10">
@@ -94,7 +94,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({ data, systemInfo,
                 <Tooltip content={<CustomTooltip unit="%" />} />
                 <Area 
                   name="CPU" type="monotone" dataKey="cpu" stroke="#3b82f6" strokeWidth={2}
-                  fillOpacity={1} fill="url(#colorCpu)" animationDuration={1000} isAnimationActive={false}
+                  fillOpacity={1} fill="url(#colorCpu)" animationDuration={800} isAnimationActive={true}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -131,7 +131,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({ data, systemInfo,
                 <Tooltip content={<CustomTooltip unit="%" />} />
                 <Area 
                   name="RAM" type="monotone" dataKey="ram" stroke="#a855f7" strokeWidth={2}
-                  fillOpacity={1} fill="url(#colorRam)" animationDuration={1000} isAnimationActive={false}
+                  fillOpacity={1} fill="url(#colorRam)" animationDuration={800} isAnimationActive={true}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -171,7 +171,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({ data, systemInfo,
                 <Tooltip content={<CustomTooltip unit="MB/s" />} />
                 <Area 
                   name="Network" type="monotone" dataKey="netIn" stroke="#10b981" strokeWidth={2}
-                  fillOpacity={1} fill="url(#colorNet)" animationDuration={1000} isAnimationActive={false}
+                  fillOpacity={1} fill="url(#colorNet)" animationDuration={800} isAnimationActive={true}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -208,7 +208,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({ data, systemInfo,
                 <Tooltip content={<CustomTooltip unit="MB/s" />} />
                 <Area 
                   name="Disk" type="monotone" dataKey="diskRead" stroke="#f97316" strokeWidth={2}
-                  fillOpacity={1} fill="url(#colorDisk)" animationDuration={1000} isAnimationActive={false}
+                  fillOpacity={1} fill="url(#colorDisk)" animationDuration={800} isAnimationActive={true}
                 />
               </AreaChart>
             </ResponsiveContainer>

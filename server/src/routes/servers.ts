@@ -8,8 +8,8 @@ import { authenticateToken } from "../middleware/auth.js";
 import { createServerLimiter } from "../middleware/rateLimiter.js";
 import { runtimeService } from "../services/RuntimeService.js";
 import { fileSystemService } from "../services/FileSystemService.js";
-
 import { databaseManager } from "../services/DatabaseManager.js";
+import { logActivity } from "../index.js";
 
 const router = Router();
 
@@ -131,12 +131,14 @@ router.get("/stats", (req: any, res) => {
   try {
     const counts = db.prepare(`
       SELECT 
-        (SELECT COUNT(*) FROM servers WHERE user_id = ?) as servers,
+        (SELECT COUNT(*) FROM servers WHERE user_id = ?) as totalServers,
+        (SELECT COUNT(*) FROM servers WHERE user_id = ? AND status = 'ONLINE') as activeServers,
         (SELECT COUNT(*) FROM workshop_maps) as maps,
-        (SELECT IFNULL(SUM(CAST(max_players AS INTEGER)), 0) FROM servers WHERE user_id = ?) as players
-    `).get(req.user.id, req.user.id) as any;
+        (SELECT IFNULL(SUM(CAST(current_players AS INTEGER)), 0) FROM servers WHERE user_id = ?) as onlinePlayers,
+        (SELECT IFNULL(SUM(CAST(max_players AS INTEGER)), 0) FROM servers WHERE user_id = ?) as totalCapacity
+    `).get(req.user.id, req.user.id, req.user.id, req.user.id) as any;
     
-    res.json(counts || { servers: 0, maps: 0, players: 0 });
+    res.json(counts || { totalServers: 0, activeServers: 0, maps: 0, onlinePlayers: 0, totalCapacity: 0 });
   } catch (error) {
     console.error("Fetch stats error:", error);
     res.status(500).json({ message: "Failed to fetch dashboard stats" });
@@ -182,6 +184,7 @@ router.delete("/:id", async (req: any, res) => {
     await databaseManager.dropDatabase(server.id);
 
     db.prepare("DELETE FROM servers WHERE id = ?").run(req.params.id);
+    logActivity('SERVER_DELETE', `${server.name} sunucusu ve tüm verileri silindi`, 'WARNING', req.user?.id);
     res.json({ message: "Server deleted successfully" });
   } catch (error: any) {
     console.error("Delete server error:", error);
@@ -270,6 +273,7 @@ router.post("/", createServerLimiter, (req: any, res) => {
     );
  
     const serverId = info.lastInsertRowid as number;
+    logActivity('SERVER_CREATE', `${name} adlı yeni sunucu oluşturuldu`, 'SUCCESS', req.user?.id);
 
     // Emit socket event for real-time UI update (e.g. server list)
     const io = req.app.get('io');

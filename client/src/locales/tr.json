@@ -191,7 +191,7 @@
     "action_console": "Konsolu Aç",
     "action_new_server": "Yeni Sunucu",
     "action_manage_players": "Oyuncuları Yönet",
-    "action_map_manager": "Harita Yöneticisi",
+    "action_map_rotation": "Harita Rotasyonu",
     "cpu_usage": "CPU Kullanımı",
     "ram_usage": "RAM Kullanımı",
     "net_traffic": "Ağ Trafiği",
