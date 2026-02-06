@@ -33,6 +33,7 @@ server/trace.log
 
 # Application Data & Runtime (Unified)
 data/
+!data/plugin_pool/
 
 # Temp & Backups
 *.tmp
