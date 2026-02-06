@@ -32,7 +32,7 @@ yarn-error.log*
 server/trace.log
 
 # Application Data & Runtime (Unified)
-data/
+data/*
 !data/plugin_pool/
 
 # Temp & Backups
