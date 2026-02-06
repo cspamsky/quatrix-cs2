@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { 
   Users, 
-  Activity, 
   Search, 
   RefreshCw, 
   UserMinus, 
@@ -50,7 +49,6 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
   })
 
   const players = useMemo(() => playerData.players || [], [playerData])
-  const averagePing = playerData.averagePing || 0
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -136,15 +134,6 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
               <p className="text-xl font-bold text-white tracking-tight">{players.length}</p>
             </div>
           </div>
-          <div className="bg-[#111827] px-6 py-3 rounded-xl border border-gray-800 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-500/10 text-green-500">
-              <Activity size={18} />
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{t('players.avg_ping')}</p>
-              <p className="text-xl font-bold text-white tracking-tight">{averagePing} <span className="text-xs font-normal text-gray-600">ms</span></p>
-            </div>
-          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -176,7 +165,7 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
               <tr className="bg-[#1d1d1d]/30 text-gray-400 text-[10px] uppercase font-black tracking-widest">
                 <th className="px-6 py-4 border-b border-gray-800/50">{t('players.player_info')}</th>
                 <th className="px-6 py-4 border-b border-gray-800/50">{t('players.steam_id')}</th>
-                <th className="px-6 py-4 border-b border-gray-800/50">{t('players.latency')}</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">{t('serverCard.ip_address')}</th>
                 <th className="px-6 py-4 border-b border-gray-800/50 text-center">{t('players.connected')}</th>
                 <th className="px-6 py-4 border-b border-gray-800/50 text-right">{t('players.moderation')}</th>
               </tr>
@@ -221,11 +210,8 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
                     <td className="px-6 py-4 text-xs text-primary font-mono select-all font-semibold">
                       {player.steamId}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-1.5 h-1.5 rounded-full ${player.ping < 50 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-yellow-500'}`}></div>
-                        <span className="text-sm font-bold text-gray-300">{player.ping}ms</span>
-                      </div>
+                    <td className="px-6 py-4 text-xs font-mono text-primary font-bold">
+                      {player.ipAddress || '-'}
                     </td>
                     <td className="px-6 py-4 text-sm font-mono text-center text-gray-400">
                       {player.connected}
