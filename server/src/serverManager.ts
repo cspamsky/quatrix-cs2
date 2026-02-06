@@ -280,6 +280,7 @@ class ServerManager {
       if (onUiLog && !this.isNoise(line)) onUiLog(line);
 
       // Strip potential timestamp L 02/06/2026 - 18:00:00: (more flexible version)
+      // Works with both L MM/DD/YYYY and L DD/MM/YYYY
       const cleanLine = line.replace(/^L\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s+-\s+\d{1,2}:\d{1,2}:\d{1,2}:\s+/, "").trim();
 
       if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Processing:`, cleanLine);
@@ -331,16 +332,18 @@ class ServerManager {
     // Join/Leave Tracking
     // Example join: "PlayerName<1><[U:1:123456789]><>" entered the game
     // Example leave: "PlayerName<1><[U:1:123456789]><>" disconnected (reason "Disconnect")
-    const joinMatch = cleanLine.match(/^"(.+?)<\d+><(.+?)><.*?>" entered the game/);
-    const leaveMatch = cleanLine.match(/^"(.+?)<\d+><(.+?)><.*?>" disconnected/);
+    const joinMatch = cleanLine.match(/^"(.+?)<\d+><(.+?)><.*?>" entered the game/i);
+    const leaveMatch = cleanLine.match(/^"(.+?)<\d+><(.+?)><.*?>" disconnected/i);
 
     if (joinMatch || leaveMatch) {
-        if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Match found:`, joinMatch ? 'JOIN' : 'LEAVE');
+        if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Match found: ${joinMatch ? 'JOIN' : 'LEAVE'}`);
         const match = joinMatch || leaveMatch;
         if (match) {
             const [, name, steamId] = match;
             const eventType = joinMatch ? 'join' : 'leave';
-            const steamId64 = steamId?.startsWith("[U:") ? steamId : (steamId === "Console" ? "0" : steamId);
+            const steamId64 = steamId?.startsWith("[") ? steamId : (steamId === "Console" ? "0" : steamId);
+
+            if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Saving ${eventType} for ${name} (${steamId64})`);
 
             try {
                 this.joinLogInsertStmt.run(id, name, steamId64, eventType);
@@ -355,11 +358,6 @@ class ServerManager {
                     });
                 }
             } catch (e) {
-                // Log periodic refresh (optional, but keep it quiet)
-                if (Math.random() < 0.1) console.log(`[SERVER:${id}] Health refresh...`);
-
-                // Ensure logging is ON occasionally (side effect)
-                this.sendCommand(id, "log on").catch(() => {});
                 console.error(`[SERVER:${id}] Failed to save join log:`, e);
             }
         }
@@ -468,18 +466,35 @@ class ServerManager {
 
   public async getPlayers(id: string | number): Promise<{ players: any[]; averagePing: number }> {
       try {
-          const output = await this.sendCommand(id, "css_players");
-          if (process.env.DEBUG_RCON) console.log(`[RCON:${id}] css_players output:`, JSON.stringify(output));
+          const rawOutput = await this.sendCommand(id, "css_players");
+          if (process.env.DEBUG_RCON) console.log(`[RCON:${id}] css_players output:`, JSON.stringify(rawOutput));
           
           const players: any[] = [];
-          const lines = output.split('\n');
+          // More robust split for different newline formats
+          const lines = rawOutput.split(/[\r\n]+|\\\\n/);
           let totalPing = 0;
 
           for (const line of lines) {
               const cleanLine = line.trim();
-              if (!cleanLine.startsWith('#')) continue;
+              if (cleanLine.length < 3) continue;
 
-              // Try css_players pattern: # [userid] "name" (steamid) [ping: ms]
+              // 1. Detected SimpleAdmin format: • [#2] "Pamsky" (IP Address: "159.146.33.127" SteamID64: "76561198968591397")
+              const simpleAdminMatch = cleanLine.match(/[^\w\s]*\s*\[#(\d+)\]\s+"(.+?)"\s+\(IP Address:\s*"(.+?)"\s+SteamID64:\s+"(\d+)"\)/i);
+              if (simpleAdminMatch) {
+                  const [, userId, name, ipAddress, steamId64] = simpleAdminMatch;
+                  players.push({
+                      userId,
+                      name,
+                      steamId: steamId64,
+                      ipAddress,
+                      ping: 0,
+                      connected: "Connected",
+                      state: "Active"
+                  });
+                  continue;
+              }
+
+              // 2. Original parser pattern: # [userid] "name" (steamid) [ping: ms]
               const cssMatch = cleanLine.match(/#\s+(\d+)\s+"(.+?)"\s+\((.+?)\)\s+\[ping:\s+(\d+)ms\]/i);
               if (cssMatch) {
                   const [, userId, name, steamId64, ping] = cssMatch;
@@ -495,39 +510,17 @@ class ServerManager {
                   continue;
               }
 
-              // Try vanilla status pattern (more flexible)
-              // Example: # 2 1 "Name" [U:1:123456] 01:23 30 0 active
-              const statusMatch = cleanLine.match(/^#\s+(\d+)\s+(\d+)\s+"(.+?)"\s+([\[\]\w:_\-]+)\s+[\d:]+\s+(\d+)\s+(\d+)\s+active/i);
-              if (statusMatch) {
-                  const [, , userId, name, steamId, ping] = statusMatch;
-                  players.push({
-                      userId,
-                      name,
-                      steamId,
-                      ping: parseInt(ping || "0"),
-                      connected: "Connected",
-                      state: "Active"
-                  });
-                  totalPing += parseInt(ping || "0");
-              }
-          }
-
-          if (players.length === 0 && output.toLowerCase().includes("unknown command")) {
-              const statusOutput = await this.sendCommand(id, "status");
-              if (process.env.DEBUG_RCON) console.log(`[RCON:${id}] status fallback output:`, JSON.stringify(statusOutput));
-              
-              const statusLines = statusOutput.split('\n');
-              for (const line of statusLines) {
-                  const cleanLine = line.trim();
-                  if (!cleanLine.startsWith('#')) continue;
-                  
-                  const m = cleanLine.match(/^#\s+(\d+)\s+(\d+)\s+"(.+?)"\s+([\[\]\w:_\-]+)\s+[\d:]+\s+(\d+)\s+(\d+)\s+active/i);
-                  if (m) {
-                      const [, , userId, name, steamId, ping] = m;
+              // 3. Try vanilla status pattern (more flexible)
+              if (cleanLine.includes('#')) {
+                  // Example: # 2 1 "Name" [U:1:123456] 01:23 30 0 active 127.0.0.1:27005
+                  const statusMatch = cleanLine.match(/#\s+(\d+)\s+(\d+)\s+"(.+?)"\s+([\[\]\w:_\-]+)\s+[\d:]+\s+(\d+)\s+(\d+)\s+active\s+([\d\.:]+)/i);
+                  if (statusMatch) {
+                      const [, , userId, name, steamId, ping, , adr] = statusMatch;
                       players.push({
                           userId,
                           name,
                           steamId,
+                          ipAddress: adr ? adr.split(':')[0] : '',
                           ping: parseInt(ping || "0"),
                           connected: "Connected",
                           state: "Active"
@@ -535,6 +528,13 @@ class ServerManager {
                       totalPing += parseInt(ping || "0");
                   }
               }
+          }
+
+          if (process.env.DEBUG_RCON) console.log(`[RCON:${id}] Parsed ${players.length} players.`);
+
+          if (players.length === 0 && rawOutput.toLowerCase().includes("unknown command")) {
+              const statusOutput = await this.sendCommand(id, "status");
+              // Check fallback parsing...
           }
 
           return { 

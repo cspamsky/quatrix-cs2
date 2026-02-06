@@ -17,6 +17,7 @@ interface Player {
   userId: string
   name: string
   steamId: string
+  ipAddress?: string
   connected: string
   ping: number
   state: string
@@ -95,6 +96,7 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
       reason: banReason || 'No reason provided',
       playerName: banDialog.player.name,
       steamId: banDialog.player.steamId,
+      ipAddress: banDialog.player.ipAddress || '',
       duration: parseInt(banDuration) || 0
     }
     
