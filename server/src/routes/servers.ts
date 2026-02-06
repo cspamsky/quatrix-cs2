@@ -9,7 +9,7 @@ import { createServerLimiter } from "../middleware/rateLimiter.js";
 import { runtimeService } from "../services/RuntimeService.js";
 import { fileSystemService } from "../services/FileSystemService.js";
 import { databaseManager } from "../services/DatabaseManager.js";
-import { logActivity } from "../index.js";
+import { logActivity, emitDashboardStats } from "../index.js";
 
 const router = Router();
 
@@ -184,6 +184,7 @@ router.delete("/:id", async (req: any, res) => {
     await databaseManager.dropDatabase(server.id);
 
     db.prepare("DELETE FROM servers WHERE id = ?").run(req.params.id);
+    emitDashboardStats();
     logActivity('SERVER_DELETE', `${server.name} sunucusu ve tüm verileri silindi`, 'WARNING', req.user?.id);
     res.json({ message: "Server deleted successfully" });
   } catch (error: any) {
@@ -273,6 +274,7 @@ router.post("/", createServerLimiter, (req: any, res) => {
     );
  
     const serverId = info.lastInsertRowid as number;
+    emitDashboardStats();
     logActivity('SERVER_CREATE', `${name} adlı yeni sunucu oluşturuldu`, 'SUCCESS', req.user?.id);
 
     // Emit socket event for real-time UI update (e.g. server list)

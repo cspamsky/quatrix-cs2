@@ -17,7 +17,7 @@ import {
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { tr, enUS } from 'date-fns/locale'
 import socket from '../utils/socket'
@@ -27,6 +27,7 @@ import { apiFetch } from '../utils/api'
 const Dashboard = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const dateLocale = i18n.language.startsWith('tr') ? tr : enUS
   const [activities, setActivities] = useState<any[]>([])
   const [isConnected, setIsConnected] = useState(socket.connected)
@@ -49,15 +50,35 @@ const Dashboard = () => {
     queryFn: () => apiFetch('/api/system-info').then(res => res.json())
   })
 
-  const { data: serverStats } = useQuery({
+  const { data: serverStats, refetch: refetchServerStats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () => apiFetch('/api/servers/stats').then(res => res.json()),
-    refetchInterval: 10000
+    refetchInterval: 5000,
+    initialData: JSON.parse(localStorage.getItem('last_dashboard_stats') || 'null')
   })
+
+  useEffect(() => {
+    if (serverStats) {
+      localStorage.setItem('last_dashboard_stats', JSON.stringify(serverStats))
+    }
+  }, [serverStats])
+
+  const { data: initialActivities } = useQuery<any[]>({
+    queryKey: ['recent-activities'],
+    queryFn: () => apiFetch('/api/logs/activity/recent').then(res => res.json())
+  })
+
+  useEffect(() => {
+    // Sync initial activities if they change (e.g. from cache)
+    if (initialActivities) {
+      setActivities(initialActivities)
+    }
+  }, [initialActivities])
 
   useEffect(() => {
     function onConnect() {
       setIsConnected(true)
+      refetchServerStats() // Get fresh data on connect
     }
 
     function onDisconnect() {
@@ -76,12 +97,16 @@ const Dashboard = () => {
       setStatsHistory(data)
     })
 
+    socket.on('dashboard_stats', (data: any) => {
+      queryClient.setQueryData(['dashboard-stats'], data)
+    })
+
     socket.on('recent_activity', (data: any[]) => {
       setActivities(data)
     })
 
     socket.on('activity', (data: any) => {
-      setActivities(prev => [data, ...prev].slice(0, 10))
+      setActivities(prev => [data, ...prev].slice(0, 15))
     })
 
     return () => {

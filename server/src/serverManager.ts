@@ -11,6 +11,7 @@ import { lockService } from "./services/LockService.js";
 import { runtimeService } from "./services/RuntimeService.js";
 import { taskService } from "./services/TaskService.js";
 import type { PluginId } from "./config/plugins.js";
+import { emitDashboardStats } from "./index.js";
 
 import { promisify } from "util";
 const execAsync = promisify(exec);
@@ -801,6 +802,7 @@ class ServerManager {
               }
           } catch {}
       }
+      emitDashboardStats(); // Trigger dashboard update after polling all servers
   }
   
   // --- Plugin Management Wrappers ---

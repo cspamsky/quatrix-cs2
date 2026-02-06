@@ -144,6 +144,25 @@ if (isProduction) {
 }
 
 /**
+ * Global Dashboard Stats Emitter
+ */
+export const emitDashboardStats = async () => {
+    try {
+        const counts = db.prepare(`
+            SELECT 
+                (SELECT COUNT(*) FROM servers) as totalServers,
+                (SELECT COUNT(*) FROM servers WHERE status = 'ONLINE') as activeServers,
+                (SELECT COUNT(*) FROM workshop_maps) as maps,
+                (SELECT IFNULL(SUM(CAST(current_players AS INTEGER)), 0) FROM servers) as onlinePlayers,
+                (SELECT IFNULL(SUM(CAST(max_players AS INTEGER)), 0) FROM servers) as totalCapacity
+        `).get() as any;
+        io.emit('dashboard_stats', counts);
+    } catch (err) {
+        console.error("[STATS] Failed to emit dashboard stats:", err);
+    }
+};
+
+/**
  * Global Activity Logger
  */
 export const logActivity = (type: string, message: string, severity: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS' = 'INFO', userId?: number) => {

@@ -6,6 +6,21 @@ const router = Router();
 
 router.use(authenticateToken);
 
+// GET /api/logs/activity (Global Activity Logs)
+router.get("/activity/recent", (req: any, res) => {
+    try {
+        const logs = db.prepare(`
+            SELECT * FROM activity_logs 
+            ORDER BY created_at DESC 
+            LIMIT 15
+        `).all();
+        res.json(logs);
+    } catch (error) {
+        console.error("Fetch activity logs error:", error);
+        res.status(500).json({ message: "Failed to fetch activity logs" });
+    }
+});
+
 // GET /api/logs/:serverId
 router.get("/:serverId", (req: any, res) => {
     const { serverId } = req.params;

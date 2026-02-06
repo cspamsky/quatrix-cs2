@@ -3,7 +3,7 @@ import db from "../db.js";
 import { serverManager } from "../serverManager.js";
 import { taskService } from "../services/TaskService.js";
 import { authenticateToken } from "../middleware/auth.js";
-import { logActivity } from "../index.js";
+import { logActivity, emitDashboardStats } from "../index.js";
 
 const router = Router();
 
@@ -23,6 +23,7 @@ router.post("/:id/start", async (req: any, res) => {
 
         db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(id);
         if (io) io.emit('status_update', { serverId: parseInt(id), status: 'ONLINE' });
+        emitDashboardStats();
 
         logActivity('SERVER_START', `${server.name} sunucusu başlatıldı`, 'SUCCESS', req.user?.id);
 
@@ -42,6 +43,7 @@ router.post("/:id/stop", async (req: any, res) => {
         db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id);
         const io = req.app.get('io');
         if (io) io.emit('status_update', { serverId: parseInt(id), status: 'OFFLINE' });
+        emitDashboardStats();
         
         logActivity('SERVER_STOP', `${server?.name || id} sunucusu durduruldu`, 'INFO', req.user?.id);
 
