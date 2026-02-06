@@ -71,10 +71,10 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
     toast.success(t('players.ban_history_updated'))
   }
 
-  const filteredBans = bans.filter((ban: BanRecord) => 
+  const filteredBans = Array.isArray(bans) ? bans.filter((ban: BanRecord) => 
     ban.player_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     ban.steam_id?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  ) : []
 
   return (
     <div className="space-y-6">

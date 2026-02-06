@@ -210,6 +210,7 @@ class ServerManager {
     };
     cfgContent = updateLine(cfgContent, "sv_password", options.password || "");
     cfgContent = updateLine(cfgContent, "rcon_password", options.rcon_password || "secret");
+    cfgContent = updateLine(cfgContent, "log", "on"); // Ensure logging is on
     // Use the region setting from database, default to 3 (Europe)
     const region = mergedOptions.region !== undefined ? mergedOptions.region : "3";
     cfgContent = updateLine(cfgContent, "sv_region", region.toString());
@@ -278,11 +279,14 @@ class ServerManager {
   private handleLog(id: string, line: string, onUiLog?: (l: string) => void) {
       if (onUiLog && !this.isNoise(line)) onUiLog(line);
 
+      // Strip potential timestamp L 02/06/2026 - 18:00:00:
+      const cleanLine = line.replace(/^L\s+\d{2}\/\d{2}\/\d{4}\s+-\s+\d{2}:\d{2}:\d{2}:\s+/, "");
+
       // Player Tracking logic
-      const steam64Match = line.match(/steamid:(\d{17})/i);
+      const steam64Match = cleanLine.match(/steamid:(\d{17})/i);
       if (steam64Match && steam64Match[1]) {
           const steamId64 = steam64Match[1];
-          const nameMatch = line.match(/['"](.+?)['"]/);
+          const nameMatch = cleanLine.match(/['"](.+?)['"]/);
           if (nameMatch && nameMatch[1]) {
               const name = nameMatch[1];
               if (!this.playerIdentityCache.has(id))
@@ -298,7 +302,7 @@ class ServerManager {
       // Chat Message Tracking
       // Example say: "PlayerName<1><SteamID><>" say "MessageContent"
       // Example team say: "PlayerName<1><SteamID><TeamName>" say_team "MessageContent"
-      const chatMatch = line.match(/^"(.+?)<\d+><(.+?)><.*?>" (say|say_team) "(.*)"$/);
+      const chatMatch = cleanLine.match(/^"(.+?)<\d+><(.+?)><.*?>" (say|say_team) "(.*)"$/);
       if (chatMatch) {
           const [, name, steamId, type, message] = chatMatch;
           const steamId64 = steamId === "Console" ? "0" : steamId;
@@ -325,15 +329,15 @@ class ServerManager {
     // Join/Leave Tracking
     // Example join: "PlayerName<1><[U:1:123456789]><>" entered the game
     // Example leave: "PlayerName<1><[U:1:123456789]><>" disconnected (reason "Disconnect")
-    const joinMatch = line.match(/^"(.+?)<\d+><(.+?)><.*?>" entered the game$/);
-    const leaveMatch = line.match(/^"(.+?)<\d+><(.+?)><.*?>" disconnected/);
+    const joinMatch = cleanLine.match(/^"(.+?)<\d+><(.+?)><.*?>" entered the game$/);
+    const leaveMatch = cleanLine.match(/^"(.+?)<\d+><(.+?)><.*?>" disconnected/);
 
     if (joinMatch || leaveMatch) {
         const match = joinMatch || leaveMatch;
         if (match) {
             const [, name, steamId] = match;
             const eventType = joinMatch ? 'join' : 'leave';
-            const steamId64 = steamId === "Console" ? "0" : steamId;
+            const steamId64 = steamId?.startsWith("[U:") ? steamId : (steamId === "Console" ? "0" : steamId);
 
             try {
                 this.joinLogInsertStmt.run(id, name, steamId64, eventType);
@@ -456,14 +460,60 @@ class ServerManager {
 
   public async getPlayers(id: string | number): Promise<{ players: any[]; averagePing: number }> {
       try {
-          // Try css_players or status logic here?
-          // For simplicity in this refactor, we stick to status parsing or empty
-          const output = await this.sendCommand(id, "status");
-          // Parse output (Simple implementation)
-          // Real implementation assumes 'status' output parsing logic matches original code
-          // For brevity, returning empty handled by frontend usually
-          return { players: [], averagePing: 0 };
-      } catch {
+          // Use css_players for SimpleAdmin
+          const output = await this.sendCommand(id, "css_players");
+          
+          // Pattern: # [userid] name (steamid) [ping: ms]
+          // Example: # 1 "PlayerName" (76561198000000000) [ping: 30ms] 
+          const players: any[] = [];
+          const lines = output.split('\n');
+          let totalPing = 0;
+
+          for (const line of lines) {
+              const match = line.match(/#\s+(\d+)\s+"(.+?)"\s+\((.+?)\)\s+\[ping:\s+(\d+)ms\]/i);
+              if (match) {
+                  const [, userId, name, steamId64, ping] = match;
+                  players.push({
+                      userId,
+                      name,
+                      steamId: steamId64,
+                      ping: parseInt(ping || "0"),
+                      connected: "Connected",
+                      state: "Active"
+                  });
+                  totalPing += parseInt(ping || "0");
+              }
+          }
+
+          // Fallback if css_players is not available or failed to parse, try vanilla status
+          if (players.length === 0) {
+              const statusOutput = await this.sendCommand(id, "status");
+              // # userid name                uniqueid            connected ping loss state  adr
+              // # 2 1 "Player"             STEAM_1:0:123456    01:23      30    0 active 127.0.0.1:27005
+              const statusLines = statusOutput.split('\n');
+              for (const line of statusLines) {
+                  const m = line.match(/^\#\s+(\d+)\s+\d+\s+"(.+?)"\s+(STEAM_\d+:\d+:\d+|\[U:\d+:\d+\]|7656\d+)\s+[\d:]+\s+(\d+)\s+\d+\s+active/i);
+                  if (m) {
+                      const [, userId, name, steamId, ping] = m;
+                      players.push({
+                          userId,
+                          name,
+                          steamId,
+                          ping: parseInt(ping || "0"),
+                          connected: "Connected",
+                          state: "Active"
+                      });
+                      totalPing += parseInt(ping || "0");
+                  }
+              }
+          }
+
+          return { 
+              players, 
+              averagePing: players.length > 0 ? Math.round(totalPing / players.length) : 0 
+          };
+      } catch (e) {
+          console.error(`[SERVER:${id}] Error in getPlayers:`, e);
           return { players: [], averagePing: 0 };
       }
   }

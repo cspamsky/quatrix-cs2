@@ -1,6 +1,9 @@
 import { Router } from "express";
 import db from "../db.js";
 import { authenticateToken } from "../middleware/auth.js";
+import { databaseManager } from '../services/DatabaseManager.js';
+import mysql from 'mysql2/promise';
+import { serverManager } from '../serverManager.js';
 
 const router = Router();
 
@@ -12,9 +15,6 @@ router.get("/:id/bans", async (req: any, res) => {
         const { id } = req.params;
         const { active_only } = req.query;
 
-        // Import DatabaseManager to access MariaDB
-        const { databaseManager } = await import('../services/DatabaseManager.js');
-        
         if (!await databaseManager.isAvailable()) {
             return res.status(503).json({ message: "Database service unavailable" });
         }
@@ -25,7 +25,6 @@ router.get("/:id/bans", async (req: any, res) => {
         }
 
         // Connect to the server's MariaDB database
-        const mysql = await import('mysql2/promise');
         const connection = await mysql.createConnection({
             host: creds.host,
             port: creds.port,
@@ -60,6 +59,11 @@ router.get("/:id/bans", async (req: any, res) => {
 
             const [rows] = await connection.execute(query);
             
+            if (!Array.isArray(rows)) {
+                console.warn('[BANS] Query did not return an array as expected:', rows);
+                return res.json([]);
+            }
+
             // Transform data to match frontend expectations
             const bans = (rows as any[]).map(ban => ({
                 ...ban,
@@ -71,8 +75,12 @@ router.get("/:id/bans", async (req: any, res) => {
             await connection.end();
         }
     } catch (error: any) {
-        console.error('[BANS] Error fetching ban history:', error);
-        res.status(500).json({ message: error.message || "Failed to fetch ban history" });
+        console.error(`[BANS] Error fetching ban history for server ${req.params.id}:`, error);
+        res.status(500).json({ 
+            message: "Failed to fetch ban history", 
+            error: error.message,
+            code: error.code // Include MySQL error code if available
+        });
     }
 });
 
@@ -80,9 +88,6 @@ router.get("/:id/bans", async (req: any, res) => {
 router.post("/:id/bans/:banId/unban", async (req: any, res) => {
     try {
         const { id, banId } = req.params;
-
-        // Import DatabaseManager to access MariaDB
-        const { databaseManager } = await import('../services/DatabaseManager.js');
         
         if (!await databaseManager.isAvailable()) {
             return res.status(503).json({ message: "Database service unavailable" });
@@ -94,7 +99,6 @@ router.post("/:id/bans/:banId/unban", async (req: any, res) => {
         }
 
         // Connect to the server's MariaDB database
-        const mysql = await import('mysql2/promise');
         const connection = await mysql.createConnection({
             host: creds.host,
             port: creds.port,
