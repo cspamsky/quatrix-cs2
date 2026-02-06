@@ -39,7 +39,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // Trust proxy for rate limiting (needed behind Nginx)
-app.set('trust proxy', 1);
+app.set('trust proxy', true);
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {

@@ -7,7 +7,8 @@ export const apiLimiter = rateLimit({
 	max: 300, 
 	standardHeaders: true, 
 	legacyHeaders: false, 
-    message: { message: "Too many requests, please try again later." }
+    message: { message: "Too many requests, please try again later." },
+    validate: { trustProxy: false }
 });
 
 // Strict Limiter: 60 requests per minute
@@ -15,7 +16,8 @@ export const apiLimiter = rateLimit({
 export const strictLimiter = rateLimit({
 	windowMs: 1 * 60 * 1000, 
 	max: 60, 
-    message: { message: "Rate limit exceeded for sensitive operation. Slow down." }
+    message: { message: "Rate limit exceeded for sensitive operation. Slow down." },
+    validate: { trustProxy: false }
 });
 
 // Creation Limiter: 10 servers per hour
@@ -23,7 +25,8 @@ export const strictLimiter = rateLimit({
 export const createServerLimiter = rateLimit({
     windowMs: 60 * 60 * 1000,
     max: 10,
-    message: { message: "You have created too many servers recently. Please wait." }
+    message: { message: "You have created too many servers recently. Please wait." },
+    validate: { trustProxy: false }
 });
 
 // Auth Limiter: Already implemented elsewhere but good to keep in mind

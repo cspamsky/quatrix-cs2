@@ -36,26 +36,27 @@ router.get("/:id/bans", async (req: any, res) => {
         try {
             let query = `
                 SELECT 
-                    id,
-                    player_name,
-                    player_steamid as steam_id,
-                    player_ip as ip_address,
-                    reason,
-                    duration,
-                    admin_name as banned_by,
-                    created as banned_at,
-                    ends as expires_at,
-                    RemovedOn as unbanned_at,
-                    status as is_active
-                FROM sa_bans
+                    b.id,
+                    b.player_name,
+                    b.player_steamid as steam_id,
+                    b.player_ip as ip_address,
+                    b.reason,
+                    b.duration,
+                    b.admin_name as banned_by,
+                    b.created as banned_at,
+                    b.ends as expires_at,
+                    u.date as unbanned_at,
+                    b.status as is_active
+                FROM sa_bans b
+                LEFT JOIN sa_unbans u ON b.unban_id = u.id
                 WHERE 1=1
             `;
             
             if (active_only === 'true') {
-                query += ` AND status = 'ACTIVE'`;
+                query += ` AND b.status = 'ACTIVE'`;
             }
             
-            query += ` ORDER BY created DESC`;
+            query += ` ORDER BY b.created DESC`;
 
             const [rows] = await connection.execute(query);
             
@@ -130,12 +131,28 @@ router.post("/:id/bans/:banId/unban", async (req: any, res) => {
                 }
             }
 
-            // Update database (CS2-SimpleAdmin uses 'status' and 'RemovedOn' fields)
-            await connection.execute(`
-                UPDATE sa_bans 
-                SET status = 'UNBANNED', RemovedOn = NOW()
-                WHERE id = ?
-            `, [banId]);
+            // Update database (CS2-SimpleAdmin uses 'status' field and sa_unbans table)
+            try {
+                // 1. Insert into sa_unbans first
+                const [result] = await connection.execute(
+                    'INSERT INTO sa_unbans (ban_id, admin_id, reason, date) VALUES (?, ?, ?, NOW())',
+                    [banId, 0, 'Unbanned via Web Panel'] // Using 0 (Console) as admin_id
+                );
+                const unbanId = (result as any).insertId;
+
+                // 2. Update sa_bans with unban_id and status
+                await connection.execute(`
+                    UPDATE sa_bans 
+                    SET status = 'UNBANNED', unban_id = ?
+                    WHERE id = ?
+                `, [unbanId, banId]);
+            } catch (dbError: any) {
+                console.warn('[UNBAN] Database compatibility fallback:', dbError.message);
+                // Fallback for older schemas or missing sa_unbans
+                await connection.execute(`
+                    UPDATE sa_bans SET status = 'UNBANNED' WHERE id = ?
+                `, [banId]);
+            }
 
             res.json({ success: true, message: "Player unbanned successfully" });
         } finally {
