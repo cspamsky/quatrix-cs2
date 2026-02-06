@@ -80,7 +80,7 @@ class ServerManager {
 
 
     // Recover Orphans via RuntimeService (PID check)
-    await runtimeService.init();
+    await runtimeService.init((id, data) => this.handleLog(id, data));
     
     // Legacy cleanup just in case
     // this.recoverOrphanedServers(); // No longer needed as runtimeService handles it
@@ -792,10 +792,12 @@ class ServerManager {
               const map = await this.getCurrentMap(id);
               if (map) this.updateMapStmt.run(map, id);
 
-              // Periodic Enforcement for Log capture
-              if (Math.random() < 0.2) {
+              // Periodic Enforcement for Log capture (Syncing game state with Panel needs)
+              if (Math.random() < 0.3) {
                   this.sendCommand(id, "log on").catch(() => {});
                   this.sendCommand(id, "sv_logecho 1").catch(() => {});
+                  this.sendCommand(id, "sv_logfile 1").catch(() => {});
+                  this.sendCommand(id, "sv_logbans 1").catch(() => {});
               }
           } catch {}
       }

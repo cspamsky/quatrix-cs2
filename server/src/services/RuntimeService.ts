@@ -291,7 +291,7 @@ class RuntimeService {
         }
     }
 
-    public async init() {
+    public async init(onLogAdopted?: (id: string, data: string) => void) {
         console.log("[Runtime] Initializing and recovering orphans...");
         const onlineServers = db.prepare("SELECT id, pid FROM servers WHERE status = 'ONLINE' OR status = 'STARTING'").all() as {id: number, pid: number}[];
         
@@ -314,7 +314,7 @@ class RuntimeService {
                     // Start log tailing for adopted process
                     const instancePath = fileSystemService.getInstancePath(id);
                     const logFilePath = path.join(instancePath, "console.log");
-                    this.startLogWatcher(id, logFilePath);
+                    this.startLogWatcher(id, logFilePath, onLogAdopted ? (data) => onLogAdopted(id, data) : undefined);
                 } catch (e) {
                     console.log(`[Runtime] Server ${id} (PID: ${s.pid}) is dead. Marking OFFLINE.`);
                     db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
