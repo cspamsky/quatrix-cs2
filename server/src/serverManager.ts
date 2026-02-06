@@ -306,10 +306,8 @@ class ServerManager {
           }
       }
 
-      // Chat Message Tracking
-      // Example say: "PlayerName<1><SteamID><>" say "MessageContent"
-      // Example team say: "PlayerName<1><SteamID><TeamName>" say_team "MessageContent"
-      const chatMatch = cleanLine.match(/^"(.+?)<\d+><(.+?)><.*?>" (say|say_team) "(.*)"$/);
+      // Chat Message Tracking (Relaxed regex)
+      const chatMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" (say|say_team) "(.*)"/i);
       if (chatMatch) {
           const [, name, steamId, type, message] = chatMatch;
           const steamId64 = steamId === "Console" ? "0" : steamId;
@@ -317,7 +315,6 @@ class ServerManager {
           try {
               this.chatInsertStmt.run(id, name, steamId64, message, type);
               
-              // Emit via Socket.IO for real-time dashboard
               if (this.io) {
                   this.io.emit('chat_message', {
                       serverId: id,
@@ -334,16 +331,21 @@ class ServerManager {
       }
 
     // Join/Leave Tracking (Relaxed regex)
-    const joinMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" entered the game/i);
-    const leaveMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" disconnected/i);
+    const joinMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" (entered the game|connected)/i);
+    const leaveMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" (disconnected|left the game)/i);
+
+    if (!joinMatch && (cleanLine.includes("entered the game") || cleanLine.includes("connected"))) {
+        if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Potential join missed:`, cleanLine);
+    }
 
     if (joinMatch || leaveMatch) {
         if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Match found: ${joinMatch ? 'JOIN' : 'LEAVE'}`);
         const match = joinMatch || leaveMatch;
-        if (match) {
-            const [, name, steamId] = match;
-            const eventType = joinMatch ? 'join' : 'leave';
-            // Handle various SteamID formats like [U:1:123] or STEAM_0:0:123 or just 765...
+        if (match && match[3]) {
+            const [, name, steamId, originalEvent] = match;
+            const eventType = (originalEvent.toLowerCase().includes('entered') || originalEvent.toLowerCase().includes('connected')) ? 'join' : 'leave';
+            
+            // Normalize SteamID
             const steamId64 = steamId?.startsWith("[") || steamId?.startsWith("STEAM_") ? steamId : (steamId === "Console" ? "0" : steamId);
 
             if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Saving ${eventType} for ${name} (${steamId64})`);
@@ -482,13 +484,17 @@ class ServerManager {
               if (cleanLine.length < 3) continue;
 
               // 1. Detected SimpleAdmin format: • [#2] "Pamsky" (IP Address: "159.146.33.127" SteamID64: "76561198968591397")
-              const simpleAdminMatch = cleanLine.match(/[^\w\s]*\s*\[#(\d+)\]\s+"(.+?)"\s+\(IP Address:\s*"(.+?)"\s+SteamID64:\s+"(\d+)"\)/i);
-              if (simpleAdminMatch) {
-                  const [, userId, name, ipAddress, steamId64] = simpleAdminMatch;
+              const simpleAdminMatch = cleanLine.match(/[^\w\s]*\s*\[#(\d+)\]\s+"(.+?)"\s+\(IP Address:\s*"(.+?)"\s+SteamID64:\s+"(.+?)"\)/i);
+              if (simpleAdminMatch && simpleAdminMatch[2] && simpleAdminMatch[4]) {
+                  const [, userId, name, ipAddress, steamId] = simpleAdminMatch;
+                  
+                  // Skip bots
+                  if (steamId.toUpperCase() === "BOT" || name.toUpperCase().includes("BOT")) continue;
+
                   players.push({
                       userId,
                       name,
-                      steamId: steamId64,
+                      steamId,
                       ipAddress,
                       ping: 0,
                       connected: "Connected",
@@ -499,12 +505,16 @@ class ServerManager {
 
               // 2. Original parser pattern: # [userid] "name" (steamid) [ping: ms]
               const cssMatch = cleanLine.match(/#\s+(\d+)\s+"(.+?)"\s+\((.+?)\)\s+\[ping:\s+(\d+)ms\]/i);
-              if (cssMatch) {
-                  const [, userId, name, steamId64, ping] = cssMatch;
+              if (cssMatch && cssMatch[2] && cssMatch[3]) {
+                  const [, userId, name, steamId, ping] = cssMatch;
+                  
+                  // Skip bots
+                  if (steamId.toUpperCase() === "BOT" || name.toUpperCase().includes("BOT")) continue;
+
                   players.push({
                       userId,
                       name,
-                      steamId: steamId64,
+                      steamId,
                       ping: parseInt(ping || "0"),
                       connected: "Connected",
                       state: "Active"
@@ -517,8 +527,12 @@ class ServerManager {
               if (cleanLine.includes('#')) {
                   // Example: # 2 1 "Name" [U:1:123456] 01:23 30 0 active 127.0.0.1:27005
                   const statusMatch = cleanLine.match(/#\s+(\d+)\s+(\d+)\s+"(.+?)"\s+([\[\]\w:_\-]+)\s+[\d:]+\s+(\d+)\s+(\d+)\s+active\s+([\d\.:]+)/i);
-                  if (statusMatch) {
+                  if (statusMatch && statusMatch[3] && statusMatch[4]) {
                       const [, , userId, name, steamId, ping, , adr] = statusMatch;
+                      
+                      // Skip bots
+                      if (steamId.toUpperCase() === "BOT" || name.toUpperCase().includes("BOT")) continue;
+
                       players.push({
                           userId,
                           name,
