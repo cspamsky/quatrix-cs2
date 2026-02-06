@@ -314,6 +314,24 @@ serverManager.ensureSteamCMD().then((success: boolean) => {
     }
 });
 
+// --- Maintenance Task (Cleanup old logs every hour) ---
+setInterval(() => {
+    try {
+        console.log("[MAINTENANCE] Cleaning up old logs...");
+        // Keep 7 days of join/leave logs
+        db.prepare("DELETE FROM join_logs WHERE created_at < datetime('now', '-7 days')").run();
+        // Keep 14 days of chat logs
+        db.prepare("DELETE FROM chat_logs WHERE created_at < datetime('now', '-14 days')").run();
+        // Keep 30 days of activity logs
+        db.prepare("DELETE FROM activity_logs WHERE created_at < datetime('now', '-30 days')").run();
+        // VACUUM periodically
+        if (Math.random() < 0.05) db.exec("VACUUM"); 
+        console.log("[MAINTENANCE] Cleanup complete.");
+    } catch (err) {
+        console.error("[MAINTENANCE] Cleanup failed:", err);
+    }
+}, 3600000); // Every hour
+
 // --- Global Error Handlers to Prevent Unhandled Crashes ---
 process.on('uncaughtException', (err) => {
     console.error('\x1b[31m[CRITICAL]\x1b[0m Uncaught Exception:', err);

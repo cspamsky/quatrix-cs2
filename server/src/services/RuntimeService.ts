@@ -20,7 +20,50 @@ class RuntimeService {
     private instances: Map<string, InstanceState> = new Map();
 
     constructor() {
-        // Periodic check for crashed/zombie processes could go here
+        // Periodic check for log rotation (Every hour)
+        setInterval(() => this.rotateLogs(), 3600000);
+    }
+
+    private rotateLogs() {
+        const MAX_LOG_SIZE = 50 * 1024 * 1024; // 50MB
+        
+        try {
+            const servers = db.prepare("SELECT id FROM servers").all() as { id: number }[];
+            for (const server of servers) {
+                const id = server.id.toString();
+                const instancePath = fileSystemService.getInstancePath(id);
+                
+                // 1. Rotate console.log
+                const logPath = path.join(instancePath, "console.log");
+                if (fs.existsSync(logPath)) {
+                    const stats = fs.statSync(logPath);
+                    if (stats.size > MAX_LOG_SIZE) {
+                        console.log(`[Runtime] Rotating log for instance ${id}...`);
+                        const buffer = Buffer.alloc(1024 * 1024);
+                        const fd = fs.openSync(logPath, 'r');
+                        const start = stats.size - buffer.length;
+                        fs.readSync(fd, buffer, 0, buffer.length, start > 0 ? start : 0);
+                        fs.closeSync(fd);
+                        fs.writeFileSync(logPath, buffer.toString().trim()); 
+                    }
+                }
+
+                // 2. Cleanup Round Backups (backup_round*.txt)
+                const csgoDir = path.join(instancePath, "game", "csgo");
+                if (fs.existsSync(csgoDir)) {
+                    const files = fs.readdirSync(csgoDir);
+                    const backups = files.filter(f => f.startsWith("backup_round") && f.endsWith(".txt"));
+                    for (const f of backups) {
+                        try {
+                            fs.unlinkSync(path.join(csgoDir, f));
+                        } catch {}
+                    }
+                    if (backups.length > 0) console.log(`[Runtime] Cleaned ${backups.length} round backups for ${id}`);
+                }
+            }
+        } catch (e) {
+            console.warn(`[Runtime] Maintenance failed:`, e);
+        }
     }
 
     public getInstanceStatus(id: string): ServerStatus {

@@ -23,6 +23,7 @@ class ServerManager {
   private rconConnections: Map<string, any> = new Map();
   private playerIdentityCache: Map<string, Map<string, string>> = new Map();
   private playerIdentityBuffer: Map<string, string> = new Map();
+  private lastKnownPlayers: Map<string, Map<string, string>> = new Map(); // serverId -> Map<SteamID, Name>
   private installDir!: string; // Maintained for backward compat in paths, but backed by FileSystem
   private lastInstallDir: string = "";
   private lastSteamCmdPath: string = "";
@@ -213,12 +214,13 @@ class ServerManager {
     cfgContent = updateLine(cfgContent, "rcon_password", options.rcon_password || "secret");
     cfgContent = updateLine(cfgContent, "log", "on");
     cfgContent = updateLine(cfgContent, "sv_logecho", "1");
-    cfgContent = updateLine(cfgContent, "sv_logfile", "1");
+    cfgContent = updateLine(cfgContent, "sv_logfile", "0");
     cfgContent = updateLine(cfgContent, "sv_logbans", "1");
     
     // Use the region setting from database, default to 3 (Europe)
     const region = mergedOptions.region !== undefined ? mergedOptions.region : "3";
     cfgContent = updateLine(cfgContent, "sv_region", region.toString());
+    cfgContent = updateLine(cfgContent, "mp_backup_round_auto", "0"); // Disable automatic round backups
     await fs.promises.writeFile(serverCfgPath, cfgContent);
 
     // 2. Start via RuntimeService
@@ -330,44 +332,6 @@ class ServerManager {
               console.error(`[SERVER:${id}] Failed to save chat message:`, e);
           }
       }
-
-    // Join/Leave Tracking (Refined)
-    // We prioritize "entered the game" for joins to avoid double-logging with "connected"
-    const joinMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" entered the game/i);
-    const leaveMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" (disconnected|left the game)/i);
-
-    if (joinMatch || leaveMatch) {
-        const match = joinMatch || leaveMatch;
-        if (match && match[1] && match[2]) {
-            const [, name, steamId] = match;
-            
-            // 🛑 EXCLUDE BOTS
-            if (steamId === "BOT" || steamId.includes("BOT") || name.toUpperCase().includes("BOT")) {
-                return;
-            }
-
-            const eventType = joinMatch ? 'join' : 'leave';
-            const steamId64 = steamId?.startsWith("[") || steamId?.startsWith("STEAM_") ? steamId : (steamId === "Console" ? "0" : steamId);
-
-            if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Saving ${eventType} for ${name} (${steamId64})`);
-
-            try {
-                this.joinLogInsertStmt.run(id, name, steamId64, eventType);
-                
-                if (this.io) {
-                    this.io.emit('player_event', {
-                        serverId: id,
-                        name,
-                        steamId: steamId64,
-                        eventType,
-                        timestamp: new Date().toISOString()
-                    });
-                }
-            } catch (e) {
-                console.error(`[SERVER:${id}] Failed to save join log:`, e);
-            }
-        }
-    }
   }
 
   public async flushPlayerIdentities() {
@@ -790,6 +754,28 @@ class ServerManager {
               const { players } = await this.getPlayers(id);
               this.updatePlayerCountStmt.run(players.length, id);
               
+              // --- Join/Leave Tracking via RCON Polling ---
+              const idStr = id.toString();
+              const currentPlayersMap = new Map(players.map(p => [p.steamId, p.name]));
+              const lastPlayersMap = this.lastKnownPlayers.get(idStr) || new Map<string, string>();
+
+              // 1. Detect Joins
+              for (const [steamId, name] of currentPlayersMap.entries()) {
+                  if (!lastPlayersMap.has(steamId)) {
+                      this.joinLogInsertStmt.run(id, name, steamId, 'join');
+                      if (this.io) this.io.emit('player_event', { serverId: id, name, steamId, eventType: 'join', timestamp: new Date().toISOString() });
+                  }
+              }
+
+              // 2. Detect Leaves
+              for (const [oldSteamId, oldName] of lastPlayersMap.entries()) {
+                  if (!currentPlayersMap.has(oldSteamId)) {
+                      this.joinLogInsertStmt.run(id, oldName, oldSteamId, 'leave');
+                      if (this.io) this.io.emit('player_event', { serverId: id, name: oldName, steamId: oldSteamId, eventType: 'leave', timestamp: new Date().toISOString() });
+                  }
+              }
+              this.lastKnownPlayers.set(idStr, currentPlayersMap);
+
               const map = await this.getCurrentMap(id);
               if (map) this.updateMapStmt.run(map, id);
 
@@ -797,7 +783,7 @@ class ServerManager {
               if (Math.random() < 0.3) {
                   this.sendCommand(id, "log on").catch(() => {});
                   this.sendCommand(id, "sv_logecho 1").catch(() => {});
-                  this.sendCommand(id, "sv_logfile 1").catch(() => {});
+                  this.sendCommand(id, "sv_logfile 0").catch(() => {}); // Stop writing server-side log files
                   this.sendCommand(id, "sv_logbans 1").catch(() => {});
               }
           } catch {}
