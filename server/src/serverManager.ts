@@ -330,22 +330,22 @@ class ServerManager {
           }
       }
 
-    // Join/Leave Tracking (Relaxed regex)
-    const joinMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" (entered the game|connected)/i);
+    // Join/Leave Tracking (Refined)
+    // We prioritize "entered the game" for joins to avoid double-logging with "connected"
+    const joinMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" entered the game/i);
     const leaveMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" (disconnected|left the game)/i);
 
-    if (!joinMatch && (cleanLine.includes("entered the game") || cleanLine.includes("connected"))) {
-        if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Potential join missed:`, cleanLine);
-    }
-
     if (joinMatch || leaveMatch) {
-        if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Match found: ${joinMatch ? 'JOIN' : 'LEAVE'}`);
         const match = joinMatch || leaveMatch;
-        if (match && match[3]) {
-            const [, name, steamId, originalEvent] = match;
-            const eventType = (originalEvent.toLowerCase().includes('entered') || originalEvent.toLowerCase().includes('connected')) ? 'join' : 'leave';
+        if (match && match[1] && match[2]) {
+            const [, name, steamId] = match;
             
-            // Normalize SteamID
+            // 🛑 EXCLUDE BOTS
+            if (steamId === "BOT" || steamId.includes("BOT") || name.toUpperCase().includes("BOT")) {
+                return;
+            }
+
+            const eventType = joinMatch ? 'join' : 'leave';
             const steamId64 = steamId?.startsWith("[") || steamId?.startsWith("STEAM_") ? steamId : (steamId === "Console" ? "0" : steamId);
 
             if (process.env.DEBUG_LOGS) console.log(`[LOG:${id}] Saving ${eventType} for ${name} (${steamId64})`);
