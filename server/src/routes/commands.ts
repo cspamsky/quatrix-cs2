@@ -181,10 +181,17 @@ router.post('/:id/rcon', async (req: Request, res: Response) => {
       io.emit(`console:${id}`, response);
     }
 
+    // Mask sensitive RCON commands
+    const sensitiveKeywords = ['rcon_password', 'sv_password', 'password', 'token', 'key'];
+    let safeCommand = command;
+    if (sensitiveKeywords.some((keyword) => command.toLowerCase().includes(keyword))) {
+      safeCommand = '[SENSITIVE COMMAND MASKED]';
+    }
+
     const server = db.prepare('SELECT name FROM servers WHERE id = ?').get(id as string) as any;
     logActivity(
       'RCON_COMMAND',
-      `${server?.name || id}: ${command} komutu gönderildi`,
+      `${server?.name || id}: ${safeCommand} komutu gönderildi`,
       'INFO',
       authReq.user.id
     );

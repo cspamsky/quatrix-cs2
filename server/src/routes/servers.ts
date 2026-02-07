@@ -65,7 +65,9 @@ router.post('/:id/database', authenticateToken, async (req: Request, res: Respon
 
     res.json({ message: 'Database credentials saved successfully', credentials: creds });
   } catch (error) {
-    console.error('[API] Save credentials error:', error);
+    // Safe error logging: Do not log the full error object if it contains sensitive data
+    const err = error as Error;
+    console.error('[API] Save credentials error:', err.message);
     res.status(500).json({ message: 'Failed to save database credentials' });
   }
 });
