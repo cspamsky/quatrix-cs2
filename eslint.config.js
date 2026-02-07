@@ -3,6 +3,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
 import prettierPlugin from 'eslint-plugin-prettier';
+import { reactRefresh } from 'eslint-plugin-react-refresh';
 
 export default tseslint.config(
   {
@@ -37,6 +38,12 @@ export default tseslint.config(
       globals: {
         ...globals.browser,
       },
+    },
+    plugins: {
+      'react-refresh': reactRefresh.plugin,
+    },
+    rules: {
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
   prettierConfig

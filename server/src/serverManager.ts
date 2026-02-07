@@ -403,7 +403,7 @@ class ServerManager {
       .replace(/^L\s+\d{1,2}\/\d{1,2}\/\d{2,4}\s+-\s+\d{1,2}:\d{1,2}:\d{1,2}:\s+/, '')
       .trim();
 
-    if (process.env.DEBUG_LOGS) console.log('[LOG:' + id + '] Processing:', cleanLine);
+    if (process.env.DEBUG_LOGS) console.log('[LOG:', id, '] Processing:', cleanLine);
 
     // Player Tracking logic
     const steam64Match = cleanLine.match(/steamid:(\d{17})/i);
@@ -444,7 +444,7 @@ class ServerManager {
           });
         }
       } catch (e) {
-        console.error('[SERVER:' + id + '] Failed to save chat message:', e);
+        console.error('[SERVER:', id, '] Failed to save chat message:', e);
       }
     }
   }
@@ -568,7 +568,7 @@ class ServerManager {
   ): Promise<{ players: Player[]; averagePing: number }> {
     try {
       const rawOutput = await this.sendCommand(id, 'css_players');
-      if (process.env.DEBUG_RCON) console.log(`[RCON:${id}] css_players output:`, rawOutput);
+      if (process.env.DEBUG_RCON) console.log('[RCON:', id, '] css_players output:', rawOutput);
 
       const players: Player[] = [];
       // More robust split for different newline formats

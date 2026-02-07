@@ -1255,7 +1255,13 @@ export class PluginManager {
     const info = registry[pluginId];
     if (!info || !info.inPool) throw new Error('Plugin not found in pool');
 
-    const poolPath = path.join(POOL_DIR, info.folderName || pluginId);
+    const targetName = info.folderName || pluginId;
+    const poolPath = path.resolve(POOL_DIR, targetName);
+
+    if (!poolPath.startsWith(path.resolve(POOL_DIR))) {
+      throw new Error('Invalid plugin path');
+    }
+
     if (fs.existsSync(poolPath)) {
       await fs.promises.rm(poolPath, { recursive: true, force: true });
       console.log('[POOL] Plugin', pluginId, 'deleted from central repository.');
