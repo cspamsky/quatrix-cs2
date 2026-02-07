@@ -499,6 +499,11 @@ export class PluginManager {
     pluginId: string,
     taskId?: string
   ): Promise<void> {
+    // SECURITY: Validate pluginId to prevent Path Traversal
+    if (!/^[a-zA-Z0-9\-_]+$/.test(pluginId) && pluginId !== 'metamod' && pluginId !== 'cssharp') {
+      throw new Error(`Invalid plugin ID: ${pluginId}`);
+    }
+
     if (taskId) {
       taskService.updateTask(taskId, {
         status: 'running',
@@ -555,7 +560,16 @@ export class PluginManager {
       )
     ).some((x) => x);
 
-    const pluginFolderName = pluginInfo.folderName || pluginId;
+    // SECURITY: Sanitize pluginFolderName
+    // 1. Use path.basename as additional protection against directory traversal
+    const rawFolderName = pluginInfo.folderName || pluginId;
+    const baseName = path.basename(rawFolderName);
+    // 2. Strict Whitelist regex: remove any character that is not alphanumeric, dash or underscore
+    const pluginFolderName = baseName.replace(/[^a-zA-Z0-9\-_]/g, '');
+
+    if (!pluginFolderName) {
+      throw new Error(`Invalid plugin folder name: ${rawFolderName}`);
+    }
 
     if (hasGameDir) {
       // Merge into instance root
@@ -884,6 +898,11 @@ export class PluginManager {
     instanceId: string | number,
     pluginId: string
   ): Promise<void> {
+    // SECURITY: Validate pluginId to prevent Path Traversal
+    if (!/^[a-zA-Z0-9\-_]+$/.test(pluginId) && pluginId !== 'metamod' && pluginId !== 'cssharp') {
+      throw new Error(`Invalid plugin ID: ${pluginId}`);
+    }
+
     const csgoDir = path.join(installDir, instanceId.toString(), 'game', 'csgo');
     const addonsDir = path.join(csgoDir, 'addons');
 

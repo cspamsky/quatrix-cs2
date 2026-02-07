@@ -206,7 +206,9 @@ class RuntimeService {
 
     // SECURITY: Path Escalation / Shell Injection Protection
     if (!fileSystemService.isPathSafe(executable) && executable !== 'nice') {
-       throw new Error(`Security Error: Executable path ${executable} is outside allowed directories.`);
+      throw new Error(
+        `Security Error: Executable path ${executable} is outside allowed directories.`
+      );
     }
 
     const finalArgs = [];
@@ -323,12 +325,15 @@ class RuntimeService {
     for (let i = 0; i < combinedArgs.length; i++) {
       const arg = combinedArgs[i]!;
 
+      const argLower = typeof arg === 'string' ? arg.toLowerCase() : '';
+
       // 1. Exact match for sensitive flags (key + value pair)
       if (
-        arg === '+sv_setsteamaccount' ||
-        arg === '+sv_password' ||
-        arg === '+rcon_password' ||
-        arg === '-authkey'
+        argLower === '+sv_setsteamaccount' ||
+        argLower === '+sv_password' ||
+        argLower === '+rcon_password' ||
+        argLower === '+tv_password' ||
+        argLower === '-authkey'
       ) {
         safeArgs.push(arg);
         // If the next argument exists, it's the sensitive value -> Redact it
@@ -341,16 +346,16 @@ class RuntimeService {
 
       // 2. Starts with sensitive key (e.g. +sv_password=foo)
       if (
-        typeof arg === 'string' &&
-        (arg.startsWith('+sv_setsteamaccount') ||
-          arg.startsWith('+sv_password') ||
-          arg.startsWith('+rcon_password') ||
-          arg.startsWith('-authkey'))
+        argLower.startsWith('+sv_setsteamaccount') ||
+        argLower.startsWith('+sv_password') ||
+        argLower.startsWith('+rcon_password') ||
+        argLower.startsWith('+tv_password') ||
+        argLower.startsWith('-authkey')
       ) {
         safeArgs.push('[REDACTED]');
         continue;
       }
-      
+
       // 3. Safe argument
       safeArgs.push(arg);
     }

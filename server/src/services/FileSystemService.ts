@@ -190,7 +190,7 @@ class FileSystemService {
           }
         }
       } catch (err) {
-        console.error(`[FileSystem] Failed to patch gameinfo.gi for instance ${id}:`, err);
+        console.error('[FileSystem] Failed to patch gameinfo.gi for instance', id, ':', err);
       }
     }
 
