@@ -16,6 +16,11 @@ const MAP_CFG_DIR = 'cfg/maps_cfg';
 // GET /api/maps/config/:serverId/:mapName
 router.get('/config/:serverId/:mapName', async (req: Request, res: Response) => {
   const { serverId, mapName } = req.params;
+
+  if (!mapName || mapName.includes('..') || mapName.includes('/') || mapName.includes('\\')) {
+    return res.status(400).json({ message: 'Invalid map name' });
+  }
+
   const authReq = req as AuthenticatedRequest;
   try {
     const server = db
@@ -23,9 +28,13 @@ router.get('/config/:serverId/:mapName', async (req: Request, res: Response) => 
       .get(serverId as string, authReq.user.id);
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
-    const filePath = `${MAP_CFG_DIR}/${mapName}.cfg`;
     const serverPath = fileSystemService.getInstancePath(serverId as string);
-    const fullPath = path.join(serverPath, 'game/csgo', filePath); // Corrected path relative to csgo
+    const mapsCfgDir = path.join(serverPath, 'game/csgo', MAP_CFG_DIR);
+    const fullPath = path.resolve(mapsCfgDir, `${mapName}.cfg`);
+
+    if (!fullPath.startsWith(path.resolve(mapsCfgDir))) {
+      return res.status(403).json({ message: 'Invalid map path' });
+    }
 
     try {
       const content = await fs.promises.readFile(fullPath, 'utf-8');
@@ -46,6 +55,10 @@ router.get('/config/:serverId/:mapName', async (req: Request, res: Response) => 
 // POST /api/maps/config/:serverId/:mapName
 router.post('/config/:serverId/:mapName', async (req: Request, res: Response) => {
   const { serverId, mapName } = req.params; // mapName will be the internal name provided by frontend
+  if (!mapName || mapName.includes('..') || mapName.includes('/') || mapName.includes('\\')) {
+    return res.status(400).json({ message: 'Invalid map name' });
+  }
+
   const { content } = req.body as { content: string };
   const authReq = req as AuthenticatedRequest;
 
@@ -63,7 +76,12 @@ router.post('/config/:serverId/:mapName', async (req: Request, res: Response) =>
       fs.mkdirSync(cfgDirPath, { recursive: true, mode: 0o755 });
     }
 
-    const fullPath = path.join(cfgDirPath, mapName + '.cfg');
+    const fullPath = path.resolve(cfgDirPath, `${mapName}.cfg`);
+
+    if (!fullPath.startsWith(path.resolve(cfgDirPath))) {
+      return res.status(403).json({ message: 'Invalid map path' });
+    }
+
     await fs.promises.writeFile(fullPath, content);
 
     res.json({ success: true, message: `Configuration saved for ${mapName}` });

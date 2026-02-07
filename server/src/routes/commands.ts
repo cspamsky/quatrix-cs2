@@ -123,7 +123,7 @@ router.post('/:id/install', async (req: Request, res: Response) => {
         if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
       })
       .catch((err: any) => {
-        console.error(`[SYSTEM] Installation failed for ${id}:`, err);
+        console.error('[SYSTEM] Installation failed for:', id, err);
         db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id as string);
         if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
         taskService.failTask(taskId, err.message || 'Installation failed');
