@@ -1,6 +1,7 @@
 import mysql from 'mysql2/promise';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
 import type { DatabaseCredentials } from '../types/index.js';
 
 /**
@@ -43,7 +44,10 @@ export class DatabaseManager {
     };
 
     console.log(
-      `[DB] Initializing MySQL Manager with user: ${this.config.user} on ${this.config.host}:${this.config.port}`
+      '[DB] Initializing MySQL Manager with user:',
+      this.config.user,
+      'on',
+      `${this.config.host}:${this.config.port}`
     );
 
     try {
@@ -96,10 +100,10 @@ export class DatabaseManager {
     const dbName = `quatrix_srv_${id}`;
     const dbUser = `quatrix_u_${id}`;
     // Reuse password if we have it in cache, otherwise generate
-    const dbPass = existing?.password || Math.random().toString(36).slice(-12);
+    const dbPass = existing?.password || crypto.randomBytes(16).toString('hex');
 
     try {
-      console.log(`[DB] Ensuring database ${dbName} exists for server ${id}...`);
+      console.log('[DB] Ensuring database exists for server:', id, 'DB:', dbName);
 
       // 2. Create Database if not exists
       await this.pool.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
@@ -134,7 +138,7 @@ export class DatabaseManager {
       return creds;
     } catch (error: unknown) {
       const err = error as Error;
-      console.error(`[DB] Failed to provision database for server ${id}:`, err.message);
+      console.error('[DB] Failed to provision database for server:', id, err.message);
       throw err;
     }
   }
@@ -171,7 +175,7 @@ export class DatabaseManager {
     const id = serverId.toString();
 
     try {
-      console.log(`[DB] Creating custom database ${creds.database} for server ${id}...`);
+      console.log('[DB] Creating custom database:', creds.database, 'for server:', id);
 
       // Create Database
       await this.pool.query(`CREATE DATABASE IF NOT EXISTS \`${creds.database}\``);
@@ -221,7 +225,7 @@ export class DatabaseManager {
     const dbUser = `quatrix_u_${id}`;
 
     try {
-      console.log(`[DB] Dropping database ${dbName} and user ${dbUser}...`);
+      console.log('[DB] Dropping database:', dbName, 'and user:', dbUser);
       await this.pool.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
       await this.pool.query(`DROP USER IF EXISTS '${dbUser}'@'%'`);
 
@@ -231,10 +235,10 @@ export class DatabaseManager {
         await fs.promises.writeFile(this.credsFile, JSON.stringify(all, null, 2));
       }
 
-      console.log(`[DB] Database ${dbName} cleaned up for server ${id}.`);
+      console.log('[DB] Database cleaned up for server:', id, 'DB:', dbName);
     } catch (error: unknown) {
       const err = error as Error;
-      console.warn(`[DB] Failed to drop database for server ${id} (Non-critical):`, err.message);
+      console.warn('[DB] Failed to drop database for server (Non-critical):', id, err.message);
     }
   }
 
