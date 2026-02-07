@@ -48,10 +48,42 @@ export async function getPlayerAvatar(steamId64: string): Promise<string | null>
  * @param steamIds - Steam64 ID'leri dizisi
  * @returns SteamID -> Avatar URL map'i
  */
+export function steam3To64(steam3: string): string {
+    if (!steam3 || !steam3.startsWith('[U:1:')) return steam3;
+    try {
+        const parts = steam3.split(':');
+        if (parts.length < 3) return steam3;
+        const accountId = parts[2]?.replace(']', '');
+        if (!accountId) return steam3;
+        return (BigInt('76561197960265728') + BigInt(accountId)).toString();
+    } catch { return steam3; }
+}
+
 export async function getPlayerAvatars(steamIds: string[]): Promise<Map<string, string>> {
     const avatarMap = new Map<string, string>();
     
-    if (steamIds.length === 0) return avatarMap;
+    // Normalize IDs (Convert Steam3 to Steam64) and filter valid ones
+    const normalizedIds = new Map<string, string>(); // Steam64 -> OriginalID (to map back if needed, or just use 64)
+    // Actually we want to map RequestID -> URL.
+    // If request was [U:1:123], we query 7656...
+    // The response has 7656...
+    // We should return map where key is the REQUESTED ID (so frontend finds it).
+    // Or we rely on frontend converting? Frontend sends what it has.
+    
+    // Let's create a mapping of RequestID to SearchID
+    const searchMap = new Map<string, string>();
+    const idsToQuery = new Set<string>();
+
+    steamIds.forEach(id => {
+        const steam64 = steam3To64(id);
+        if (steam64 && steam64 !== '0') {
+            searchMap.set(id, steam64);
+            idsToQuery.add(steam64);
+        }
+    });
+
+    const uniqueIds = Array.from(idsToQuery);
+    if (uniqueIds.length === 0) return avatarMap;
 
     try {
         // .env dosyasından Steam API key'i al
@@ -60,22 +92,19 @@ export async function getPlayerAvatars(steamIds: string[]): Promise<Map<string, 
         if (!apiKey) {
             console.warn('[Steam API] No API key configured in .env file');
             console.warn('[Steam API] Please add STEAM_API_KEY to your .env file');
-            console.warn('[Steam API] Get your key from: https://steamcommunity.com/dev/apikey');
             return avatarMap;
         }
 
-        console.log(`[Steam API] API key found, fetching avatars for ${steamIds.length} players`);
+        console.log(`[Steam API] Fetching avatars for ${uniqueIds.length} players`);
         
-        // Steam API maksimum 100 ID'yi aynı anda kabul eder
         const chunks = [];
-        for (let i = 0; i < steamIds.length; i += 100) {
-            chunks.push(steamIds.slice(i, i + 100));
+        for (let i = 0; i < uniqueIds.length; i += 100) {
+            chunks.push(uniqueIds.slice(i, i + 100));
         }
 
         for (const chunk of chunks) {
             const url = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${apiKey}&steamids=${chunk.join(',')}`;
             
-            console.log(`[Steam API] Fetching ${chunk.length} player summaries...`);
             const response = await fetch(url);
             
             if (response.ok) {
@@ -83,22 +112,20 @@ export async function getPlayerAvatars(steamIds: string[]): Promise<Map<string, 
                 const players = data.response?.players as SteamPlayerSummary[];
                 
                 if (players) {
-                    console.log(`[Steam API] Received ${players.length} player profiles`);
                     players.forEach(player => {
                         const avatarUrl = player.avatarfull || player.avatarmedium || player.avatar;
                         if (avatarUrl) {
-                            avatarMap.set(player.steamid, avatarUrl);
+                            // Map back to ALL original IDs that resolved to this Steam64
+                            for (const [originalId, searchId] of searchMap.entries()) {
+                                if (searchId === player.steamid) {
+                                    avatarMap.set(originalId, avatarUrl);
+                                }
+                            }
                         }
                     });
-                } else {
-                    console.warn('[Steam API] No players data in response');
                 }
-            } else {
-                console.error(`[Steam API] Request failed with status ${response.status}: ${response.statusText}`);
             }
         }
-        
-        console.log(`[Steam API] Total avatars fetched: ${avatarMap.size}`);
     } catch (error) {
         console.error('[Steam API] Error fetching avatars:', error);
     }
