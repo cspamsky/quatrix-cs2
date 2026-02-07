@@ -321,6 +321,13 @@ class RuntimeService {
 
     // Create a safe version of args for logging
     // Create a safe version of args for logging
+    // Collect sensitive values to explicitly block them by value (Taint Sink Protection)
+    const sensitiveValues = new Set<string>();
+    if (options.steam_api_key) sensitiveValues.add(options.steam_api_key);
+    if (options.password) sensitiveValues.add(options.password);
+    if (options.rcon_password) sensitiveValues.add(options.rcon_password);
+    if (options.gslt_token) sensitiveValues.add(options.gslt_token);
+
     const safeArgs: string[] = [];
     let skipNext = false;
 
@@ -331,6 +338,14 @@ class RuntimeService {
       }
 
       const arg = combinedArgs[i]!;
+
+      // 0. Value-Based Check (Strongest Protection against Clear-Text Logging)
+      // If the argument matches a known sensitive value, redact it immediately.
+      if (sensitiveValues.has(arg)) {
+        safeArgs.push('[REDACTED_VAL]');
+        continue;
+      }
+
       const argLower = typeof arg === 'string' ? arg.toLowerCase() : '';
 
       // 1. Exact match for sensitive flags (key + value pair)

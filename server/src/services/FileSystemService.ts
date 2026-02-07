@@ -14,6 +14,14 @@ class FileSystemService {
     // quatrix/server/src/services/FileSystemService.ts -> quatrix/data
     const projectRoot = path.resolve(__dirname, '../../../');
     this.baseDir = path.join(projectRoot, 'data');
+
+    // SECURITY: Validate that baseDir doesn't contain path traversal sequences
+    // This addresses SAST concerns about environment-derived paths
+    const normalizedBase = path.normalize(this.baseDir);
+    if (normalizedBase.includes('..') || !path.isAbsolute(normalizedBase)) {
+      throw new Error('Security Error: Invalid base directory path detected');
+    }
+
     this.coreDir = path.join(this.baseDir, 'core', 'cs2');
     this.instancesDir = path.join(this.baseDir, 'instances');
   }
