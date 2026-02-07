@@ -57,7 +57,7 @@ class RuntimeService {
         if (fs.existsSync(logPath)) {
           const stats = fs.statSync(logPath);
           if (stats.size > MAX_LOG_SIZE) {
-            console.log(`[Runtime] Rotating log for instance ${id}...`);
+            console.log('[Runtime] Rotating log for instance:', id);
             const buffer = Buffer.alloc(1024 * 1024);
             const fd = fs.openSync(logPath, 'r');
             const start = stats.size - buffer.length;
@@ -80,7 +80,7 @@ class RuntimeService {
             }
           }
           if (backups.length > 0)
-            console.log(`[Runtime] Cleaned ${backups.length} round backups for ${id}`);
+            console.log('[Runtime] Cleaned round backups for:', id, 'Count:', backups.length);
         }
       }
     } catch (error: unknown) {
@@ -172,11 +172,15 @@ class RuntimeService {
       }
 
       if (needsPrepare) {
-        console.log(`[Runtime] Instance ${id} has incomplete or old structure. Re-preparing...`);
+        console.log(
+          '[Runtime] Instance has incomplete or old structure. Re-preparing...',
+          'ID:',
+          id
+        );
         await fileSystemService.prepareInstance(id);
       }
     } catch (error: unknown) {
-      console.warn(`[Runtime] Auto-prepare check failed for instance ${id}:`, error);
+      console.warn('[Runtime] Auto-prepare check failed for instance:', id, error);
     }
 
     // 2. Resolve Executable (Linux Only)
@@ -307,7 +311,14 @@ class RuntimeService {
     const logFilePath = path.join(instancePath, 'console.log');
     const logFd = fs.openSync(logFilePath, 'a');
 
-    console.log(`[Runtime] Spawning instance ${id}: ${executable} ${combinedArgs.join(' ')}`);
+    console.log(
+      '[Runtime] Spawning instance:',
+      id,
+      'Exe:',
+      executable,
+      'Args:',
+      combinedArgs.join(' ')
+    );
 
     const proc = spawn(executable, combinedArgs, {
       cwd: instancePath,
@@ -382,7 +393,7 @@ class RuntimeService {
 
       state.logWatcher = watcher;
     } catch (error: unknown) {
-      console.error(`[Runtime] Failed to start log watcher for ${id}:`, error);
+      console.error('[Runtime] Failed to start log watcher for:', id, error);
     }
   }
 
@@ -398,7 +409,7 @@ class RuntimeService {
         try {
           // Check if process is alive
           process.kill(s.pid, 0);
-          console.log(`[Runtime] Adopted orphan process for server ${id} (PID: ${s.pid})`);
+          console.log('[Runtime] Adopted orphan process for server:', id, 'PID:', s.pid);
 
           // Reconstruct state (without logs/process handle)
           this.instances.set(id, {
@@ -417,7 +428,7 @@ class RuntimeService {
             onLogAdopted ? (data) => onLogAdopted(id, data) : undefined
           );
         } catch {
-          console.log(`[Runtime] Server ${id} (PID: ${s.pid}) is dead. Marking OFFLINE.`);
+          console.log('[Runtime] Server is dead. Marking OFFLINE.', 'ID:', id, 'PID:', s.pid);
           db.prepare("UPDATE servers SET status = 'OFFLINE', pid = NULL WHERE id = ?").run(id);
           // Clean stale lock
           await lockService.releaseInstanceLock(id);
@@ -434,7 +445,7 @@ class RuntimeService {
     const state = this.instances.get(id);
     if (!state || !state.pid) return false;
 
-    console.log(`[Runtime] Stopping instance ${id} (PID: ${state.pid})`);
+    console.log('[Runtime] Stopping instance:', id, 'PID:', state.pid);
 
     try {
       // Try to use process object if available, otherwise raw kill
@@ -454,7 +465,7 @@ class RuntimeService {
         }
       }, 5000);
     } catch (e) {
-      console.warn(`[Runtime] Error stopping ${id}:`, e);
+      console.warn('[Runtime] Error stopping:', id, e);
     }
 
     // Clean up immediately from DB perspective
@@ -493,7 +504,7 @@ class RuntimeService {
   }
 
   private handleExit(id: string, code: number | null) {
-    console.log(`[Runtime] Instance ${id} exited with code ${code}`);
+    console.log('[Runtime] Instance exited:', id, 'Code:', code);
     const state = this.instances.get(id);
 
     if (state) {
@@ -507,7 +518,7 @@ class RuntimeService {
     const isCrash = code !== 0 && code !== null && code !== 137 && code !== 143; // 137/143 are SIGKILL/SIGTERM
     const status = isCrash ? 'CRASHED' : 'OFFLINE';
 
-    if (isCrash) console.warn(`[Runtime] CRASH DETECTED for instance ${id} (Code: ${code})`);
+    if (isCrash) console.warn('[Runtime] CRASH DETECTED for instance:', id, 'Code:', code);
 
     db.prepare('UPDATE servers SET status = ?, pid = NULL WHERE id = ?').run(status, id);
   }

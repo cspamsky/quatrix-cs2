@@ -328,18 +328,34 @@ export class PluginManager {
       }
 
       // If pluginId is "unknown", let's try to derive a better ID from the filename
-      const fallbackId =
+      let fallbackId =
         pluginId === 'unknown'
           ? originalName.replace(/\.(zip|tar\.gz|tgz|tar|rar)$/i, '')
           : pluginId;
+
+      // Sanitize fallbackId to be sure it doesn't contain traversal
+      fallbackId = fallbackId.replace(/[^a-zA-Z0-9.\-_]/g, '');
+      if (!fallbackId) fallbackId = 'unknown_plugin';
 
       // Find the actual content root (smart flatten)
       const contentRoot = await this.findContentRoot(tempExtractDir);
 
       // Detect metadata from extracted files
       const metadata = await this.detectPluginMetadata(contentRoot, fallbackId);
-      const finalFolderName = metadata.folderName;
+      let finalFolderName = metadata.folderName;
+
+      // Ensure finalFolderName is safe
+      finalFolderName = finalFolderName.replace(/[^a-zA-Z0-9.\-_]/g, '');
+      if (!finalFolderName || finalFolderName === '.' || finalFolderName === '..') {
+        finalFolderName = fallbackId;
+      }
+
       const targetPoolPath = path.join(POOL_DIR, finalFolderName);
+
+      // Final verified check for traversal
+      if (!targetPoolPath.startsWith(POOL_DIR)) {
+        throw new Error('Invalid plugin folder name detected.');
+      }
 
       if (fs.existsSync(targetPoolPath)) {
         await fs.promises.rm(targetPoolPath, { recursive: true, force: true });
