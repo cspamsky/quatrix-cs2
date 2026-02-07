@@ -24,6 +24,8 @@ interface JoinLogsTabProps {
   selectedServerId: number | null
 }
 
+import { useSteamAvatars } from '../../hooks/useSteamAvatars'
+
 const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
   const { t } = useTranslation()
   const [searchQuery, setSearchQuery] = useState('')
@@ -34,6 +36,10 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
     queryFn: () => apiFetch(`/api/logs/${selectedServerId}`).then(res => res.json()),
     enabled: !!selectedServerId
   })
+
+  // Fetch Avatars
+  const uniqueSteamIds = Array.from(new Set(logs.map((l: JoinLog) => l.steam_id)));
+  const { data: avatars = {} } = useSteamAvatars(uniqueSteamIds);
 
   // Helper for date formatting
   const formatFullDate = (dateString: string) => {
@@ -124,8 +130,12 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-gray-400 text-xs font-bold border border-gray-700">
-                          <User size={14} />
+                        <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center text-gray-400 text-xs font-bold border border-gray-700 overflow-hidden">
+                           {avatars[log.steam_id] ? (
+                             <img src={avatars[log.steam_id]} alt={log.player_name} className="w-full h-full object-cover" />
+                           ) : (
+                             <User size={14} />
+                           )}
                         </div>
                         <span className="font-bold text-white text-sm">{log.player_name}</span>
                       </div>

@@ -1,17 +1,10 @@
-import { apiFetch } from "../utils/api";
-import { useState, useEffect, useRef } from "react";
-import {
-  MessageSquare,
-  User,
-  Hash,
-  Clock,
-  Server,
-  RefreshCw,
-  Search
-} from "lucide-react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useRef, useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import socket from '../utils/socket'
+import { apiFetch } from '../utils/api'
+import { MessageSquare, User, Clock, Hash, Search, RefreshCw, Server } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useSteamAvatars } from '../hooks/useSteamAvatars'
 
 interface ChatLog {
   id: number;
@@ -126,6 +119,10 @@ const Chat = () => {
     }
   }, [chatLogs, filteredLogs]);
 
+  // Collect unique SteamIDs for avatar fetching
+  const uniqueSteamIds = Array.from(new Set(filteredLogs.map(log => log.steam_id)));
+  const { data: avatars = {} } = useSteamAvatars(uniqueSteamIds);
+
   return (
     <div className="flex flex-col h-full overflow-hidden font-display">
       {/* Header */}
@@ -198,10 +195,14 @@ const Chat = () => {
                       {/* Avatar placeholder */}
                       <div 
                         onClick={() => setSearchTerm(log.player_name)}
-                        className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shrink-0 border border-gray-700 group-hover:border-primary/50 transition-colors cursor-pointer hover:scale-105 active:scale-95"
+                        className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shrink-0 border border-gray-700 group-hover:border-primary/50 transition-colors cursor-pointer hover:scale-105 active:scale-95 overflow-hidden"
                         title={t('chat.filter_by_user')}
                       >
-                        <User className="text-gray-400 w-5 h-5 group-hover:text-primary transition-colors" />
+                         {avatars[log.steam_id] ? (
+                           <img src={avatars[log.steam_id]} alt={log.player_name} className="w-full h-full object-cover" />
+                         ) : (
+                           <User className="text-gray-400 w-5 h-5 group-hover:text-primary transition-colors" />
+                         )}
                       </div>
 
                       <div className="flex-1 min-w-0">

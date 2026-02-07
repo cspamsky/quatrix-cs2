@@ -27,6 +27,7 @@ import backupRoutes from "./routes/backups.js";
 import chatRouter from "./routes/chat.js";
 import logsRouter from "./routes/logs.js";
 import profileRouter from "./routes/profile.js";
+import steamRouter from "./routes/steam.js";
 import { databaseManager } from "./services/DatabaseManager.js";
 import { taskService } from "./services/TaskService.js";
 import { monitoringService } from "./services/MonitoringService.js";
@@ -115,7 +116,8 @@ app.use('/api/logs', logsRouter);
 app.use('/api/backups', backupRoutes);
 app.use('/api/chat', chatRouter);
 app.use('/api/maps', mapsRouter);
-app.use('/api/profile', profileRouter);
+app.use("/api/profile", authenticateToken, profileRouter);
+app.use("/api/steam", authenticateToken, steamRouter);
 
 
 // --- Serve Frontend in Production ---

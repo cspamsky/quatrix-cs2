@@ -32,6 +32,8 @@ interface BanHistoryTabProps {
   selectedServerId: number | null
 }
 
+import { useSteamAvatars } from '../../hooks/useSteamAvatars'
+
 const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -46,6 +48,10 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
     },
     enabled: !!selectedServerId
   })
+
+  // Fetch Avatars
+  const uniqueSteamIds = Array.from(new Set(Array.isArray(bans) ? bans.map((b: BanRecord) => b.steam_id) : []));
+  const { data: avatars = {} } = useSteamAvatars(uniqueSteamIds as string[]);
 
   // Helper for date formatting
   const formatDate = (dateString: string) => {
@@ -151,8 +157,12 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
                   <tr key={ban.id} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-red-500 font-bold border border-gray-700">
-                          {ban.player_name[0].toUpperCase()}
+                        <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-red-500 font-bold border border-gray-700 overflow-hidden">
+                          {avatars[ban.steam_id] ? (
+                              <img src={avatars[ban.steam_id]} alt={ban.player_name} className="w-full h-full object-cover" />
+                          ) : (
+                              ban.player_name[0].toUpperCase()
+                          )}
                         </div>
                         <div>
                           <span className="font-bold text-white text-sm block">{ban.player_name}</span>

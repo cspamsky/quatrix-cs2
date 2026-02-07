@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../utils/api'
 import { useTranslation } from 'react-i18next'
+import { useSteamAvatars } from '../../hooks/useSteamAvatars'
 
 interface Player {
   userId: string
@@ -47,6 +48,10 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
     enabled: !!selectedServerId,
     refetchInterval: 10000 // 10s auto-refresh
   })
+
+  // Fetch Avatars
+  const uniqueSteamIds = Array.from(new Set(playerData.players?.map((p: Player) => p.steamId) || []));
+  const { data: avatars = {} } = useSteamAvatars(uniqueSteamIds as string[]);
 
   const players = useMemo(() => playerData.players || [], [playerData])
 
@@ -186,11 +191,11 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
                   <tr key={player.userId} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        {player.avatar ? (
+                        {avatars[player.steamId] ? (
                           <img 
-                            src={player.avatar} 
+                            src={avatars[player.steamId]} 
                             alt={player.name}
-                            className="w-10 h-10 rounded-xl border border-gray-700"
+                            className="w-10 h-10 rounded-xl border border-gray-700 object-cover"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                               const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
@@ -198,7 +203,7 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
                             }}
                           />
                         ) : null}
-                        <div className={`avatar-fallback w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-primary font-bold border border-gray-700 ${player.avatar ? 'hidden' : ''}`}>
+                        <div className={`avatar-fallback w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-primary font-bold border border-gray-700 ${avatars[player.steamId] ? 'hidden' : ''}`}>
                           {player.name[0].toUpperCase()}
                         </div>
                         <div>
@@ -257,7 +262,19 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
 
             <div className="mb-4 p-4 bg-white/5 rounded-xl border border-gray-800">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-red-500 font-bold border border-gray-700">
+                {banDialog.player.avatar ? (
+                  <img 
+                    src={banDialog.player.avatar} 
+                    alt={banDialog.player.name}
+                    className="w-10 h-10 rounded-xl border border-gray-700"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                      if (fallback) fallback.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <div className={`avatar-fallback w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-red-500 font-bold border border-gray-700 ${banDialog.player.avatar ? 'hidden' : ''}`}>
                   {banDialog.player.name[0].toUpperCase()}
                 </div>
                 <div>
