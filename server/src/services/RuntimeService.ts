@@ -101,6 +101,11 @@ class RuntimeService {
     options: InstanceOptions,
     onLog?: (line: string) => void
   ): Promise<void> {
+    // Ensure instance identifiers are constrained to a safe, expected format
+    if (!/^\d+$/.test(id)) {
+      throw new Error(`Invalid instance id: ${id}`);
+    }
+
     if (!(await lockService.acquireInstanceLock(id, 'RUN'))) {
       throw new Error(`Instance ${id} is locked.`);
     }
@@ -305,6 +310,7 @@ class RuntimeService {
       cwd: instancePath,
       env,
       detached: true,
+      shell: false, // Explicitly disable shell interpretation for safety
       stdio: ['ignore', logFd, logFd],
     });
 
