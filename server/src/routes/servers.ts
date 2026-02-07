@@ -470,12 +470,17 @@ router.post('/:id/database/settings', authenticateToken, async (req: Request, re
   try {
     const { autoSync } = req.body as { autoSync: boolean };
     const all = await databaseManager.loadAllCredentials();
-    if (!all[req.params.id as string]) {
+    const id = req.params.id as string;
+    if (id === '__proto__' || id === 'constructor' || id === 'prototype') {
+      return res.status(400).json({ message: 'Invalid server ID' });
+    }
+
+    if (!all[id]) {
       // @ts-expect-error - Partial initialization for config save
-      all[req.params.id as string] = {};
+      all[id] = {};
     }
     // @ts-expect-error - Partial update
-    all[req.params.id as string].autoSync = autoSync;
+    all[id].autoSync = autoSync;
 
     const credsFile = path.join(process.cwd(), 'data', 'databases.json');
     await fs.promises.writeFile(credsFile, JSON.stringify(all, null, 2));

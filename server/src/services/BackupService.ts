@@ -48,9 +48,20 @@ class BackupService {
     comment?: string,
     taskId?: string
   ): Promise<string> {
+    // Sanitize serverId to prevent path traversal
+    const safeServerId = serverId.toString().replace(/[^a-zA-Z0-9]/g, '');
+    if (!safeServerId) {
+      throw new Error('Invalid server ID');
+    }
+
     const id = Date.now().toString();
-    const filename = `backup_${serverId}_${id}.zip`;
+    const filename = `backup_${safeServerId}_${id}.zip`;
     const targetPath = path.join(this.backupDir, filename);
+
+    // Prevent directory traversal check (double check)
+    if (!targetPath.startsWith(this.backupDir)) {
+      throw new Error('Invalid backup path');
+    }
 
     if (taskId) {
       taskService.updateTask(taskId, { progress: 5, message: 'Yedekleme başlatılıyor...' });

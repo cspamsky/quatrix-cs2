@@ -12,7 +12,13 @@ class LockService {
     const lockFile = path.join(fileSystemService.getInstancePath(id), '.lock');
 
     if (await this.isLocked(lockFile)) {
-      console.warn(`[LOCK] Failed to acquire ${type} lock for instance ${id}. Already locked.`);
+      console.warn(
+        '[LOCK] Failed to acquire lock for instance:',
+        id,
+        'Type:',
+        type,
+        'Status: Already locked.'
+      );
       return false;
     }
 
@@ -31,7 +37,7 @@ class LockService {
       return true;
     } catch (error: unknown) {
       const err = error as Error;
-      console.error(`[LOCK] Unexpected error writing lock file ${lockFile}:`, err.message);
+      console.error('[LOCK] Unexpected error writing lock file:', lockFile, err.message);
       return false;
     }
   }
@@ -62,7 +68,7 @@ class LockService {
       return true;
     } catch (error: unknown) {
       const err = error as Error;
-      console.error(`[LOCK] Unexpected error writing core lock file ${lockFile}:`, err.message);
+      console.error('[LOCK] Unexpected error writing core lock file:', lockFile, err.message);
       return false;
     }
   }
@@ -88,7 +94,9 @@ class LockService {
         // 5 Minute Timeout for locks
         if (ageMs > 5 * 60 * 1000) {
           console.warn(
-            `[LOCK] Found stale lock at ${lockPath} (${Math.floor(ageMs / 1000)}s old). Removing...`
+            '[LOCK] Found stale lock at:',
+            lockPath,
+            `(${Math.floor(ageMs / 1000)}s old). Removing...`
           );
           await fs.promises.unlink(lockPath);
           return false;
@@ -104,7 +112,11 @@ class LockService {
             } catch (error: unknown) {
               const err = error as { code?: string };
               if (err.code === 'ESRCH') {
-                console.warn(`[LOCK] Lock owner PID ${data.pid} is dead. Removing stale lock.`);
+                console.warn(
+                  '[LOCK] Lock owner PID is dead. Removing stale lock.',
+                  'PID:',
+                  data.pid
+                );
                 await fs.promises.unlink(lockPath);
                 return false;
               }

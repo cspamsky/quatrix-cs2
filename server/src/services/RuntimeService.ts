@@ -191,17 +191,20 @@ class RuntimeService {
 
     // Performance Orchestration: CPU Priority & RAM Limits
     // CPU Priority (nice: -20 to 19, default 0. Lower is higher priority)
-    const cpuPriority = options.cpu_priority !== undefined ? Number(options.cpu_priority) : 0;
+    let cpuPriority = options.cpu_priority !== undefined ? Number(options.cpu_priority) : 0;
+    if (isNaN(cpuPriority) || !isFinite(cpuPriority)) cpuPriority = 0;
 
     // RAM Limit (MB -> KB for ulimit)
-    const ramLimitMb = options.ram_limit !== undefined ? Number(options.ram_limit) : 0;
+    let ramLimitMb = options.ram_limit !== undefined ? Number(options.ram_limit) : 0;
+    if (isNaN(ramLimitMb) || !isFinite(ramLimitMb)) ramLimitMb = 0;
 
     let executable = useRuntime ? runtimeWrapper : cs2BinLocal;
     const finalArgs = [];
 
     // If we have performance tunables, we might need a wrapper or use 'nice' command
     if (cpuPriority !== 0) {
-      finalArgs.push('-n', cpuPriority.toString(), executable);
+      // Ensure cpuPriority is treated as an integer string
+      finalArgs.push('-n', Math.round(cpuPriority).toString(), executable);
       executable = 'nice';
     }
 

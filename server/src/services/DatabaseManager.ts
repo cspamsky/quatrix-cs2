@@ -106,23 +106,21 @@ export class DatabaseManager {
       console.log('[DB] Ensuring database exists for server:', id, 'DB:', dbName);
 
       // 2. Create Database if not exists
-      await this.pool.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);
+      await this.pool.query('CREATE DATABASE IF NOT EXISTS ??', [dbName]);
 
       // 3. Create User/Grant (using a robust approach)
       // Note: In MariaDB/MySQL 5.7+, IDENTIFIED BY for existing user might require different syntax
       // but CREATE USER IF NOT EXISTS ... IDENTIFIED BY works for creating.
       try {
-        await this.pool.query(
-          `CREATE USER IF NOT EXISTS '${dbUser}'@'%' IDENTIFIED BY '${dbPass}'`
-        );
+        await this.pool.query("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", [dbUser, dbPass]);
       } catch {
         // If user exists but host differs or other issue, we try to force password reset if possible
         await this.pool
-          .query(`SET PASSWORD FOR '${dbUser}'@'%' = PASSWORD('${dbPass}')`)
+          .query("SET PASSWORD FOR ?@'%' = PASSWORD(?)", [dbUser, dbPass])
           .catch(() => {});
       }
 
-      await this.pool.query(`GRANT ALL PRIVILEGES ON \`${dbName}\`.* TO '${dbUser}'@'%'`);
+      await this.pool.query("GRANT ALL PRIVILEGES ON ??.* TO ?@'%'", [dbName, dbUser]);
       await this.pool.query(`FLUSH PRIVILEGES`);
 
       const creds = {
@@ -178,16 +176,15 @@ export class DatabaseManager {
       console.log('[DB] Creating custom database:', creds.database, 'for server:', id);
 
       // Create Database
-      await this.pool.query(`CREATE DATABASE IF NOT EXISTS \`${creds.database}\``);
+      await this.pool.query('CREATE DATABASE IF NOT EXISTS ??', [creds.database]);
 
       // Create User and Grant Privileges
       // We use 'localhost' for better security if it's a local panel
-      await this.pool.query(
-        `CREATE USER IF NOT EXISTS '${creds.user}'@'%' IDENTIFIED BY '${creds.password}'`
-      );
-      await this.pool.query(
-        `GRANT ALL PRIVILEGES ON \`${creds.database}\`.* TO '${creds.user}'@'%'`
-      );
+      await this.pool.query("CREATE USER IF NOT EXISTS ?@'%' IDENTIFIED BY ?", [
+        creds.user,
+        creds.password,
+      ]);
+      await this.pool.query("GRANT ALL PRIVILEGES ON ??.* TO ?@'%'", [creds.database, creds.user]);
       await this.pool.query(`FLUSH PRIVILEGES`);
 
       await this.saveCredentials(id, creds);
@@ -226,8 +223,8 @@ export class DatabaseManager {
 
     try {
       console.log('[DB] Dropping database:', dbName, 'and user:', dbUser);
-      await this.pool.query(`DROP DATABASE IF EXISTS \`${dbName}\``);
-      await this.pool.query(`DROP USER IF EXISTS '${dbUser}'@'%'`);
+      await this.pool.query('DROP DATABASE IF EXISTS ??', [dbName]);
+      await this.pool.query("DROP USER IF EXISTS ?@'%'", [dbUser]);
 
       const all = await this.loadAllCredentials();
       if (all[id]) {
