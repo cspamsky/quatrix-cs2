@@ -650,7 +650,8 @@ class ServerManager {
           let garbageCount = 0;
           let garbageSize = 0;
           try {
-              const { stdout } = await execAsync("find . -name 'core.*' -type f -exec du -b {} +");
+              // Only scan the data directory for core dumps to avoid heavy node_modules scanning
+              const { stdout } = await execAsync("find ./data -name 'core.*' -type f -exec du -b {} +");
               const lines = stdout.split('\n').filter(l => l.trim());
               garbageCount = lines.length;
               garbageSize = lines.reduce((acc, line) => acc + parseInt(line.split('\t')[0] || "0"), 0);
@@ -718,10 +719,10 @@ class ServerManager {
               await steamManager.installSteamRuntime(runtimePath, this.steamCmdExe);
           }
 
-          // 3. Clean Garbage (Core Dumps)
+          // 3. Clean Garbage (Core Dumps) - Scoped to ./data
           try {
-              await execAsync("find . -name 'core.*' -type f -delete");
-              console.log("[HEALTH] Cleaned core dumps.");
+              await execAsync("find ./data -name 'core.*' -type f -delete");
+              console.log("[HEALTH] Cleaned core dumps in ./data.");
           } catch (e) {
               console.warn("[HEALTH] Failed to clean core dumps:", e);
           }

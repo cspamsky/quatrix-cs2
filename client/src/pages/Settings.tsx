@@ -184,6 +184,7 @@ const Settings = () => {
               autoPluginUpdates={autoPluginUpdates} setAutoPluginUpdates={setAutoPluginUpdates}
               onSave={() => toast.success(t('settings.local_save_success'))}
               systemInfo={healthData}
+              isLoading={healthLoading}
             />
           )}
 
