@@ -610,7 +610,7 @@ export class PluginManager {
 
     // 4. Inject MySQL Credentials if needed
     await this.injectMySQLCredentials(instanceId, searchDir).catch((err) =>
-      console.error(`[PLUGIN] MySQL Injection failed for ${pluginId}:`, err)
+      console.error('[PLUGIN] MySQL Injection failed for:', pluginId, err)
     );
 
     // 5. Record in DB
