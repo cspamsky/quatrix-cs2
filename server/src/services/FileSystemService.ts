@@ -288,7 +288,7 @@ class FileSystemService {
 
       await fs.promises.symlink(source, target, symlinkType);
     } catch (e) {
-      console.error(`[FileSystem] Failed to link ${source} -> ${target}`, e);
+      console.error('[FileSystem] Failed to link:', source, '->', target, e);
       throw e;
     }
   }

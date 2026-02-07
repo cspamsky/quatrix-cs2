@@ -90,7 +90,7 @@ router.get('/:id/bans', async (req: Request, res: Response) => {
     }
   } catch (error: unknown) {
     const err = error as { message: string; code?: string };
-    console.error(`[BANS] Error fetching ban history for server ${req.params.id}:`, err);
+    console.error('[BANS] Error fetching ban history for server:', req.params.id, err);
     res.status(500).json({
       message: 'Failed to fetch ban history',
       error: err.message,

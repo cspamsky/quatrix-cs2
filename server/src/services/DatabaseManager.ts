@@ -190,7 +190,7 @@ export class DatabaseManager {
       return creds;
     } catch (error: unknown) {
       const err = error as Error;
-      console.error(`[DB] Failed to create custom database for server ${id}:`, err.message);
+      console.error('[DB] Failed to create custom database for server:', id, err.message);
       throw err;
     }
   }

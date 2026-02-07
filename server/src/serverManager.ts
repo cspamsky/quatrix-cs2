@@ -724,7 +724,7 @@ class ServerManager {
       }
 
       // 2. Prepare Instance
-      console.log(`[SYSTEM] Preparing instance ${id}...`);
+      console.log('[SYSTEM] Preparing instance:', id);
       await fileSystemService.prepareInstance(id);
     } finally {
       lockService.releaseInstanceLock(id);
