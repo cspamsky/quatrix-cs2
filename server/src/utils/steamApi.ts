@@ -53,8 +53,10 @@ export function steam3To64(steam3: string): string {
   try {
     const parts = steam3.split(':');
     if (parts.length < 3) return steam3;
-    const accountId = parts[2]?.replace(']', '');
+    // Use regex to replace all closing brackets globally
+    const accountId = parts[2]?.replace(/]/g, '');
     if (!accountId) return steam3;
+    // SteamID64 conversion: 76561197960265728 + AccountID
     return (BigInt('76561197960265728') + BigInt(accountId)).toString();
   } catch {
     return steam3;

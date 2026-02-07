@@ -144,7 +144,7 @@ router.post('/:id/plugins/:plugin/:action', async (req: Request, res: Response) 
     res.json({ message: `${registry[pluginId]?.name || plugin} ${action}ed successfully` });
   } catch (error: unknown) {
     const err = error as Error;
-    console.error(`Plugin ${action} error:`, err.message);
+    console.error('Plugin action failed:', action, err.message);
     res.status(500).json({ message: err.message });
   }
 });

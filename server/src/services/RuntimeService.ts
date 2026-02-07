@@ -311,13 +311,37 @@ class RuntimeService {
     const logFilePath = path.join(instancePath, 'console.log');
     const logFd = fs.openSync(logFilePath, 'a');
 
+    // Create a safe version of args for logging
+    const safeArgs = combinedArgs.map((arg) => {
+      if (
+        typeof arg === 'string' &&
+        (arg.startsWith('+sv_setsteamaccount') ||
+          arg.startsWith('+sv_password') ||
+          arg.startsWith('+rcon_password') ||
+          arg.startsWith('-authkey'))
+      ) {
+        return '[REDACTED]';
+      }
+      return arg;
+    });
+
+    // Also check for pairs where the key is separate from value
+    for (let i = 0; i < safeArgs.length; i++) {
+      if (safeArgs[i] === '-authkey' && i + 1 < safeArgs.length) safeArgs[i + 1] = '[REDACTED]';
+      if (safeArgs[i] === '+sv_setsteamaccount' && i + 1 < safeArgs.length)
+        safeArgs[i + 1] = '[REDACTED]';
+      if (safeArgs[i] === '+sv_password' && i + 1 < safeArgs.length) safeArgs[i + 1] = '[REDACTED]';
+      if (safeArgs[i] === '+rcon_password' && i + 1 < safeArgs.length)
+        safeArgs[i + 1] = '[REDACTED]';
+    }
+
     console.log(
       '[Runtime] Spawning instance:',
       id,
       'Exe:',
       executable,
       'Args:',
-      combinedArgs.join(' ')
+      safeArgs.join(' ')
     );
 
     const proc = spawn(executable, combinedArgs, {

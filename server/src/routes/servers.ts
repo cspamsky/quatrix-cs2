@@ -457,6 +457,11 @@ router.post('/:id/database/query', authenticateToken, async (req: Request, res: 
     const { query } = req.body as { query: string };
     if (!query) return res.status(400).json({ message: 'Query is required' });
 
+    const queryLower = query.trim().toLowerCase();
+    if (!queryLower.startsWith('select')) {
+      return res.status(403).json({ message: 'Only SELECT queries are allowed.' });
+    }
+
     const results = await databaseManager.executeQuery(query);
     res.json({ results });
   } catch (error: unknown) {
