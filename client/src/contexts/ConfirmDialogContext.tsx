@@ -1,70 +1,70 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
-import { AlertTriangle, X } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import { AlertTriangle, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface ConfirmDialogOptions {
-  title: string
-  message: string
-  confirmText?: string
-  cancelText?: string
-  type?: 'danger' | 'warning' | 'info'
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  type?: 'danger' | 'warning' | 'info';
 }
 
 interface ConfirmDialogContextType {
-  showConfirm: (options: ConfirmDialogOptions) => Promise<boolean>
+  showConfirm: (options: ConfirmDialogOptions) => Promise<boolean>;
 }
 
-const ConfirmDialogContext = createContext<ConfirmDialogContextType | undefined>(undefined)
+const ConfirmDialogContext = createContext<ConfirmDialogContextType | undefined>(undefined);
 
 export const useConfirmDialog = () => {
-  const context = useContext(ConfirmDialogContext)
+  const context = useContext(ConfirmDialogContext);
   if (!context) {
-    throw new Error('useConfirmDialog must be used within ConfirmDialogProvider')
+    throw new Error('useConfirmDialog must be used within ConfirmDialogProvider');
   }
-  return context
-}
+  return context;
+};
 
 export const ConfirmDialogProvider = ({ children }: { children: ReactNode }) => {
-  const { t } = useTranslation()
-  const [isOpen, setIsOpen] = useState(false)
+  const { t } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
   const [options, setOptions] = useState<ConfirmDialogOptions>({
     title: '',
     message: '',
     confirmText: t('common.save'),
     cancelText: t('common.cancel'),
-    type: 'danger'
-  })
-  const [resolvePromise, setResolvePromise] = useState<((value: boolean) => void) | null>(null)
+    type: 'danger',
+  });
+  const [resolvePromise, setResolvePromise] = useState<((value: boolean) => void) | null>(null);
 
   const showConfirm = (opts: ConfirmDialogOptions): Promise<boolean> => {
     setOptions({
       ...opts,
       confirmText: opts.confirmText || t('common.save'),
       cancelText: opts.cancelText || t('common.cancel'),
-      type: opts.type || 'danger'
-    })
-    setIsOpen(true)
+      type: opts.type || 'danger',
+    });
+    setIsOpen(true);
 
     return new Promise<boolean>((resolve) => {
-      setResolvePromise(() => resolve)
-    })
-  }
+      setResolvePromise(() => resolve);
+    });
+  };
 
   const handleConfirm = () => {
-    setIsOpen(false)
+    setIsOpen(false);
     if (resolvePromise) {
-      resolvePromise(true)
-      setResolvePromise(null)
+      resolvePromise(true);
+      setResolvePromise(null);
     }
-  }
+  };
 
   const handleCancel = () => {
-    setIsOpen(false)
+    setIsOpen(false);
     if (resolvePromise) {
-      resolvePromise(false)
-      setResolvePromise(null)
+      resolvePromise(false);
+      setResolvePromise(null);
     }
-  }
+  };
 
   const getTypeStyles = () => {
     switch (options.type) {
@@ -72,44 +72,41 @@ export const ConfirmDialogProvider = ({ children }: { children: ReactNode }) => 
         return {
           icon: 'text-red-500',
           iconBg: 'bg-red-500/10',
-          confirmBtn: 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
-        }
+          confirmBtn: 'bg-red-500 hover:bg-red-600 shadow-red-500/20',
+        };
       case 'warning':
         return {
           icon: 'text-amber-500',
           iconBg: 'bg-amber-500/10',
-          confirmBtn: 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20'
-        }
+          confirmBtn: 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20',
+        };
       case 'info':
         return {
           icon: 'text-blue-500',
           iconBg: 'bg-blue-500/10',
-          confirmBtn: 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20'
-        }
+          confirmBtn: 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20',
+        };
       default:
         return {
           icon: 'text-red-500',
           iconBg: 'bg-red-500/10',
-          confirmBtn: 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
-        }
+          confirmBtn: 'bg-red-500 hover:bg-red-600 shadow-red-500/20',
+        };
     }
-  }
+  };
 
-  const styles = getTypeStyles()
+  const styles = getTypeStyles();
 
   return (
     <ConfirmDialogContext.Provider value={{ showConfirm }}>
       {children}
-      
+
       {/* Modal Overlay */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={handleCancel}
-          />
-          
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleCancel} />
+
           {/* Dialog */}
           <div className="relative bg-[#111827] border border-gray-800 rounded-2xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
             {/* Header */}
@@ -151,5 +148,5 @@ export const ConfirmDialogProvider = ({ children }: { children: ReactNode }) => 
         </div>
       )}
     </ConfirmDialogContext.Provider>
-  )
-}
+  );
+};

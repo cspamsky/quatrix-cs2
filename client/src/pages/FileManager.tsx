@@ -1,11 +1,11 @@
-import { apiFetch } from '../utils/api'
-import { useState, useEffect, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { 
-  Folder, 
-  ArrowLeft, 
-  ChevronRight, 
-  Save, 
+import { apiFetch } from '../utils/api';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Folder,
+  ArrowLeft,
+  ChevronRight,
+  Save,
   RefreshCw,
   FileCode,
   FileText,
@@ -16,269 +16,291 @@ import {
   Download,
   Edit2,
   Copy,
-  ExternalLink
-} from 'lucide-react'
-import toast from 'react-hot-toast'
-import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
+  ExternalLink,
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext';
 
 interface FileStat {
-  name: string
-  isDirectory: boolean
-  size: number
-  mtime: string
+  name: string;
+  isDirectory: boolean;
+  size: number;
+  mtime: string;
+}
+
+interface FileContentResponse {
+  content: string;
 }
 
 const FileManager = () => {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const { showConfirm } = useConfirmDialog()
-  const [files, setFiles] = useState<FileStat[]>([])
-  const [currentPath, setCurrentPath] = useState<string>('')
-  const [loading, setLoading] = useState(true)
-  const [editingFile, setEditingFile] = useState<{name: string, content: string, originalContent: string} | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false)
-  const [newFolderName, setNewFolderName] = useState('')
-  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false)
-  const [renamingFile, setRenamingFile] = useState<FileStat | null>(null)
-  const [newFileName, setNewFileName] = useState('')
-  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, file: FileStat } | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { showConfirm } = useConfirmDialog();
+  const [files, setFiles] = useState<FileStat[]>([]);
+  const [currentPath, setCurrentPath] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [editingFile, setEditingFile] = useState<{
+    name: string;
+    content: string;
+    originalContent: string;
+  } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  const [renamingFile, setRenamingFile] = useState<FileStat | null>(null);
+  const [newFileName, setNewFileName] = useState('');
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: FileStat } | null>(
+    null
+  );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetchFiles(currentPath)
-    
-    const handleClick = () => setContextMenu(null)
-    window.addEventListener('click', handleClick)
-    window.addEventListener('contextmenu', handleClick)
+    fetchFiles(currentPath);
+
+    const handleClick = () => setContextMenu(null);
+    window.addEventListener('click', handleClick);
+    window.addEventListener('contextmenu', handleClick);
     return () => {
-      window.removeEventListener('click', handleClick)
-      window.removeEventListener('contextmenu', handleClick)
-    }
-  }, [id, currentPath])
+      window.removeEventListener('click', handleClick);
+      window.removeEventListener('contextmenu', handleClick);
+    };
+  }, [id, currentPath]);
 
   const fetchFiles = async (path: string) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await apiFetch(`/api/servers/${id}/files?path=${encodeURIComponent(path)}`)
+      const response = await apiFetch(`/api/servers/${id}/files?path=${encodeURIComponent(path)}`);
       if (response.ok) {
-        const data = await response.json()
-        setFiles(data)
+        const data = (await response.json()) as FileStat[];
+        setFiles(data);
       } else {
-        toast.error('Failed to load files')
+        toast.error('Failed to load files');
       }
     } catch (error) {
-      console.error('Failed to fetch files:', error)
-      toast.error('Connection error')
+      console.error('Failed to fetch files:', error);
+      toast.error('Connection error');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleEdit = async (file: FileStat) => {
     if (file.isDirectory) {
-      setCurrentPath(currentPath ? `${currentPath}/${file.name}` : file.name)
-      return
+      setCurrentPath(currentPath ? `${currentPath}/${file.name}` : file.name);
+      return;
     }
 
     try {
-      const response = await apiFetch(`/api/servers/${id}/files/read?path=${encodeURIComponent(currentPath ? `${currentPath}/${file.name}` : file.name)}`)
+      const response = await apiFetch(
+        `/api/servers/${id}/files/read?path=${encodeURIComponent(currentPath ? `${currentPath}/${file.name}` : file.name)}`
+      );
       if (response.ok) {
-        const data = await response.json()
-        setEditingFile({ name: file.name, content: data.content, originalContent: data.content })
-        toast.success(`Editing ${file.name}`)
+        const data = (await response.json()) as FileContentResponse;
+        setEditingFile({ name: file.name, content: data.content, originalContent: data.content });
+        toast.success(`Editing ${file.name}`);
       } else {
-        toast.error('Failed to read file')
+        toast.error('Failed to read file');
       }
     } catch {
-      toast.error('Connection error')
+      toast.error('Connection error');
     }
-  }
+  };
 
   const handleSave = async () => {
-    if (!editingFile) return
-    setSaving(true)
+    if (!editingFile) return;
+    setSaving(true);
     try {
-      const filePath = currentPath ? `${currentPath}/${editingFile.name}` : editingFile.name
+      const filePath = currentPath ? `${currentPath}/${editingFile.name}` : editingFile.name;
       const response = await apiFetch(`/api/servers/${id}/files/write`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: filePath, content: editingFile.content })
-      })
+        body: JSON.stringify({ path: filePath, content: editingFile.content }),
+      });
       if (response.ok) {
-        setEditingFile(null)
-        toast.success('File saved successfully')
-        fetchFiles(currentPath)
+        setEditingFile(null);
+        toast.success('File saved successfully');
+        fetchFiles(currentPath);
       } else {
-        toast.error('Failed to save file')
+        toast.error('Failed to save file');
       }
     } catch {
-      toast.error('Connection error')
+      toast.error('Connection error');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleDelete = async (file: FileStat) => {
     const confirmed = await showConfirm({
       title: 'Delete Item',
       message: `Are you sure you want to delete ${file.name}? This action cannot be undone.`,
       confirmText: 'Delete',
-      type: 'danger'
-    })
+      type: 'danger',
+    });
 
     if (confirmed) {
       try {
-        const filePath = currentPath ? `${currentPath}/${file.name}` : file.name
-        const response = await apiFetch(`/api/servers/${id}/files?path=${encodeURIComponent(filePath)}`, {
-          method: 'DELETE'
-        })
+        const filePath = currentPath ? `${currentPath}/${file.name}` : file.name;
+        const response = await apiFetch(
+          `/api/servers/${id}/files?path=${encodeURIComponent(filePath)}`,
+          {
+            method: 'DELETE',
+          }
+        );
         if (response.ok) {
-          toast.success(`${file.name} deleted`)
-          fetchFiles(currentPath)
+          toast.success(`${file.name} deleted`);
+          fetchFiles(currentPath);
         } else {
-          toast.error('Failed to delete item')
+          toast.error('Failed to delete item');
         }
       } catch {
-        toast.error('Connection error')
+        toast.error('Connection error');
       }
     }
-  }
+  };
 
   const openRenameModal = (file: FileStat) => {
-    setRenamingFile(file)
-    setNewFileName(file.name)
-    setIsRenameModalOpen(true)
-  }
+    setRenamingFile(file);
+    setNewFileName(file.name);
+    setIsRenameModalOpen(true);
+  };
 
   const handleRenameSubmit = async () => {
     if (!renamingFile || !newFileName || newFileName === renamingFile.name) {
-      setIsRenameModalOpen(false)
-      return
+      setIsRenameModalOpen(false);
+      return;
     }
 
     try {
-      const oldPath = currentPath ? `${currentPath}/${renamingFile.name}` : renamingFile.name
-      const newPath = currentPath ? `${currentPath}/${newFileName}` : newFileName
+      const oldPath = currentPath ? `${currentPath}/${renamingFile.name}` : renamingFile.name;
+      const newPath = currentPath ? `${currentPath}/${newFileName}` : newFileName;
       const response = await apiFetch(`/api/servers/${id}/files/rename`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ oldPath, newPath })
-      })
+        body: JSON.stringify({ oldPath, newPath }),
+      });
       if (response.ok) {
-        toast.success('Renamed successfully')
-        setIsRenameModalOpen(false)
-        fetchFiles(currentPath)
+        toast.success('Renamed successfully');
+        setIsRenameModalOpen(false);
+        fetchFiles(currentPath);
       } else {
-        toast.error('Failed to rename')
+        toast.error('Failed to rename');
       }
     } catch {
-      toast.error('Connection error')
+      toast.error('Connection error');
     }
-  }
+  };
 
   const handleDownload = async (file: FileStat) => {
     try {
-      const filePath = currentPath ? `${currentPath}/${file.name}` : file.name
-      const response = await apiFetch(`/api/servers/${id}/files/read?path=${encodeURIComponent(filePath)}`)
+      const filePath = currentPath ? `${currentPath}/${file.name}` : file.name;
+      const response = await apiFetch(
+        `/api/servers/${id}/files/read?path=${encodeURIComponent(filePath)}`
+      );
       if (response.ok) {
-        const data = await response.json()
-        const blob = new Blob([data.content], { type: 'text/plain' })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = file.name
-        a.click()
-        window.URL.revokeObjectURL(url)
-        toast.success(`Downloading ${file.name}`)
+        const data = (await response.json()) as FileContentResponse;
+        const blob = new Blob([data.content], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        toast.success(`Downloading ${file.name}`);
       }
     } catch {
-      toast.error('Download failed')
+      toast.error('Download failed');
     }
-  }
+  };
 
   const handleCreateFolder = async () => {
-    if (!newFolderName) return
+    if (!newFolderName) return;
     try {
-      const dirPath = currentPath ? `${currentPath}/${newFolderName}` : newFolderName
+      const dirPath = currentPath ? `${currentPath}/${newFolderName}` : newFolderName;
       const response = await apiFetch(`/api/servers/${id}/files/mkdir`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: dirPath })
-      })
+        body: JSON.stringify({ path: dirPath }),
+      });
       if (response.ok) {
-        toast.success('Folder created')
-        setIsNewFolderModalOpen(false)
-        setNewFolderName('')
-        fetchFiles(currentPath)
+        toast.success('Folder created');
+        setIsNewFolderModalOpen(false);
+        setNewFolderName('');
+        fetchFiles(currentPath);
       } else {
-        toast.error('Failed to create folder')
+        toast.error('Failed to create folder');
       }
     } catch {
-      toast.error('Connection error')
+      toast.error('Connection error');
     }
-  }
+  };
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    const formData = new FormData()
-    formData.append('file', file)
+    const formData = new FormData();
+    formData.append('file', file);
 
     try {
-      const response = await fetch(`/api/servers/${id}/files/upload?path=${encodeURIComponent(currentPath)}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      })
+      const response = await fetch(
+        `/api/servers/${id}/files/upload?path=${encodeURIComponent(currentPath)}`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+          body: formData,
+        }
+      );
 
       if (response.ok) {
-        toast.success(`${file.name} uploaded successfully`)
-        fetchFiles(currentPath)
+        toast.success(`${file.name} uploaded successfully`);
+        fetchFiles(currentPath);
       } else {
-        toast.error('Upload failed')
+        toast.error('Upload failed');
       }
     } catch {
-      toast.error('Network error during upload')
+      toast.error('Network error during upload');
     }
-    
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleContextMenu = (e: React.MouseEvent, file: FileStat) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const y = e.clientY + 220 > window.innerHeight ? e.clientY - 220 : e.clientY
-    const x = e.clientX + 160 > window.innerWidth ? e.clientX - 160 : e.clientX
-    setContextMenu({ x, y, file })
-  }
+    e.preventDefault();
+    e.stopPropagation();
+    const y = e.clientY + 220 > window.innerHeight ? e.clientY - 220 : e.clientY;
+    const x = e.clientX + 160 > window.innerWidth ? e.clientX - 160 : e.clientX;
+    setContextMenu({ x, y, file });
+  };
 
   const copyPathToClipboard = (file: FileStat) => {
-    const fullPath = currentPath ? `${currentPath}/${file.name}` : file.name
-    navigator.clipboard.writeText(fullPath)
-    toast.success('Path copied to clipboard')
-  }
+    const fullPath = currentPath ? `${currentPath}/${file.name}` : file.name;
+    navigator.clipboard.writeText(fullPath);
+    toast.success('Path copied to clipboard');
+  };
 
   const formatSize = (bytes: number) => {
-    if (bytes === 0) return '-'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
+    if (bytes === 0) return '-';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
-  const filteredFiles = files.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredFiles = files.filter((f) =>
+    f.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="p-6 h-full flex flex-col animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-           <div className="flex items-center gap-4">
-             <button
+          <div className="flex items-center gap-4">
+            <button
               onClick={() => navigate('/instances')}
               className="p-1 -ml-1 text-gray-400 hover:text-white transition-colors"
             >
@@ -294,32 +316,35 @@ const FileManager = () => {
         </div>
 
         <div className="flex gap-3">
-           <button 
-             onClick={() => setIsNewFolderModalOpen(true)}
-             className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-gray-700/50"
-           >
-             <FolderPlus size={16} /> NEW FOLDER
-           </button>
-           <button 
-             onClick={() => fileInputRef.current?.click()}
-             className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary/20"
-           >
-             <Upload size={16} /> UPLOAD
-           </button>
-           <input type="file" ref={fileInputRef} className="hidden" onChange={handleUpload} />
+          <button
+            onClick={() => setIsNewFolderModalOpen(true)}
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-gray-700/50"
+          >
+            <FolderPlus size={16} /> NEW FOLDER
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary/20"
+          >
+            <Upload size={16} /> UPLOAD
+          </button>
+          <input type="file" ref={fileInputRef} className="hidden" onChange={handleUpload} />
         </div>
       </header>
 
       <div className="flex items-center gap-4 bg-[#111827] p-2 rounded-2xl border border-gray-800 shadow-inner mb-4">
-          <div className="flex-1 flex items-center px-4 gap-2 text-sm text-gray-400">
-            <button
-              type="button"
-              className="cursor-pointer hover:text-primary transition-all font-bold"
-              onClick={() => setCurrentPath('')}
-            >
-              root
-            </button>
-            {currentPath.split('/').filter(p => p).map((p, i, arr) => (
+        <div className="flex-1 flex items-center px-4 gap-2 text-sm text-gray-400">
+          <button
+            type="button"
+            className="cursor-pointer hover:text-primary transition-all font-bold"
+            onClick={() => setCurrentPath('')}
+          >
+            root
+          </button>
+          {currentPath
+            .split('/')
+            .filter((p) => p)
+            .map((p, i, arr) => (
               <span key={i} className="flex items-center gap-2">
                 <ChevronRight size={14} className="opacity-30" />
                 <button
@@ -331,27 +356,27 @@ const FileManager = () => {
                 </button>
               </span>
             ))}
-          </div>
-          
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search files..."
-              className="w-full bg-black/20 border border-gray-700/50 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-gray-600 focus:border-primary outline-none transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <button 
-             onClick={() => fetchFiles(currentPath)}
-             className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
-             title="Refresh"
-           >
-             <RefreshCw size={18} className={loading && !editingFile ? 'animate-spin' : ''} />
-           </button>
         </div>
+
+        <div className="relative w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+          <input
+            type="text"
+            placeholder="Search files..."
+            className="w-full bg-black/20 border border-gray-700/50 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-gray-600 focus:border-primary outline-none transition-all"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <button
+          onClick={() => fetchFiles(currentPath)}
+          className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
+          title="Refresh"
+        >
+          <RefreshCw size={18} className={loading && !editingFile ? 'animate-spin' : ''} />
+        </button>
+      </div>
 
       <main className="flex-1 bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl relative">
         {editingFile ? (
@@ -360,32 +385,36 @@ const FileManager = () => {
               <div className="flex items-center gap-3">
                 <FileCode className="text-primary" size={20} />
                 <div>
-                  <h4 className="text-white text-sm font-bold tracking-tight">{editingFile.name}</h4>
-                  <p className="text-[10px] text-gray-500 font-mono tracking-widest">{currentPath || 'root'}</p>
+                  <h4 className="text-white text-sm font-bold tracking-tight">
+                    {editingFile.name}
+                  </h4>
+                  <p className="text-[10px] text-gray-500 font-mono tracking-widest">
+                    {currentPath || 'root'}
+                  </p>
                 </div>
               </div>
               <div className="flex gap-3">
-                <button 
+                <button
                   onClick={() => {
                     if (editingFile.content !== editingFile.originalContent) {
-                      if (!confirm('You have unsaved changes. Discard?')) return
+                      if (!confirm('You have unsaved changes. Discard?')) return;
                     }
-                    setEditingFile(null)
+                    setEditingFile(null);
                   }}
                   className="text-xs font-bold text-gray-400 hover:text-white px-4 py-2 rounded-xl transition-all"
                 >
                   DISCARD
                 </button>
-                <button 
+                <button
                   onClick={handleSave}
                   disabled={saving}
                   className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-black tracking-widest transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
-                 >
+                >
                   <Save size={16} /> {saving ? 'SAVING...' : 'SAVE CHANGES'}
                 </button>
               </div>
             </div>
-            <textarea 
+            <textarea
               className="flex-1 bg-black/30 text-gray-300 p-8 font-mono text-sm outline-none resize-none scrollbar-hide leading-relaxed"
               spellCheck={false}
               autoFocus
@@ -406,99 +435,112 @@ const FileManager = () => {
               </thead>
               <tbody className="divide-y divide-gray-800/30">
                 {currentPath && (
-                   <tr 
-                     className="hover:bg-white/[0.02] cursor-pointer transition-all border-l-2 border-transparent hover:border-primary/50"
-                     onClick={() => {
-                        const parts = currentPath.split('/')
-                        parts.pop()
-                        setCurrentPath(parts.join('/'))
-                     }}
-                   >
-                     <td colSpan={4} className="px-8 py-4 flex items-center gap-3 text-gray-500 font-bold text-xs italic">
-                       <ArrowLeft size={14} /> .. (Go Up)
-                     </td>
-                   </tr>
+                  <tr
+                    className="hover:bg-white/[0.02] cursor-pointer transition-all border-l-2 border-transparent hover:border-primary/50"
+                    onClick={() => {
+                      const parts = currentPath.split('/');
+                      parts.pop();
+                      setCurrentPath(parts.join('/'));
+                    }}
+                  >
+                    <td
+                      colSpan={4}
+                      className="px-8 py-4 flex items-center gap-3 text-gray-500 font-bold text-xs italic"
+                    >
+                      <ArrowLeft size={14} /> .. (Go Up)
+                    </td>
+                  </tr>
                 )}
                 {loading ? (
                   <tr>
                     <td colSpan={4} className="px-8 py-20 text-center">
                       <div className="flex flex-col items-center gap-4 text-gray-600">
                         <RefreshCw className="w-10 h-10 animate-spin opacity-20" />
-                        <span className="text-xs font-black tracking-widest">LOADING FILESYSTEM</span>
+                        <span className="text-xs font-black tracking-widest">
+                          LOADING FILESYSTEM
+                        </span>
                       </div>
                     </td>
                   </tr>
                 ) : filteredFiles.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-8 py-20 text-center">
-                       <div className="flex flex-col items-center gap-2 text-gray-600">
-                         <Search className="w-10 h-10 opacity-20" />
-                         <span className="text-xs font-black tracking-widest">{searchTerm ? 'NO FILES MATCH SEARCH' : 'DIRECTORY IS EMPTY'}</span>
-                       </div>
+                      <div className="flex flex-col items-center gap-2 text-gray-600">
+                        <Search className="w-10 h-10 opacity-20" />
+                        <span className="text-xs font-black tracking-widest">
+                          {searchTerm ? 'NO FILES MATCH SEARCH' : 'DIRECTORY IS EMPTY'}
+                        </span>
+                      </div>
                     </td>
                   </tr>
-                ) : filteredFiles.map((file, i) => (
-                  <tr 
-                    key={i} 
-                    className={`hover:bg-white/[0.03] cursor-pointer group transition-all border-l-4 border-transparent hover:border-primary group ${contextMenu?.file.name === file.name ? 'bg-primary/5 border-primary' : ''}`}
-                    onClick={() => handleEdit(file)}
-                    onContextMenu={(e) => handleContextMenu(e, file)}
-                  >
-                    <td className="px-8 py-4 flex items-center gap-4">
-                      <div className="p-2 rounded-lg bg-gray-900/50 group-hover:bg-gray-800 transition-all border border-gray-800/50">
-                        {file.isDirectory ? (
-                          <Folder className="text-amber-500 w-5 h-5 fill-amber-500/10" />
-                        ) : file.name.endsWith('.cfg') || file.name.endsWith('.json') || file.name.endsWith('.ini') ? (
-                          <FileCode className="text-primary w-5 h-5" />
-                        ) : (
-                          <FileText className="text-gray-400 w-5 h-5" />
-                        )}
-                      </div>
-                      <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-all">{file.name}</span>
-                    </td>
-                    <td className="px-8 py-4 text-xs font-mono text-gray-500 tracking-tighter">
-                      {file.isDirectory ? '-' : formatSize(file.size)}
-                    </td>
-                    <td className="px-8 py-4 text-xs text-gray-600 font-medium">
-                      {new Date(file.mtime).toLocaleString()}
-                    </td>
-                    <td className="px-8 py-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                        <button 
-                          className="p-2 text-gray-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openRenameModal(file)
-                          }}
-                          title="Rename"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        {!file.isDirectory && (
-                           <button 
-                            className="p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                ) : (
+                  filteredFiles.map((file, i) => (
+                    <tr
+                      key={i}
+                      className={`hover:bg-white/[0.03] cursor-pointer group transition-all border-l-4 border-transparent hover:border-primary group ${contextMenu?.file.name === file.name ? 'bg-primary/5 border-primary' : ''}`}
+                      onClick={() => handleEdit(file)}
+                      onContextMenu={(e) => handleContextMenu(e, file)}
+                    >
+                      <td className="px-8 py-4 flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-gray-900/50 group-hover:bg-gray-800 transition-all border border-gray-800/50">
+                          {file.isDirectory ? (
+                            <Folder className="text-amber-500 w-5 h-5 fill-amber-500/10" />
+                          ) : file.name.endsWith('.cfg') ||
+                            file.name.endsWith('.json') ||
+                            file.name.endsWith('.ini') ? (
+                            <FileCode className="text-primary w-5 h-5" />
+                          ) : (
+                            <FileText className="text-gray-400 w-5 h-5" />
+                          )}
+                        </div>
+                        <span className="text-sm font-semibold text-gray-300 group-hover:text-white transition-all">
+                          {file.name}
+                        </span>
+                      </td>
+                      <td className="px-8 py-4 text-xs font-mono text-gray-500 tracking-tighter">
+                        {file.isDirectory ? '-' : formatSize(file.size)}
+                      </td>
+                      <td className="px-8 py-4 text-xs text-gray-600 font-medium">
+                        {new Date(file.mtime).toLocaleString()}
+                      </td>
+                      <td className="px-8 py-4 text-right">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                          <button
+                            className="p-2 text-gray-500 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
                             onClick={(e) => {
-                              e.stopPropagation()
-                              handleDownload(file)
+                              e.stopPropagation();
+                              openRenameModal(file);
                             }}
-                            title="Download"
+                            title="Rename"
                           >
-                            <Download size={14} />
+                            <Edit2 size={14} />
                           </button>
-                        )}
-                        <button 
-                          className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDelete(file)
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {!file.isDirectory && (
+                            <button
+                              className="p-2 text-gray-500 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownload(file);
+                              }}
+                              title="Download"
+                            >
+                              <Download size={14} />
+                            </button>
+                          )}
+                          <button
+                            className="p-2 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(file);
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -507,12 +549,17 @@ const FileManager = () => {
         {/* New Folder Modal */}
         {isNewFolderModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsNewFolderModalOpen(false)}></div>
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setIsNewFolderModalOpen(false)}
+            ></div>
             <div className="relative bg-[#111827] border border-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
-              <h3 className="text-xl font-black text-white mb-6 tracking-tighter uppercase">NEW DIRECTORY</h3>
+              <h3 className="text-xl font-black text-white mb-6 tracking-tighter uppercase">
+                NEW DIRECTORY
+              </h3>
               <div className="space-y-4">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   autoFocus
                   placeholder="Folder Name"
                   className="w-full bg-black/40 border border-gray-700 rounded-2xl px-6 py-4 text-white focus:border-primary outline-none transition-all font-bold"
@@ -520,13 +567,13 @@ const FileManager = () => {
                   onChange={(e) => setNewFolderName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
                 />
-                <button 
+                <button
                   onClick={handleCreateFolder}
                   className="w-full py-4 bg-primary hover:bg-blue-600 text-white rounded-2xl font-black tracking-widest text-xs transition-all shadow-lg shadow-primary/20"
                 >
                   CREATE FOLDER
                 </button>
-                <button 
+                <button
                   onClick={() => setIsNewFolderModalOpen(false)}
                   className="w-full py-4 bg-transparent text-gray-500 hover:text-white font-bold text-xs"
                 >
@@ -540,16 +587,23 @@ const FileManager = () => {
         {/* Rename Modal */}
         {isRenameModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsRenameModalOpen(false)}></div>
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              onClick={() => setIsRenameModalOpen(false)}
+            ></div>
             <div className="relative bg-[#111827] border border-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
-              <h3 className="text-xl font-black text-white mb-6 tracking-tighter uppercase text-center">RENAME ITEM</h3>
+              <h3 className="text-xl font-black text-white mb-6 tracking-tighter uppercase text-center">
+                RENAME ITEM
+              </h3>
               <div className="space-y-4">
                 <div className="p-4 bg-gray-900/50 rounded-2xl border border-gray-800 mb-2">
-                  <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">Old Name</p>
+                  <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">
+                    Old Name
+                  </p>
                   <p className="text-sm text-gray-400 font-mono truncate">{renamingFile?.name}</p>
                 </div>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   autoFocus
                   placeholder="New Name"
                   className="w-full bg-black/40 border border-gray-700 rounded-2xl px-6 py-4 text-white focus:border-primary outline-none transition-all font-bold"
@@ -557,13 +611,13 @@ const FileManager = () => {
                   onChange={(e) => setNewFileName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleRenameSubmit()}
                 />
-                <button 
+                <button
                   onClick={handleRenameSubmit}
                   className="w-full py-4 bg-primary hover:bg-blue-600 text-white rounded-2xl font-black tracking-widest text-xs transition-all shadow-lg shadow-primary/20"
                 >
                   RENAME ITEM
                 </button>
-                <button 
+                <button
                   onClick={() => setIsRenameModalOpen(false)}
                   className="w-full py-4 bg-transparent text-gray-500 hover:text-white font-bold text-xs"
                 >
@@ -574,7 +628,7 @@ const FileManager = () => {
           </div>
         )}
       </main>
-      
+
       <footer className="mt-4 flex justify-between items-center text-[10px] font-black text-gray-600 tracking-[0.3em] uppercase">
         <div>QUATRIX FILE SYSTEM V2</div>
         <div className="flex gap-4">
@@ -585,7 +639,7 @@ const FileManager = () => {
 
       {/* Context Menu */}
       {contextMenu && (
-        <div 
+        <div
           className="fixed z-[999] bg-[#1a2233]/95 backdrop-blur-xl border border-gray-700/50 rounded-xl shadow-2xl overflow-hidden min-w-[180px] animate-in fade-in zoom-in-95 duration-100 py-1.5"
           style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
@@ -596,32 +650,44 @@ const FileManager = () => {
             </p>
           </div>
 
-          <button 
-            onClick={() => { handleEdit(contextMenu.file); setContextMenu(null); }}
+          <button
+            onClick={() => {
+              handleEdit(contextMenu.file);
+              setContextMenu(null);
+            }}
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-primary transition-all text-left"
           >
             {contextMenu.file.isDirectory ? <ExternalLink size={14} /> : <Edit2 size={14} />}
             {contextMenu.file.isDirectory ? 'OPEN FOLDER' : 'EDIT FILE'}
           </button>
 
-          <button 
-            onClick={() => { openRenameModal(contextMenu.file); setContextMenu(null); }}
+          <button
+            onClick={() => {
+              openRenameModal(contextMenu.file);
+              setContextMenu(null);
+            }}
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
           >
             <RefreshCw size={14} /> RENAME
           </button>
 
           {!contextMenu.file.isDirectory && (
-            <button 
-              onClick={() => { handleDownload(contextMenu.file); setContextMenu(null); }}
+            <button
+              onClick={() => {
+                handleDownload(contextMenu.file);
+                setContextMenu(null);
+              }}
               className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
             >
               <Download size={14} /> DOWNLOAD
             </button>
           )}
 
-          <button 
-            onClick={() => { copyPathToClipboard(contextMenu.file); setContextMenu(null); }}
+          <button
+            onClick={() => {
+              copyPathToClipboard(contextMenu.file);
+              setContextMenu(null);
+            }}
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
           >
             <Copy size={14} /> COPY PATH
@@ -629,8 +695,11 @@ const FileManager = () => {
 
           <div className="h-px bg-gray-800/50 my-1 mx-2" />
 
-          <button 
-            onClick={() => { handleDelete(contextMenu.file); setContextMenu(null); }}
+          <button
+            onClick={() => {
+              handleDelete(contextMenu.file);
+              setContextMenu(null);
+            }}
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-red-500 hover:text-white hover:bg-red-500 transition-all text-left"
           >
             <Trash2 size={14} /> DELETE
@@ -638,7 +707,7 @@ const FileManager = () => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default FileManager
+export default FileManager;

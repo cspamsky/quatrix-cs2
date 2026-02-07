@@ -30,26 +30,28 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     socket.on('task_started', (task: Task) => {
-      setTasks(prev => [...prev.filter(t => t.id !== task.id), task]);
+      setTasks((prev) => [...prev.filter((t) => t.id !== task.id), task]);
     });
 
     socket.on('task_progress', (updatedTask: Task) => {
-      setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+      setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? updatedTask : t)));
     });
 
     socket.on('task_completed', (task: Task) => {
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...task, status: 'completed', progress: 100 } : t));
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...task, status: 'completed', progress: 100 } : t))
+      );
       // Remove completed task after 5 seconds to let user see "Finished"
       setTimeout(() => {
-        setTasks(prev => prev.filter(t => t.id !== task.id));
+        setTasks((prev) => prev.filter((t) => t.id !== task.id));
       }, 5000);
     });
 
     socket.on('task_failed', (task: Task) => {
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...task, status: 'failed' } : t));
+      setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...task, status: 'failed' } : t)));
       // Keep failed tasks longer (15s) for user to read error
       setTimeout(() => {
-        setTasks(prev => prev.filter(t => t.id !== task.id));
+        setTasks((prev) => prev.filter((t) => t.id !== task.id));
       }, 15000);
     });
 
@@ -62,11 +64,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  return (
-    <TaskContext.Provider value={{ tasks }}>
-      {children}
-    </TaskContext.Provider>
-  );
+  return <TaskContext.Provider value={{ tasks }}>{children}</TaskContext.Provider>;
 };
 
 export const useTasks = () => {

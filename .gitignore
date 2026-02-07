@@ -1,44 +1,53 @@
 # Dependencies
 node_modules/
-# package-lock.json SHOULD be tracked to ensure version consistency
+.pnp
+.pnp.js
 
-# Build Outputs
+# Testing
+coverage/
+
+# Production
 dist/
+dist-ssr/
 build/
+out/
 server/dist/
 client/dist/
-client/dist-ssr/
-coverage/
-*.tsbuildinfo
 
-# Environment Variables
-.env
-.env.*
-!.env.example
-
-# IDE & OS Files
-.vscode/
-.idea/
-*.swp
-*.swo
+# Misc
 .DS_Store
-Thumbs.db
+*.pem
 
-# Logs & Diagnostics
-*.log
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 server/trace.log
 
-# Application Data & Runtime (Unified)
+# Local Env Files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*.tsbuildinfo
+
+# Application Data (Quatrix Specific)
 data/*
 !data/plugin_pool/
+!data/.gitkeep
+# Don't ignore static database files if they are meant to be tracked, 
+# but usually dynamic data like 'instances' should be ignored.
+# data/databases.json is strictly local runtime data.
 
-# Temp & Backups
+# Temporary Files
 *.tmp
 *.bak
 *.old
-
-# Keep empty directories if needed
-!.gitkeep

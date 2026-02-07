@@ -1,0 +1,8 @@
+dist
+node_modules
+server/dist
+client/dist
+data
+*.sqlite
+*.log
+.env

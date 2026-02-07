@@ -7,7 +7,7 @@ import { apiFetch } from '../utils/api';
  */
 export const useSteamAvatars = (steamIds: string[]) => {
   // Filter out invalid or console IDs
-  const validIds = steamIds.filter(id => id && id !== '0' && id.length > 5);
+  const validIds = steamIds.filter((id) => id && id !== '0' && id.length > 5);
   // Create a unique key based on sorted IDs to prevent redundant fetches
   const queryKey = ['steamAvatars', validIds.sort().join(',')];
 
@@ -15,10 +15,10 @@ export const useSteamAvatars = (steamIds: string[]) => {
     queryKey,
     queryFn: async () => {
       if (validIds.length === 0) return {};
-      
+
       const searchParams = new URLSearchParams();
       searchParams.append('steamIds', validIds.join(','));
-      
+
       const res = await apiFetch(`/api/steam/avatars?${searchParams.toString()}`);
       if (!res.ok) throw new Error('Failed to fetch avatars');
       return res.json() as Promise<Record<string, string>>;

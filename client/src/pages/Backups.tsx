@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { 
-  Archive, 
-  Trash2, 
-  RotateCcw, 
-  Plus, 
+import {
+  Archive,
+  Trash2,
+  RotateCcw,
+  Plus,
   HardDrive,
   Calendar,
   Layers,
   Search,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr, enUS } from 'date-fns/locale';
@@ -17,27 +17,13 @@ import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext';
 import { apiFetch } from '../utils/api';
-
-interface Backup {
-  id: string;
-  serverId: string | number;
-  filename: string;
-  size: number;
-  createdAt: number;
-  type: 'manual' | 'auto';
-  comment?: string;
-}
-
-interface Server {
-  id: string | number;
-  name: string;
-}
+import type { Backup, Instance } from '../types';
 
 const Backups: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { showConfirm } = useConfirmDialog();
   const [backups, setBackups] = useState<Backup[]>([]);
-  const [servers, setServers] = useState<Server[]>([]);
+  const [servers, setServers] = useState<Instance[]>([]);
   const [selectedServerId, setSelectedServerId] = useState<string | number>('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -52,8 +38,8 @@ const Backups: React.FC = () => {
     if (selectedServerId) {
       fetchBackups(selectedServerId);
     } else {
-        setBackups([]);
-        setLoading(false);
+      setBackups([]);
+      setLoading(false);
     }
   }, [selectedServerId]);
 
@@ -62,16 +48,16 @@ const Backups: React.FC = () => {
       const response = await apiFetch('/api/servers');
       if (!response.ok) throw new Error('API Error');
       const data = await response.json();
-      
+
       const serverArray = Array.isArray(data) ? data : [];
       setServers(serverArray);
-      
+
       if (serverArray.length > 0) {
         setSelectedServerId(serverArray[0].id);
       } else {
         setLoading(false);
       }
-    } catch (error) {
+    } catch {
       toast.error(t('backups.error_fetch_servers'));
       setLoading(false);
     }
@@ -84,7 +70,7 @@ const Backups: React.FC = () => {
       if (!response.ok) throw new Error('API Error');
       const data = await response.json();
       setBackups(Array.isArray(data) ? data : []);
-    } catch (error) {
+    } catch {
       toast.error(t('backups.error_fetch_backups'));
       setBackups([]);
     } finally {
@@ -93,24 +79,24 @@ const Backups: React.FC = () => {
   };
 
   const handleCreateBackup = async () => {
-     if (!selectedServerId) return;
+    if (!selectedServerId) return;
 
-     toast.promise(
-       (async () => {
-         const response = await apiFetch(`/api/backups/${selectedServerId}/create`, {
-           method: 'POST',
-           body: JSON.stringify({ comment: 'Manual Backup', type: 'manual' })
-         });
-         const data = await response.json();
-         if (!response.ok) throw new Error(data.error || 'Failed to start backup');
-         return data;
-       })(),
-       {
-         loading: t('backups.creating_backup_loading'),
-         success: t('backups.creating_backup_started'),
-         error: (err) => err.message
-       }
-     );
+    toast.promise(
+      (async () => {
+        const response = await apiFetch(`/api/backups/${selectedServerId}/create`, {
+          method: 'POST',
+          body: JSON.stringify({ comment: 'Manual Backup', type: 'manual' }),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to start backup');
+        return data;
+      })(),
+      {
+        loading: t('backups.creating_backup_loading'),
+        success: t('backups.creating_backup_started'),
+        error: (err) => err.message,
+      }
+    );
   };
 
   const handleRestore = async (backup: Backup) => {
@@ -119,14 +105,14 @@ const Backups: React.FC = () => {
       message: t('backups.restore_confirm_message', { filename: backup.filename }),
       confirmText: t('common.start'),
       cancelText: t('common.cancel'),
-      type: 'warning'
+      type: 'warning',
     });
 
     if (confirmed) {
       toast.promise(
         (async () => {
           const response = await apiFetch(`/api/backups/${backup.id}/restore`, {
-            method: 'POST'
+            method: 'POST',
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || 'Failed to start restore');
@@ -135,7 +121,7 @@ const Backups: React.FC = () => {
         {
           loading: t('backups.restoring_loading'),
           success: t('backups.restoring_started'),
-          error: (err) => err.message
+          error: (err) => err.message,
         }
       );
     }
@@ -147,7 +133,7 @@ const Backups: React.FC = () => {
       message: t('backups.delete_confirm_message'),
       confirmText: t('common.delete'),
       cancelText: t('common.cancel'),
-      type: 'danger'
+      type: 'danger',
     });
 
     if (confirmed) {
@@ -159,15 +145,16 @@ const Backups: React.FC = () => {
         } else {
           throw new Error();
         }
-      } catch (error) {
+      } catch {
         toast.error(t('backups.delete_failed'));
       }
     }
   };
 
-  const filteredBackups = backups.filter(b => 
-    b.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (b.comment && b.comment.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredBackups = backups.filter(
+    (b) =>
+      b.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (b.comment && b.comment.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const formatSize = (bytes: number) => {
@@ -187,7 +174,7 @@ const Backups: React.FC = () => {
           <p className="text-gray-400 max-w-2xl">{t('backups.subtitle')}</p>
         </div>
 
-        <button 
+        <button
           onClick={handleCreateBackup}
           className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
           disabled={!selectedServerId}
@@ -206,10 +193,15 @@ const Backups: React.FC = () => {
             onChange={(e) => setSelectedServerId(e.target.value)}
             className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all cursor-pointer hover:bg-white/10 shadow-sm"
           >
-            <option value="" disabled className="bg-[#001529]">{t('backups.select_server')}</option>
-            {Array.isArray(servers) && servers.map(server => (
-              <option key={server.id} value={server.id} className="bg-[#001529]">{server.name}</option>
-            ))}
+            <option value="" disabled className="bg-[#001529]">
+              {t('backups.select_server')}
+            </option>
+            {Array.isArray(servers) &&
+              servers.map((server) => (
+                <option key={server.id} value={server.id} className="bg-[#001529]">
+                  {server.name}
+                </option>
+              ))}
           </select>
         </div>
 
@@ -239,11 +231,21 @@ const Backups: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-white/10 text-left">
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">{t('backups.column_date')}</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">{t('backups.column_filename')}</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">{t('backups.column_size')}</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">{t('backups.column_type')}</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">{t('common.actions')}</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    {t('backups.column_date')}
+                  </th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    {t('backups.column_filename')}
+                  </th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    {t('backups.column_size')}
+                  </th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                    {t('backups.column_type')}
+                  </th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-widest text-right">
+                    {t('common.actions')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -259,7 +261,10 @@ const Backups: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-col max-w-[300px]">
-                        <span className="text-sm font-semibold text-gray-200 truncate" title={backup.filename}>
+                        <span
+                          className="text-sm font-semibold text-gray-200 truncate"
+                          title={backup.filename}
+                        >
                           {backup.filename}
                         </span>
                         {backup.comment && (
@@ -270,27 +275,35 @@ const Backups: React.FC = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <HardDrive className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-300 font-medium tabular-nums">{formatSize(backup.size)}</span>
+                        <span className="text-sm text-gray-300 font-medium tabular-nums">
+                          {formatSize(backup.size)}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={clsx(
-                        "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                        backup.type === 'manual' ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-                      )}>
-                        {backup.type === 'manual' ? t('backups.type_manual') : t('backups.type_auto')}
+                      <span
+                        className={clsx(
+                          'px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider',
+                          backup.type === 'manual'
+                            ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                            : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                        )}
+                      >
+                        {backup.type === 'manual'
+                          ? t('backups.type_manual')
+                          : t('backups.type_auto')}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 px-1">
-                        <button 
+                        <button
                           onClick={() => handleRestore(backup)}
                           className="p-2 text-primary hover:bg-primary/20 rounded-lg transition-all active:scale-95"
                           title={t('backups.restore')}
                         >
                           <RotateCcw className="w-5 h-5" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDelete(backup.id)}
                           className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/20 rounded-lg transition-all active:scale-95"
                           title={t('common.delete')}
@@ -311,10 +324,12 @@ const Backups: React.FC = () => {
             </div>
             <h3 className="text-xl font-bold text-white mb-2">{t('backups.no_backups_found')}</h3>
             <p className="text-gray-500 max-w-sm mb-8">
-              {selectedServerId ? t('backups.no_backups_desc') : t('backups.no_server_selected_desc')}
+              {selectedServerId
+                ? t('backups.no_backups_desc')
+                : t('backups.no_server_selected_desc')}
             </p>
             {selectedServerId && (
-              <button 
+              <button
                 onClick={handleCreateBackup}
                 className="inline-flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 font-bold transition-all active:scale-95 shadow-lg"
               >
@@ -329,13 +344,15 @@ const Backups: React.FC = () => {
       {/* Proactive Tip */}
       <div className="flex items-start gap-4 p-5 bg-primary/5 border border-primary/10 rounded-2xl relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-           <AlertCircle className="w-24 h-24 text-primary" />
+          <AlertCircle className="w-24 h-24 text-primary" />
         </div>
         <div className="p-2.5 bg-primary/10 rounded-xl text-primary shrink-0 shadow-inner">
           <AlertCircle className="w-6 h-6" />
         </div>
         <div className="space-y-1 relative z-10">
-          <h4 className="text-sm font-bold text-white uppercase tracking-wider">{t('backups.tip_title')}</h4>
+          <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+            {t('backups.tip_title')}
+          </h4>
           <p className="text-sm text-gray-400 leading-relaxed font-medium">
             {t('backups.tip_message')}
           </p>

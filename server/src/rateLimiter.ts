@@ -22,7 +22,7 @@ export const rateLimiter = (config: RateLimitConfig) => {
 
     if (record.count >= config.max) {
       return res.status(429).json({
-        message: config.message || 'Too many requests, please try again later.'
+        message: config.message || 'Too many requests, please try again later.',
       });
     }
 

@@ -11,14 +11,23 @@
     "build:client": "npm run build --prefix client",
     "start": "cross-env NODE_ENV=production npm start --prefix server",
     "clean": "rimraf dist && rimraf server/dist && rimraf client/dist",
-    "lint": "cd client && npm run lint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
     "install-all": "npm install && npm install --prefix server && npm install --prefix client",
     "fix": "npx rimraf node_modules server/node_modules client/node_modules && npm run install-all"
   },
   "devDependencies": {
+    "@eslint/js": "^9.0.0",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "globals": "^17.3.0",
+    "prettier": "^3.8.1",
     "rimraf": "^6.0.1",
+    "typescript-eslint": "^8.54.0",
     "wait-on": "^9.0.3"
   },
   "engines": {

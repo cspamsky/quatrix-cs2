@@ -1,130 +1,125 @@
-import { useMemo, useState } from 'react'
-import { 
-  Users, 
-  Search, 
-  RefreshCw, 
-  UserMinus, 
-  ShieldAlert, 
-  MoreHorizontal
-} from 'lucide-react'
-import toast from 'react-hot-toast'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch } from '../../utils/api'
-import { useTranslation } from 'react-i18next'
-import { useSteamAvatars } from '../../hooks/useSteamAvatars'
-
-interface Player {
-  userId: string
-  name: string
-  steamId: string
-  ipAddress?: string
-  connected: string
-  ping: number
-  state: string
-  avatar?: string
-}
+import { useMemo, useState } from 'react';
+import { Users, Search, RefreshCw, UserMinus, ShieldAlert, MoreHorizontal } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiFetch } from '../../utils/api';
+import { useTranslation } from 'react-i18next';
+import { useSteamAvatars } from '../../hooks/useSteamAvatars';
+import type { LivePlayer } from '../../types';
 
 interface LivePlayersTabProps {
-  selectedServerId: number | null
+  selectedServerId: number | null;
 }
 
 const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
-  const { t } = useTranslation()
-  const queryClient = useQueryClient()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [refreshing, setRefreshing] = useState(false)
-  const [banDialog, setBanDialog] = useState<{ show: boolean; player: Player | null }>({ show: false, player: null })
-  const [banReason, setBanReason] = useState('')
-  const [banDuration, setBanDuration] = useState('0')
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [banDialog, setBanDialog] = useState<{ show: boolean; player: LivePlayer | null }>({
+    show: false,
+    player: null,
+  });
+  const [banReason, setBanReason] = useState('');
+  const [banDuration, setBanDuration] = useState('0');
 
   // 2. Fetch Players for selected server
-  const { 
-    data: playerData = { players: [], averagePing: 0 }, 
+  const {
+    data: playerData = { players: [], averagePing: 0 },
     isLoading: loading,
-    refetch 
+    refetch,
   } = useQuery({
     queryKey: ['players', selectedServerId],
-    queryFn: () => apiFetch(`/api/servers/${selectedServerId}/players`).then(res => res.json()),
+    queryFn: () => apiFetch(`/api/servers/${selectedServerId}/players`).then((res) => res.json()),
     enabled: !!selectedServerId,
-    refetchInterval: 10000 // 10s auto-refresh
-  })
+    refetchInterval: 10000, // 10s auto-refresh
+  });
 
   // Fetch Avatars
-  const uniqueSteamIds = Array.from(new Set(playerData.players?.map((p: Player) => p.steamId) || []));
+  const uniqueSteamIds = Array.from(
+    new Set(playerData.players?.map((p: LivePlayer) => p.steamId) || [])
+  );
   const { data: avatars = {} } = useSteamAvatars(uniqueSteamIds as string[]);
 
-  const players = useMemo(() => playerData.players || [], [playerData])
+  const players = useMemo(() => playerData.players || [], [playerData]);
 
   const handleRefresh = async () => {
-    setRefreshing(true)
-    await refetch()
-    setRefreshing(false)
-    toast.success(t('players.player_list_updated'))
-  }
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+    toast.success(t('players.player_list_updated'));
+  };
 
-  const handleAction = async (action: 'kick' | 'ban', userId: string, player?: Player) => {
-    if (!selectedServerId) return
-    
+  const handleAction = async (action: 'kick' | 'ban', userId: string, player?: LivePlayer) => {
+    if (!selectedServerId) return;
+
     // Show ban dialog for ban action
     if (action === 'ban' && player) {
-      setBanDialog({ show: true, player })
-      setBanReason('')
-      setBanDuration('0')
-      return
+      setBanDialog({ show: true, player });
+      setBanReason('');
+      setBanDuration('0');
+      return;
     }
-    
+
     // Kick action
-    const reason = 'Kicked by admin'
-    const body: any = { reason }
-    
+    const reason = 'Kicked by admin';
+    const body: Record<string, string> = { reason };
+
     try {
-      const response = await apiFetch(`/api/servers/${selectedServerId}/players/${userId}/${action}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
+      const response = await apiFetch(
+        `/api/servers/${selectedServerId}/players/${userId}/${action}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }
+      );
       if (response.ok) {
-        toast.success(t(`players.player_${action}ed`))
-        queryClient.invalidateQueries({ queryKey: ['players', selectedServerId] })
+        toast.success(t(`players.player_${action}ed`));
+        queryClient.invalidateQueries({ queryKey: ['players', selectedServerId] });
       }
-    } catch (error) {
-      toast.error(t(`players.${action}_failed`))
+    } catch {
+      toast.error(t(`players.${action}_failed`));
     }
-  }
+  };
 
   const confirmBan = async () => {
-    if (!banDialog.player || !selectedServerId) return
-    
+    if (!banDialog.player || !selectedServerId) return;
+
     const body = {
       reason: banReason || 'No reason provided',
       playerName: banDialog.player.name,
       steamId: banDialog.player.steamId,
       ipAddress: banDialog.player.ipAddress || '',
-      duration: parseInt(banDuration) || 0
-    }
-    
-    try {
-      const response = await apiFetch(`/api/servers/${selectedServerId}/players/${banDialog.player.userId}/ban`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
-      if (response.ok) {
-        toast.success(t('players.player_banned'))
-        queryClient.invalidateQueries({ queryKey: ['players', selectedServerId] })
-        setBanDialog({ show: false, player: null })
-      } else {
-        toast.error(t('players.ban_failed'))
-      }
-    } catch (error) {
-      toast.error(t('players.ban_failed'))
-    }
-  }
+      duration: parseInt(banDuration) || 0,
+    };
 
-  const filteredPlayers = players.filter((p: Player) => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    p.steamId.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+    try {
+      const response = await apiFetch(
+        `/api/servers/${selectedServerId}/players/${banDialog.player.userId}/ban`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }
+      );
+      if (response.ok) {
+        toast.success(t('players.player_banned'));
+        queryClient.invalidateQueries({ queryKey: ['players', selectedServerId] });
+        setBanDialog({ show: false, player: null });
+      } else {
+        toast.error(t('players.ban_failed'));
+      }
+    } catch {
+      toast.error(t('players.ban_failed'));
+    }
+  };
+
+  const filteredPlayers = players.filter(
+    (p: LivePlayer) =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.steamId.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -135,7 +130,9 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
               <Users size={18} />
             </div>
             <div>
-              <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">{t('players.active_players')}</p>
+              <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">
+                {t('players.active_players')}
+              </p>
               <p className="text-xl font-bold text-white tracking-tight">{players.length}</p>
             </div>
           </div>
@@ -144,15 +141,15 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
         <div className="flex items-center gap-4">
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <input 
-              className="w-64 pl-10 pr-4 py-2 bg-[#1d1d1d]/30 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200" 
+            <input
+              className="w-64 pl-10 pr-4 py-2 bg-[#1d1d1d]/30 border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
               placeholder={t('players.search_placeholder')}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <button 
+          <button
             onClick={handleRefresh}
             disabled={!selectedServerId || refreshing}
             className="bg-primary hover:bg-blue-600 disabled:opacity-50 text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center transition-all shadow-lg shadow-blue-500/20 active:scale-95"
@@ -168,47 +165,64 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#1d1d1d]/30 text-gray-400 text-[10px] uppercase font-black tracking-widest">
-                <th className="px-6 py-4 border-b border-gray-800/50">{t('players.player_info')}</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">
+                  {t('players.player_info')}
+                </th>
                 <th className="px-6 py-4 border-b border-gray-800/50">{t('players.steam_id')}</th>
-                <th className="px-6 py-4 border-b border-gray-800/50">{t('serverCard.ip_address')}</th>
-                <th className="px-6 py-4 border-b border-gray-800/50 text-center">{t('players.connected')}</th>
-                <th className="px-6 py-4 border-b border-gray-800/50 text-right">{t('players.moderation')}</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">
+                  {t('serverCard.ip_address')}
+                </th>
+                <th className="px-6 py-4 border-b border-gray-800/50 text-center">
+                  {t('players.connected')}
+                </th>
+                <th className="px-6 py-4 border-b border-gray-800/50 text-right">
+                  {t('players.moderation')}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/30">
               {loading && players.length === 0 ? (
                 <tr>
-                   <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">{t('players.loading_players')}</td>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">
+                    {t('players.loading_players')}
+                  </td>
                 </tr>
               ) : filteredPlayers.length === 0 ? (
                 <tr>
-                   <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">
-                     {!selectedServerId ? t('players.select_active_server') : t('players.no_players')}
-                   </td>
+                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">
+                    {!selectedServerId
+                      ? t('players.select_active_server')
+                      : t('players.no_players')}
+                  </td>
                 </tr>
               ) : (
-                filteredPlayers.map((player: Player) => (
+                filteredPlayers.map((player: LivePlayer) => (
                   <tr key={player.userId} className="hover:bg-white/[0.02] transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         {avatars[player.steamId] ? (
-                          <img 
-                            src={avatars[player.steamId]} 
+                          <img
+                            src={avatars[player.steamId]}
                             alt={player.name}
                             className="w-10 h-10 rounded-xl border border-gray-700 object-cover"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
-                              const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                              const fallback =
+                                e.currentTarget.parentElement?.querySelector('.avatar-fallback');
                               if (fallback) fallback.classList.remove('hidden');
                             }}
                           />
                         ) : null}
-                        <div className={`avatar-fallback w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-primary font-bold border border-gray-700 ${avatars[player.steamId] ? 'hidden' : ''}`}>
+                        <div
+                          className={`avatar-fallback w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-primary font-bold border border-gray-700 ${avatars[player.steamId] ? 'hidden' : ''}`}
+                        >
                           {player.name[0].toUpperCase()}
                         </div>
                         <div>
                           <span className="font-bold text-white text-sm block">{player.name}</span>
-                          <span className="text-[10px] text-primary font-mono opacity-60 uppercase">{player.state}</span>
+                          <span className="text-[10px] text-primary font-mono opacity-60 uppercase">
+                            {player.state}
+                          </span>
                         </div>
                       </div>
                     </td>
@@ -223,14 +237,18 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                        <button 
+                        <button
                           onClick={() => handleAction('kick', player.userId)}
-                          className="p-2 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500 hover:text-white rounded-lg transition-all" title={t('players.kick_player')}>
+                          className="p-2 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500 hover:text-white rounded-lg transition-all"
+                          title={t('players.kick_player')}
+                        >
                           <UserMinus size={14} />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleAction('ban', player.userId, player)}
-                          className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all" title={t('players.ban_player')}>
+                          className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                          title={t('players.ban_player')}
+                        >
                           <ShieldAlert size={14} />
                         </button>
                         <button className="p-2 bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-all">
@@ -263,18 +281,21 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
             <div className="mb-4 p-4 bg-white/5 rounded-xl border border-gray-800">
               <div className="flex items-center gap-3">
                 {banDialog.player.avatar ? (
-                  <img 
-                    src={banDialog.player.avatar} 
+                  <img
+                    src={banDialog.player.avatar}
                     alt={banDialog.player.name}
                     className="w-10 h-10 rounded-xl border border-gray-700"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none';
-                      const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                      const fallback =
+                        e.currentTarget.parentElement?.querySelector('.avatar-fallback');
                       if (fallback) fallback.classList.remove('hidden');
                     }}
                   />
                 ) : null}
-                <div className={`avatar-fallback w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-red-500 font-bold border border-gray-700 ${banDialog.player.avatar ? 'hidden' : ''}`}>
+                <div
+                  className={`avatar-fallback w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-red-500 font-bold border border-gray-700 ${banDialog.player.avatar ? 'hidden' : ''}`}
+                >
                   {banDialog.player.name[0].toUpperCase()}
                 </div>
                 <div>
@@ -286,7 +307,9 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
 
             <div className="space-y-4 mb-6">
               <div>
-                <label className="block text-sm font-bold text-gray-400 mb-2">{t('players.ban_reason')}</label>
+                <label className="block text-sm font-bold text-gray-400 mb-2">
+                  {t('players.ban_reason')}
+                </label>
                 <input
                   type="text"
                   value={banReason}
@@ -298,7 +321,9 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-400 mb-2">{t('players.ban_duration')}</label>
+                <label className="block text-sm font-bold text-gray-400 mb-2">
+                  {t('players.ban_duration')}
+                </label>
                 <select
                   value={banDuration}
                   onChange={(e) => setBanDuration(e.target.value)}
@@ -333,7 +358,7 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default LivePlayersTab
+export default LivePlayersTab;
