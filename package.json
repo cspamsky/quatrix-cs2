@@ -18,7 +18,7 @@
     "fix": "npx rimraf node_modules server/node_modules client/node_modules && npm run install-all"
   },
   "devDependencies": {
-    "@eslint/js": "^9.0.0",
+    "@eslint/js": "^9.39.2",
     "concurrently": "^9.1.2",
     "cross-env": "^7.0.3",
     "eslint": "^9.0.0",
