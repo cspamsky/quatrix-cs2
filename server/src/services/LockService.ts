@@ -113,7 +113,7 @@ class LockService {
         } catch {
           /* ignore */
         }
-      } catch (e) {
+      } catch {
         // If reading fails, assume locked to be safe, or corrupt?
         // If we can't read it but it exists, it's a zombie file.
         // Let's rely on age check mainly.

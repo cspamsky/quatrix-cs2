@@ -753,9 +753,27 @@ export class PluginManager {
     }
   }
 
-  async checkAllPluginUpdates(instanceId: string | number): Promise<Record<string, any>> {
+  async checkAllPluginUpdates(instanceId: string | number): Promise<
+    Record<
+      string,
+      {
+        hasUpdate: boolean;
+        latestVersion: string | undefined;
+        currentVersion: string | undefined;
+        name: string | undefined;
+      }
+    >
+  > {
     await this.syncRegistry();
-    const results: Record<string, any> = {};
+    const results: Record<
+      string,
+      {
+        hasUpdate: boolean;
+        latestVersion: string | undefined;
+        currentVersion: string | undefined;
+        name: string | undefined;
+      }
+    > = {};
     try {
       const installedPlugins = this.checkAllStmt.all(instanceId) as {
         plugin_id: string;
@@ -766,11 +784,21 @@ export class PluginManager {
       for (const pid of Object.keys(this.pluginRegistry)) {
         const info = this.manifest
           ? this.manifest[pid]
-          : (this.pluginRegistry as Record<string, any>)[pid];
+          : (
+              this.pluginRegistry as Record<
+                string,
+                { version?: string; currentVersion?: string; name?: string }
+              >
+            )[pid];
         if (!info) continue;
         const installedVersion = installedMap.get(pid);
         if (!installedVersion) {
-          results[pid] = { hasUpdate: false, latestVersion: info.version || info.currentVersion };
+          results[pid] = {
+            hasUpdate: false,
+            latestVersion: info.version || info.currentVersion,
+            currentVersion: undefined,
+            name: undefined,
+          };
           continue;
         }
         const latestVersion = info.version || info.currentVersion;
@@ -787,14 +815,27 @@ export class PluginManager {
     return results;
   }
 
-  async checkPluginUpdate(instanceId: string | number, pluginId: PluginId): Promise<any> {
+  async checkPluginUpdate(
+    instanceId: string | number,
+    pluginId: PluginId
+  ): Promise<{
+    hasUpdate: boolean;
+    currentVersion: string | undefined;
+    latestVersion: string | undefined;
+  }> {
     try {
       const installed = this.checkOneStmt.get(instanceId, pluginId) as
         | { version: string }
         | undefined;
-      if (!installed) return { hasUpdate: false };
-      const info = (this.pluginRegistry as Record<string, any>)[pluginId];
-      if (!info) return { hasUpdate: false };
+      if (!installed)
+        return { hasUpdate: false, currentVersion: undefined, latestVersion: undefined };
+      const info = (
+        this.pluginRegistry as Record<
+          string,
+          { currentVersion?: string; name?: string; version?: string }
+        >
+      )[pluginId];
+      if (!info) return { hasUpdate: false, currentVersion: undefined, latestVersion: undefined };
       const latestVersion = info.currentVersion || 'latest';
       return {
         hasUpdate: latestVersion !== 'latest' && installed.version !== latestVersion,
@@ -803,7 +844,7 @@ export class PluginManager {
       };
     } catch (error) {
       console.error('[PLUGIN] Check update failed:', error);
-      return { hasUpdate: false };
+      return { hasUpdate: false, currentVersion: undefined, latestVersion: undefined };
     }
   }
 
@@ -876,7 +917,7 @@ export class PluginManager {
               pathsToDelete.add(fullPath);
             }
           }
-        } catch (err) {
+        } catch {
           // Directory might not exist or be inaccessible
         }
       })
@@ -917,8 +958,9 @@ export class PluginManager {
       db.prepare(`DELETE FROM server_plugins WHERE server_id = ? AND plugin_id != 'metamod'`).run(
         instanceId
       );
-    } catch (err: any) {
-      if (err.code !== 'ENOENT') throw new Error('Cannot remove CS#: Files in use.');
+    } catch (err: unknown) {
+      const error = err as { code?: string };
+      if (error.code !== 'ENOENT') throw new Error('Cannot remove CS#: Files in use.');
     }
     const gameinfo = path.join(csgoDir, 'gameinfo.gi');
     try {
@@ -1053,7 +1095,7 @@ export class PluginManager {
                 console.log(`[DB] Injected credentials into JSON: ${fullPath}`);
                 await fs.promises.writeFile(fullPath, JSON.stringify(config, null, 2));
               }
-            } catch (e) {
+            } catch {
               // Skip non-valid or non-standard JSON
             }
           }

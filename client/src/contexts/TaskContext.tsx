@@ -9,7 +9,7 @@ export interface Task {
   status: TaskStatus;
   progress: number;
   message: string;
-  metadata?: any;
+  metadata?: unknown;
   error?: string;
   startTime: number;
 }

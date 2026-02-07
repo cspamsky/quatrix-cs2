@@ -359,7 +359,7 @@ const Instances = () => {
           try {
             const res = await apiFetch(`/api/servers/${id}/${action}`, { method: 'POST' });
             return { id, ok: res.ok };
-          } catch (e) {
+          } catch {
             return { id, ok: false };
           }
         })
@@ -381,7 +381,7 @@ const Instances = () => {
         setSelectedIds(new Set());
       }
       fetchServers();
-    } catch (error) {
+    } catch {
       toast.error(t('common.error'), { id: toastId });
     }
   };

@@ -57,7 +57,7 @@ const DatabasePage = () => {
 
         // Fetch DB info for each server
         const enrichedServers = await Promise.all(
-          serverList.map(async (srv: any) => {
+          serverList.map(async (srv: { id: number; name: string }) => {
             const dbRes = await apiFetch(`/api/servers/${srv.id}/database`);
             const dbData = dbRes.ok ? await dbRes.json() : null;
             return {

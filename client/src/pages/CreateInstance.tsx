@@ -89,8 +89,9 @@ const CreateInstance = () => {
       }
 
       navigate('/instances');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -228,7 +229,7 @@ const CreateInstance = () => {
                         onChange={handleInputChange}
                         className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl pl-12 pr-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all cursor-pointer"
                       >
-                        {SERVER_REGIONS.map((r: any) => (
+                        {SERVER_REGIONS.map((r: { id: number; code: string }) => (
                           <option key={r.id} value={r.id}>
                             {t(`regions.${r.code}`)}
                           </option>

@@ -57,11 +57,7 @@ export async function registerWorkshopMap(workshopId: string, discoveredMapFile?
         }
       }
     } catch (steamErr) {
-      console.warn(
-        '[WORKSHOP] Failed to fetch Steam workshop details for:',
-        workshopId,
-        steamErr
-      );
+      console.warn('[WORKSHOP] Failed to fetch Steam workshop details for:', workshopId, steamErr);
     }
 
     db.prepare(

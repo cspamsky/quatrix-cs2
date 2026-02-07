@@ -43,7 +43,7 @@ const Chat = () => {
 
         if (id) {
           // Verify server exists
-          data.find((s: any) => s.id.toString() === id);
+          data.find((s: ServerInfo) => s.id.toString() === id);
         } else if (data.length > 0) {
           // If no ID, but servers exist, redirect to first server's chat
           navigate(`/chat/${data[0].id}`, { replace: true });
@@ -60,22 +60,32 @@ const Chat = () => {
     fetchChatHistory();
 
     // Socket.IO for real-time chat
-    socket.on('chat_message', (msg: any) => {
-      if (msg.serverId.toString() === id) {
-        setChatLogs((prev) => [
-          ...prev.slice(-99), // Keep last 99
-          {
-            id: Date.now(), // Local ID for key
-            server_id: parseInt(msg.serverId),
-            player_name: msg.name,
-            steam_id: msg.steamId,
-            message: msg.message,
-            type: msg.type,
-            created_at: msg.timestamp,
-          },
-        ]);
+    socket.on(
+      'chat_message',
+      (msg: {
+        serverId: string;
+        name: string;
+        steamId: string;
+        message: string;
+        type: string;
+        timestamp: string;
+      }) => {
+        if (msg.serverId.toString() === id) {
+          setChatLogs((prev) => [
+            ...prev.slice(-99), // Keep last 99
+            {
+              id: Date.now(), // Local ID for key
+              server_id: parseInt(msg.serverId),
+              player_name: msg.name,
+              steam_id: msg.steamId,
+              message: msg.message,
+              type: msg.type,
+              created_at: msg.timestamp,
+            },
+          ]);
+        }
       }
-    });
+    );
 
     return () => {
       socket.off('chat_message');

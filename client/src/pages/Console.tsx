@@ -57,7 +57,7 @@ const Console = () => {
         setAllServers(data);
 
         if (id) {
-          const currentServer = data.find((s: any) => s.id.toString() === id);
+          const currentServer = data.find((s: Server) => s.id.toString() === id);
           if (currentServer) setServer(currentServer);
         }
       } catch (error) {
@@ -210,7 +210,7 @@ const Console = () => {
     try {
       const response = await apiFetch(`/api/servers`);
       const data = await response.json();
-      const currentServer = data.find((s: any) => s.id.toString() === id);
+      const currentServer = data.find((s: Server) => s.id.toString() === id);
       if (currentServer) setServer(currentServer);
     } catch (error) {
       console.error('Failed to fetch server info:', error);
