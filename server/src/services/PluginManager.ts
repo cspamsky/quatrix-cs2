@@ -288,7 +288,7 @@ export class PluginManager {
       const fullPath = path.join(POOL_DIR, matchedFolder);
       const items = await fs.promises.readdir(fullPath);
       if (items.length > 0) {
-        console.log(`[PLUGIN] Syncing ${pluginId} from pool folder: ${matchedFolder}`);
+        console.log('[PLUGIN] Syncing', pluginId, 'from pool folder:', matchedFolder);
         return fullPath;
       }
     }
@@ -303,7 +303,7 @@ export class PluginManager {
   async uploadToPool(pluginId: string, filePath: string, originalName: string): Promise<void> {
     const tempExtractDir = path.join(POOL_DIR, `.temp_upload_${Date.now()}`);
     const lowerName = originalName.toLowerCase();
-    console.log(`[POOL] Processing upload: ${originalName} (ID: ${pluginId})`);
+    console.log('[POOL] Processing upload:', originalName, '(ID:', pluginId + ')');
 
     try {
       await fs.promises.mkdir(tempExtractDir, { recursive: true });
@@ -363,7 +363,10 @@ export class PluginManager {
 
       await fs.promises.rename(contentRoot, targetPoolPath);
       console.log(
-        `[POOL] Plugin ${metadata.name} (${metadata.category}) successfully uploaded to ${targetPoolPath}`
+        '[POOL] Plugin',
+        metadata.name,
+        '(' + metadata.category + ') successfully uploaded to',
+        targetPoolPath
       );
     } catch (error: unknown) {
       const err = error as Error;
@@ -508,7 +511,7 @@ export class PluginManager {
     const pluginInfo = registry[pluginId];
 
     if (!pluginInfo) {
-      console.error(`[PLUGIN] Attempted to install unknown plugin: ${pluginId}`);
+      console.error('[PLUGIN] Attempted to install unknown plugin:', pluginId);
       if (taskId) {
         taskService.failTask(taskId, `Unknown plugin: ${pluginId}`);
       }
@@ -520,7 +523,9 @@ export class PluginManager {
 
     // 2. Clear instance specific logic: where to copy the pool content?
     console.log(
-      `[PLUGIN] Syncing ${pluginInfo.name} from pool (${path.basename(poolPath)}) to instance...`
+      '[PLUGIN] Syncing',
+      pluginInfo.name,
+      'from pool (' + path.basename(poolPath) + ') to instance...'
     );
 
     const hasGameDir = fs.existsSync(path.join(poolPath, 'game'));
@@ -643,7 +648,7 @@ export class PluginManager {
     }
 
     if (pluginId === 'metamod') await this.configureMetamod(csgoDir);
-    console.log(`[PLUGIN] ${pluginInfo.name} sync complete.`);
+    console.log('[PLUGIN]', pluginInfo.name, 'sync complete.');
 
     if (taskId) {
       taskService.completeTask(taskId, `${pluginInfo.name} installed`);
@@ -736,7 +741,7 @@ export class PluginManager {
             const newPath = path.join(dir, newName);
 
             if (!fs.existsSync(newPath)) {
-              console.log(`[PLUGIN] Activating config: ${item.name} -> ${newName}`);
+              console.log('[PLUGIN] Activating config:', item.name, '->', newName);
               await fs.promises.copyFile(fullPath, newPath);
               await fs.promises.unlink(fullPath).catch(() => {});
             }
@@ -889,7 +894,7 @@ export class PluginManager {
     const info = registry[pluginId];
     if (!info) return;
 
-    console.log(`[PLUGIN] Uninstalling ${info.name}...`);
+    console.log('[PLUGIN] Uninstalling', info.name, '...');
     const folderName = info.folderName || info.name.replace(/[^a-zA-Z0-9]/g, '');
     const lowerPluginId = pluginId.toLowerCase();
     const lowerFolderName = folderName.toLowerCase();
@@ -942,9 +947,9 @@ export class PluginManager {
     for (const p of pathsToDelete) {
       try {
         await fs.promises.rm(p, { recursive: true, force: true });
-        console.log(`[PLUGIN] Deep Deleted: ${p}`);
+        console.log('[PLUGIN] Deep Deleted:', p);
       } catch (err) {
-        console.error(`[PLUGIN] Failed to delete ${p}:`, err);
+        console.error('[PLUGIN] Failed to delete:', p, err);
       }
     }
 
@@ -1021,7 +1026,7 @@ export class PluginManager {
 
     // If autoSync is explicitly disabled, skip injection
     if (serverSettings && serverSettings.autoSync === false) {
-      console.log(`[DB] Auto-sync disabled for server ${instanceId}, skipping injection.`);
+      console.log('[DB] Auto-sync disabled for server', instanceId, ', skipping injection.');
       return;
     }
 
@@ -1108,7 +1113,7 @@ export class PluginManager {
               }
 
               if (changed) {
-                console.log(`[DB] Injected credentials into JSON: ${fullPath}`);
+                console.log('[DB] Injected credentials into JSON:', fullPath);
                 await fs.promises.writeFile(fullPath, JSON.stringify(config, null, 2));
               }
             } catch {
@@ -1144,7 +1149,7 @@ export class PluginManager {
             }
 
             if (changed) {
-              console.log(`[DB] Injected credentials into ${ext.toUpperCase()}: ${fullPath}`);
+              console.log('[DB] Injected credentials into', ext.toUpperCase(), ':', fullPath);
               await fs.promises.writeFile(fullPath, newContent);
             }
           }
@@ -1253,7 +1258,7 @@ export class PluginManager {
     const poolPath = path.join(POOL_DIR, info.folderName || pluginId);
     if (fs.existsSync(poolPath)) {
       await fs.promises.rm(poolPath, { recursive: true, force: true });
-      console.log(`[POOL] Plugin ${pluginId} deleted from central repository.`);
+      console.log('[POOL] Plugin', pluginId, 'deleted from central repository.');
     }
   }
 
@@ -1292,7 +1297,7 @@ export class PluginManager {
 
     // 4. Save file
     await fs.promises.writeFile(fullPath, content, 'utf8');
-    console.log(`[PLUGIN] Config saved for ${pluginId}: ${relativeFilePath}`);
+    console.log('[PLUGIN] Config saved for', pluginId, ':', relativeFilePath);
   }
 }
 

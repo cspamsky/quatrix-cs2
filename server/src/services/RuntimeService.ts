@@ -313,6 +313,17 @@ class RuntimeService {
 
     // Create a safe version of args for logging
     const safeArgs = combinedArgs.map((arg) => {
+      // If it's one of the known sensitive keys, preserve it so we can redact the value next
+      if (
+        arg === '+sv_setsteamaccount' ||
+        arg === '+sv_password' ||
+        arg === '+rcon_password' ||
+        arg === '-authkey'
+      ) {
+        return arg;
+      }
+
+      // If it starts with a key but has attached value (e.g. +sv_password=foo), redact it all
       if (
         typeof arg === 'string' &&
         (arg.startsWith('+sv_setsteamaccount') ||
@@ -327,12 +338,15 @@ class RuntimeService {
 
     // Also check for pairs where the key is separate from value
     for (let i = 0; i < safeArgs.length; i++) {
-      if (safeArgs[i] === '-authkey' && i + 1 < safeArgs.length) safeArgs[i + 1] = '[REDACTED]';
-      if (safeArgs[i] === '+sv_setsteamaccount' && i + 1 < safeArgs.length)
+      if (
+        (safeArgs[i] === '-authkey' ||
+          safeArgs[i] === '+sv_setsteamaccount' ||
+          safeArgs[i] === '+sv_password' ||
+          safeArgs[i] === '+rcon_password') &&
+        i + 1 < safeArgs.length
+      ) {
         safeArgs[i + 1] = '[REDACTED]';
-      if (safeArgs[i] === '+sv_password' && i + 1 < safeArgs.length) safeArgs[i + 1] = '[REDACTED]';
-      if (safeArgs[i] === '+rcon_password' && i + 1 < safeArgs.length)
-        safeArgs[i + 1] = '[REDACTED]';
+      }
     }
 
     console.log(
