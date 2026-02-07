@@ -588,12 +588,26 @@ export class PluginManager {
         const configDest = path.join(cssBase, 'configs', 'plugins', pluginFolderName);
         const transDest = path.join(cssBase, 'translations', pluginFolderName);
 
+        // Explicit Path Traversal Check for Destinations
+        const checkDest = (dest: string, base: string) => {
+          if (!dest.startsWith(path.resolve(base)) && !dest.startsWith(base)) {
+            throw new Error(`Security Error: Plugin path traversal detected for ${dest}`);
+          }
+        };
+
+        checkDest(pluginDest, cssBase);
+        checkDest(configDest, cssBase);
+        checkDest(transDest, cssBase);
+
         await fs.promises.mkdir(pluginDest, { recursive: true });
 
         const items = await fs.promises.readdir(poolPath, { withFileTypes: true });
         for (const item of items) {
           const src = path.join(poolPath, item.name);
           const lowerName = item.name.toLowerCase();
+
+          // Double check src path too (though it comes from readdir)
+          if (!src.startsWith(poolPath)) continue;
 
           if (
             lowerName.endsWith('.dll') ||

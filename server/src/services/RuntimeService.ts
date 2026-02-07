@@ -322,9 +322,15 @@ class RuntimeService {
     // Create a safe version of args for logging
     // Create a safe version of args for logging
     const safeArgs: string[] = [];
-    for (let i = 0; i < combinedArgs.length; i++) {
-      const arg = combinedArgs[i]!;
+    let skipNext = false;
 
+    for (let i = 0; i < combinedArgs.length; i++) {
+      if (skipNext) {
+        skipNext = false;
+        continue;
+      }
+
+      const arg = combinedArgs[i]!;
       const argLower = typeof arg === 'string' ? arg.toLowerCase() : '';
 
       // 1. Exact match for sensitive flags (key + value pair)
@@ -339,7 +345,7 @@ class RuntimeService {
         // If the next argument exists, it's the sensitive value -> Redact it
         if (i + 1 < combinedArgs.length) {
           safeArgs.push('[REDACTED]');
-          i++; // Skip the value
+          skipNext = true; // Mark next iteration to skip
         }
         continue;
       }
