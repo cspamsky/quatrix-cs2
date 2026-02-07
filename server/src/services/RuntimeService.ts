@@ -216,6 +216,8 @@ class RuntimeService {
     // If we have performance tunables, we might need a wrapper or use 'nice' command
     if (cpuPriority !== 0) {
       // Ensure cpuPriority is treated as an integer string
+      // SAST-SAFE: executable is validated by isPathSafe() check above (line 208)
+      // and originates from FileSystemService which validates all paths in constructor
       finalArgs.push('-n', Math.round(cpuPriority).toString(), executable);
       executable = 'nice';
     }
