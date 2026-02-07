@@ -283,6 +283,17 @@ class ServerManager {
       return false;
   }
 
+  private convertSteamID(steam3: string): string {
+    if (!steam3 || !steam3.startsWith('[U:1:')) return steam3;
+    try {
+        const parts = steam3.split(':');
+        if (parts.length < 3) return steam3;
+        const accountId = parts[2]?.replace(']', '');
+        if (!accountId) return steam3;
+        return (BigInt('76561197960265728') + BigInt(accountId)).toString();
+    } catch { return steam3; }
+  }
+
   private handleLog(id: string, line: string, onUiLog?: (l: string) => void) {
       if (onUiLog && !this.isNoise(line)) onUiLog(line);
 
@@ -309,11 +320,11 @@ class ServerManager {
           }
       }
 
-      // Chat Message Tracking (Relaxed regex)
       const chatMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" (say|say_team) "(.*)"/i);
       if (chatMatch) {
           const [, name, steamId, type, message] = chatMatch;
-          const steamId64 = steamId === "Console" ? "0" : steamId;
+          const safeSteamId = steamId || "";
+          const steamId64 = safeSteamId === "Console" ? "0" : this.convertSteamID(safeSteamId);
           
           try {
               this.chatInsertStmt.run(id, name, steamId64, message, type);
@@ -435,17 +446,6 @@ class ServerManager {
   }
 
   public async getPlayers(id: string | number): Promise<{ players: any[]; averagePing: number }> {
-      // Helper to convert Steam3 ([U:1:123]) to SteamID64
-      const steam3To64 = (steam3: string): string => {
-        if (!steam3.startsWith('[U:1:')) return steam3;
-        try {
-           const parts = steam3.split(':');
-           if (parts.length < 3) return steam3;
-           const accountId = parts[2]?.replace(']', '');
-           if (!accountId) return steam3;
-           return (BigInt('76561197960265728') + BigInt(accountId)).toString();
-        } catch { return steam3; }
-      };
 
       try {
           const rawOutput = await this.sendCommand(id, "css_players");
@@ -513,7 +513,7 @@ class ServerManager {
                       players.push({
                           userId,
                           name,
-                          steamId: steam3To64(steamId),
+                          steamId: this.convertSteamID(steamId),
                           ipAddress: adr ? adr.split(':')[0] : '',
                           ping: parseInt(ping || "0"),
                           connected: "Connected",

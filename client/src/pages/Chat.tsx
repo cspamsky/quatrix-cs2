@@ -196,13 +196,21 @@ const Chat = () => {
                   <div key={log.id} className="group animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-white/5 transition-colors border border-transparent hover:border-gray-800">
                       {/* Avatar placeholder */}
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shrink-0 border border-gray-700 group-hover:border-primary/50 transition-colors">
+                      <div 
+                        onClick={() => setSearchTerm(log.player_name)}
+                        className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center shrink-0 border border-gray-700 group-hover:border-primary/50 transition-colors cursor-pointer hover:scale-105 active:scale-95"
+                        title={t('chat.filter_by_user')}
+                      >
                         <User className="text-gray-400 w-5 h-5 group-hover:text-primary transition-colors" />
                       </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-bold text-slate-200 truncate max-w-[200px]">
+                          <span 
+                            onClick={() => setSearchTerm(log.player_name)}
+                            className="font-bold text-slate-200 truncate max-w-[200px] cursor-pointer hover:text-primary hover:underline underline-offset-2 transition-all"
+                            title={t('chat.filter_by_user')}
+                          >
                             {log.player_name}
                           </span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider ${getTypeColor(log.type)}`}>
