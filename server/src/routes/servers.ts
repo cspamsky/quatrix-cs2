@@ -458,8 +458,32 @@ router.post('/:id/database/query', authenticateToken, async (req: Request, res: 
     if (!query) return res.status(400).json({ message: 'Query is required' });
 
     const queryLower = query.trim().toLowerCase();
+
+    // SECURITY: Strict SQL Injection Protection
+    // 1. Only allow SELECT statements
     if (!queryLower.startsWith('select')) {
       return res.status(403).json({ message: 'Only SELECT queries are allowed.' });
+    }
+
+    // 2. Block dangerous keywords that could be used for SQL injection
+    const dangerousKeywords = [
+      'drop', 'delete', 'update', 'insert', 'alter', 'create',
+      'truncate', 'replace', 'grant', 'revoke', 'exec', 'execute',
+      'call', 'procedure', 'function', 'trigger', 'into outfile',
+      'load_file', 'benchmark', 'sleep', 'waitfor'
+    ];
+
+    for (const keyword of dangerousKeywords) {
+      if (queryLower.includes(keyword)) {
+        return res.status(403).json({ 
+          message: `Query contains forbidden keyword: ${keyword}` 
+        });
+      }
+    }
+
+    // 3. Additional safety: limit query length
+    if (query.length > 5000) {
+      return res.status(400).json({ message: 'Query too long (max 5000 characters)' });
     }
 
     const results = await databaseManager.executeQuery(query);
