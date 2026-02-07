@@ -184,6 +184,7 @@
     "recent_activity": "Recent Activity",
     "no_activity": "No administrative activity recorded yet.",
     "view_all_logs": "View All Logs",
+    "show_less": "Show Less",
     "actions_title": "Quick Actions",
     "action_console": "Open Console",
     "action_new_server": "New Server",
@@ -497,7 +498,8 @@
     "install_confirm_message": "Sub-dependencies will be handled automatically. The server should be OFFLINE for a safe installation.",
     "uninstall_confirm_message": "Sub-dependencies will be handled automatically. This may impact other plugins.",
     "update_confirm_message": "Sub-dependencies will be handled automatically. The server should be OFFLINE for a safe installation.",
-    "confirm_action": "Now",
+    "confirm_action": "Yes, do it",
+    "server_running_error": "Cannot modify plugins while the server is running. Please stop the server first.",
     "action_success": "successfully!",
     "action_failed": "Action failed",
     "network_error": "Network or Server failure.",
@@ -651,7 +653,6 @@
     "tab_general": "General",
     "tab_notifications": "Notifications",
     "tab_api_keys": "API Keys",
-    "tab_activity_log": "Activity Log",
     "tab_server_engine": "Server Engine",
     "tab_system_health": "System Health",
     "section_title": "Section",
@@ -695,6 +696,10 @@
     "repair_system": "Repair System",
     "repairing": "Repairing & Cleaning...",
     "refresh": "Refresh",
-    "refreshing": "Refreshing..."
+    "refreshing": "Refreshing...",
+    "so_files": ".so File Synchronization",
+    "steam_runtime": "Steam Runtime 3.0",
+    "unprivileged_namespaces": "Unprivileged Namespaces",
+    "repair_success": "System repaired successfully."
   }
 }

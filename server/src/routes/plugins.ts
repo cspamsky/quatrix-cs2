@@ -111,7 +111,7 @@ router.post("/:id/plugins/:plugin/:action", async (req: any, res) => {
 
         if (serverManager.isServerRunning(id)) {
             return res.status(400).json({ 
-                message: "Cannot modify plugins while the server is running. Please stop the server first." 
+                message: "ERR_SERVER_RUNNING" 
             });
         }
 

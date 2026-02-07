@@ -585,7 +585,7 @@ class ServerManager {
   // --- System Health ---
   public async getSystemHealth(): Promise<any> {
       try {
-          const [cpuInfo, mem, disk] = await Promise.all([si.cpu(), si.mem(), si.fsSize()]);
+          const [cpuInfo, mem, disk, osInfo] = await Promise.all([si.cpu(), si.mem(), si.fsSize(), si.osInfo()]);
           
           // 1. Check for AVX Support (Linux specific check)
           let hasAVX = false;
@@ -680,6 +680,11 @@ class ServerManager {
                       status: namespacesStatus,
                       message: namespacesMessage
                   }
+              },
+              runtime: {
+                  node: process.version,
+                  panel: "1.0.0-stable",
+                  os: `${osInfo.distro} ${osInfo.release}`
               }
           };
       } catch (error) {

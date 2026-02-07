@@ -193,11 +193,10 @@ const DatabasePage = () => {
 
   return (
     <div className="p-6 min-h-screen flex flex-col">
-      <header className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="text-left">
           <div className="flex items-center gap-3 mb-2">
-            <h2 className="text-3xl font-bold text-white tracking-tight flex items-center justify-start gap-3">
-              <Database className="w-8 h-8 text-primary" />
+            <h2 className="text-2xl font-bold text-white tracking-tight">
               {t('database.title')}
             </h2>
             <div className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 ${
@@ -209,13 +208,13 @@ const DatabasePage = () => {
               MariaDB: {globalStatus}
             </div>
           </div>
-          <p className="text-gray-400 max-w-2xl text-left">
+          <p className="text-gray-400 max-w-2xl text-left text-sm mt-1">
             {t('database.subtitle')}
           </p>
         </div>
         <button 
           onClick={fetchData}
-          className="lg:mb-1 p-3 bg-[#111827] border border-gray-800 hover:border-primary/50 text-gray-400 hover:text-primary rounded-2xl transition-all shadow-xl group"
+          className="p-3 bg-[#111827] border border-gray-800 hover:border-primary/50 text-gray-400 hover:text-primary rounded-2xl transition-all shadow-xl group"
           title={t('database.refresh_stats')}
         >
           <RefreshCw className={`w-5 h-5 group-active:rotate-180 transition-transform duration-500 ${loading ? 'animate-spin text-primary' : ''}`} />

@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Server as ServerIcon,
   Loader2,
-  Map as MapIcon,
   Globe,
   Plus,
   Trash2,
@@ -198,12 +197,12 @@ const Maps = () => {
 
   return (
     <div className="p-6 font-display max-h-screen overflow-y-auto scrollbar-hide">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <MapIcon className="text-primary" /> {t('maps.title')}
+          <h2 className="text-2xl font-bold text-white tracking-tight">
+            {t('maps.title')}
           </h2>
-          <p className="text-sm text-gray-500 mt-1">{t('maps.subtitle')}</p>
+          <p className="text-sm text-gray-400 mt-1">{t('maps.subtitle')}</p>
         </div>
 
         <div className="flex flex-col items-end">
@@ -222,7 +221,7 @@ const Maps = () => {
             </select>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-3 space-y-6">

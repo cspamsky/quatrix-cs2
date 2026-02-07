@@ -8,12 +8,13 @@ router.use(authenticateToken);
 
 // GET /api/logs/activity (Global Activity Logs)
 router.get("/activity/recent", (req: any, res) => {
+    const limit = parseInt(req.query.limit?.toString() || "15");
     try {
         const logs = db.prepare(`
             SELECT * FROM activity_logs 
             ORDER BY created_at DESC 
-            LIMIT 15
-        `).all();
+            LIMIT ?
+        `).all(limit);
         res.json(logs);
     } catch (error) {
         console.error("Fetch activity logs error:", error);

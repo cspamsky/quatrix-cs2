@@ -140,7 +140,11 @@ const Plugins = () => {
         queryClient.invalidateQueries({ queryKey: ['plugin-status', selectedServer] });
         queryClient.invalidateQueries({ queryKey: ['plugin-updates', selectedServer] });
       } else {
-        toast.error(data.message || t('plugins.action_failed'));
+        if (data.message === 'ERR_SERVER_RUNNING') {
+          toast.error(t('plugins.server_running_error'));
+        } else {
+          toast.error(data.message || t('plugins.action_failed'));
+        }
       }
     } catch (error) {
       toast.error(t('plugins.network_error'));
@@ -734,7 +738,7 @@ const Plugins = () => {
 
   return (
     <div className="p-6 font-display overflow-y-auto max-h-[calc(100vh-64px)] scrollbar-hide">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
             <h2 className="text-2xl font-bold text-white tracking-tight">
               {activeTab === 'instances' ? t('plugins.instance_plugins') : t('plugins.plugin_repository')}

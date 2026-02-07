@@ -183,10 +183,7 @@ const Backups: React.FC = () => {
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-1">
-          <div className="flex items-center gap-3 text-primary">
-            <Archive className="w-8 h-8" />
-            <h1 className="text-3xl font-bold text-white tracking-tight">{t('backups.title')}</h1>
-          </div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{t('backups.title')}</h1>
           <p className="text-gray-400 max-w-2xl">{t('backups.subtitle')}</p>
         </div>
 

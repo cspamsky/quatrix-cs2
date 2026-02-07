@@ -187,6 +187,7 @@
     "recent_activity": "Son Aktivite",
     "no_activity": "Henüz kaydedilmiş bir idari aktivite yok.",
     "view_all_logs": "Tüm Günlükleri Görüntüle",
+    "show_less": "Daha Az Göster",
     "actions_title": "Hızlı İşlemler",
     "action_console": "Konsolu Aç",
     "action_new_server": "Yeni Sunucu",
@@ -502,7 +503,8 @@
     "install_confirm_message": "bağımlılıkları otomatik olarak işlenecektir. Güvenli kurulum için sunucu ÇEVRİMDİŞI olmalıdır.",
     "uninstall_confirm_message": "bağımlılıkları otomatik olarak işlenecektir. Bu diğer eklentileri etkileyebilir.",
     "update_confirm_message": "bağımlılıkları otomatik olarak işlenecektir. Güvenli kurulum için sunucu ÇEVRİMDİŞI olmalıdır.",
-    "confirm_action": "Şimdi",
+    "confirm_action": "Evet, yap",
+    "server_running_error": "Sunucu çalışırken eklentilerde değişiklik yapılamaz. Lütfen önce sunucuyu durdurun.",
     "action_success": "başarıyla",
     "action_failed": "İşlem başarısız",
     "network_error": "Ağ veya Sunucu hatası.",
@@ -656,7 +658,6 @@
     "tab_general": "Genel",
     "tab_notifications": "Bildirimler",
     "tab_api_keys": "API Anahtarları",
-    "tab_activity_log": "Aktivite Günlüğü",
     "tab_server_engine": "Sunucu Motoru",
     "tab_system_health": "Sistem Sağlığı",
     "section_title": "Bölüm",
@@ -705,6 +706,6 @@
     "so_files": ".so Dosya Senkronizasyonu",
     "steam_runtime": "Steam Runtime 3.0",
     "system_health": "Sistem Sağlığı",
-    "unprivileged_namespaces": "Unprivileged Namespaces"
+    "unprivileged_namespaces": "Yetkisiz İsim Alanları"
   }
 }

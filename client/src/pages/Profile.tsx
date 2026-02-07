@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { 
-  User, 
   Lock, 
   Shield, 
   Smartphone, 
@@ -217,15 +216,14 @@ const Profile = () => {
 
   return (
     <div className="p-6 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-            <User className="text-primary" size={28} />
+          <h2 className="text-2xl font-bold text-white tracking-tight">
             {t('profile.title')}
           </h2>
           <p className="text-sm text-gray-400 mt-1">{t('profile.subtitle')}</p>
         </div>
-      </div>
+      </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Profile Card */}

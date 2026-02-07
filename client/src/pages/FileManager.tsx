@@ -275,42 +275,42 @@ const FileManager = () => {
 
   return (
     <div className="p-6 h-full flex flex-col animate-in fade-in duration-500">
-      <header className="mb-8">
-        <div className="flex justify-between items-start mb-6">
-          <div>
-            <button
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+           <div className="flex items-center gap-4">
+             <button
               onClick={() => navigate('/instances')}
-              className="flex items-center text-gray-500 hover:text-white transition-colors mb-4 text-xs font-bold uppercase tracking-widest"
+              className="p-1 -ml-1 text-gray-400 hover:text-white transition-colors"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Instances
+              <ArrowLeft className="w-5 h-5" />
             </button>
-            <h2 className="text-3xl font-black text-white tracking-tighter flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
               FILE MANAGER
               <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full font-bold tracking-widest uppercase">
                 {currentPath ? 'Directory' : 'Root'}
               </span>
             </h2>
           </div>
-
-          <div className="flex gap-3">
-             <button 
-               onClick={() => setIsNewFolderModalOpen(true)}
-               className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-gray-700/50"
-             >
-               <FolderPlus size={16} /> NEW FOLDER
-             </button>
-             <button 
-               onClick={() => fileInputRef.current?.click()}
-               className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary/20"
-             >
-               <Upload size={16} /> UPLOAD
-             </button>
-             <input type="file" ref={fileInputRef} className="hidden" onChange={handleUpload} />
-          </div>
         </div>
 
-        <div className="flex items-center gap-4 bg-[#111827] p-2 rounded-2xl border border-gray-800 shadow-inner">
+        <div className="flex gap-3">
+           <button 
+             onClick={() => setIsNewFolderModalOpen(true)}
+             className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-gray-700/50"
+           >
+             <FolderPlus size={16} /> NEW FOLDER
+           </button>
+           <button 
+             onClick={() => fileInputRef.current?.click()}
+             className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary/20"
+           >
+             <Upload size={16} /> UPLOAD
+           </button>
+           <input type="file" ref={fileInputRef} className="hidden" onChange={handleUpload} />
+        </div>
+      </header>
+
+      <div className="flex items-center gap-4 bg-[#111827] p-2 rounded-2xl border border-gray-800 shadow-inner mb-4">
           <div className="flex-1 flex items-center px-4 gap-2 text-sm text-gray-400">
             <button
               type="button"
@@ -352,7 +352,6 @@ const FileManager = () => {
              <RefreshCw size={18} className={loading && !editingFile ? 'animate-spin' : ''} />
            </button>
         </div>
-      </header>
 
       <main className="flex-1 bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden flex flex-col shadow-2xl relative">
         {editingFile ? (

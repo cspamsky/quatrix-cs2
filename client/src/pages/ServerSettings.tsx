@@ -109,18 +109,23 @@ const ServerSettings = () => {
 
   return (
     <div className="p-6 h-full flex flex-col">
-      <header className="mb-8">
-        <button
-          onClick={() => navigate('/instances')}
-          className="flex items-center text-gray-500 hover:text-white transition-colors mb-4 text-xs font-bold uppercase tracking-widest"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          {t('serverSettings.back_to_instances')}
-        </button>
-        <h2 className="text-3xl font-bold text-white tracking-tight">
-          {t('serverSettings.title')}
-        </h2>
-        <p className="text-sm text-gray-400 mt-2">{t('serverSettings.subtitle')}</p>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <div className="flex items-center gap-4">
+             <button
+               onClick={() => navigate('/instances')}
+               className="p-1 -ml-1 text-gray-400 hover:text-white transition-colors"
+             >
+               <ArrowLeft className="w-5 h-5" />
+             </button>
+             <h2 className="text-2xl font-bold text-white tracking-tight">
+               {t('serverSettings.title')}
+             </h2>
+          </div>
+          <div className="pl-9">
+             <p className="text-sm text-gray-400 mt-1">{t('serverSettings.subtitle')}</p>
+          </div>
+        </div>
       </header>
 
       <form onSubmit={handleSave} className="space-y-8 flex-1">

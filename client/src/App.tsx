@@ -23,7 +23,6 @@ const Plugins = lazy(() => import('./pages/Plugins'))
 const Maps = lazy(() => import('./pages/Maps'))
 const ServerSettings = lazy(() => import('./pages/ServerSettings'))
 const FileManager = lazy(() => import('./pages/FileManager'))
-const BanHistory = lazy(() => import('./pages/BanHistory'))
 const Admins = lazy(() => import('./pages/Admins'))
 const Chat = lazy(() => import('./pages/Chat'))
 const Database = lazy(() => import('./pages/Database'))
@@ -98,7 +97,6 @@ const App = () => {
                 <Route path="/console" element={<Console />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/players" element={<Players />} />
-                <Route path="/bans" element={<BanHistory />} />
                 <Route path="/maps" element={<Maps />} />
                 <Route path="/plugins" element={<Plugins />} />
                 <Route path="/admins" element={<Admins />} />

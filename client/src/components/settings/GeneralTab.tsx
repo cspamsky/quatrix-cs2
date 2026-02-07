@@ -12,6 +12,7 @@ interface GeneralTabProps {
   autoPluginUpdates: boolean
   setAutoPluginUpdates: (val: boolean) => void
   onSave: () => void
+  systemInfo?: any
 }
 
 const GeneralTab: React.FC<GeneralTabProps> = ({
@@ -23,7 +24,8 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
   setAutoBackup,
   autoPluginUpdates,
   setAutoPluginUpdates,
-  onSave
+  onSave,
+  systemInfo
 }) => {
   const { t } = useTranslation()
   return (
@@ -104,15 +106,15 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
           <div className="p-6 bg-[#0d1624] rounded-2xl border border-gray-800/50 space-y-4">
              <div className="flex justify-between text-sm">
                <span className="text-gray-500">{t('settingsGeneral.nodejs_version')}</span>
-               <span className="text-gray-300 font-mono">v18.17.0</span>
+               <span className="text-gray-300 font-mono">{systemInfo?.runtime?.node || 'v18.17.0'}</span>
              </div>
              <div className="flex justify-between text-sm">
                <span className="text-gray-500">{t('settingsGeneral.panel_version')}</span>
-               <span className="text-gray-300 font-mono">1.0.0-stable</span>
+               <span className="text-gray-300 font-mono">{systemInfo?.runtime?.panel || '1.0.0-stable'}</span>
              </div>
              <div className="flex justify-between text-sm">
                <span className="text-gray-500">OS</span>
-               <span className="text-gray-300">Linux / Ubuntu 22.04</span>
+               <span className="text-gray-300">{systemInfo?.runtime?.os || 'Linux / Ubuntu 22.04'}</span>
              </div>
           </div>
         </div>

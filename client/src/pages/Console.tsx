@@ -373,7 +373,7 @@ const Console = () => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden font-display">
-      <header className="h-20 flex items-center justify-between px-6 shrink-0">
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 shrink-0 z-10 relative">
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight">
             {t('console.title')}

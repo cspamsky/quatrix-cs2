@@ -118,14 +118,12 @@ const Chat = () => {
   return (
     <div className="flex flex-col h-full overflow-hidden font-display">
       {/* Header */}
-      <header className="h-20 flex items-center justify-between px-6 shrink-0">
+      {/* Header */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 shrink-0 z-10 relative">
         <div>
-          <div className="flex items-center gap-2">
-            <MessageSquare className="text-primary w-6 h-6" />
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              {t('chat.title')}
-            </h2>
-          </div>
+          <h2 className="text-2xl font-bold text-white tracking-tight">
+            {t('chat.title')}
+          </h2>
           <p className="text-sm text-gray-400 mt-1">
             {t('chat.subtitle')}
           </p>
