@@ -4,6 +4,10 @@
   "description": "Quatrix - Advanced Game Server Management Panel for CS2",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
     "dev": "npx concurrently --names \"SERVER,CLIENT\" --prefix-colors \"cyan.bold,magenta.bold\" --prefix \"[{name}]\" \"npm run dev --prefix server\" \"npx wait-on tcp:3001 && npm run dev --prefix client\"",
     "build": "npm run build:server && npm run build:client",
