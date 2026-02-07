@@ -41,6 +41,8 @@ Real-time map and workshop synchronization. Quatrix automatically discovers work
 | **Elite Dashboard**     | Real-time telemetry (CPU/RAM/Net) with millisecond-accurate delta monitoring.    | ✅     |
 | **Advanced RCON**       | High-speed console with ANSI color support and intelligent auto-scroll.          | ✅     |
 | **Player Intelligence** | Live list with Steam avatars, latency tracking, and moderated session data.      | ✅     |
+| **SteamID Engine**      | Automatic Steam3 to SteamID64 normalization for secondary API orchestration.     | ✅     |
+| **Enhanced Chat**       | Real-time chat with user avatars, click-to-filter, and ANSI color support.       | ✅     |
 | **Plugin Pool**         | "Pool Strategy" distribution - sync any plugin (AFKManager, CSS, etc) instantly. | ✅     |
 | **Config Editor**       | Integrated modal to edit plugin `.json`, `.cfg`, `.toml`, `.txt` configs live.   | ✅     |
 | **Admin Manager**       | Native CounterStrikeSharp integration for real-time permission management.       | ✅     |
@@ -48,6 +50,7 @@ Real-time map and workshop synchronization. Quatrix automatically discovers work
 | **Self-Healing**        | Auto-detects and repairs invalid file structures before server boot.             | ✅     |
 | **Advanced Profile**    | Integrated avatar uploads, password management, and account settings.            | ✅     |
 | **Elite Security**      | 2-Factor Authentication (TOTP) and real-time session orchestration.              | ✅     |
+| **Translation Engine**  | Full i18next support (EN/TR) with backend-synced error Code translation.         | ✅     |
 
 ---
 
@@ -114,6 +117,8 @@ sudo journalctl -u quatrix -f    # Live orchestration logs
 ## 🗺️ Roadmap
 
 - [x] **Core Isolation Engine**: Stable granular symlinking and instance roots.
+- [x] **SteamID Normalization**: Automatic conversion between Steam3 and Steam64 IDs.
+- [x] **Social Intelligence**: Integrated Steam Avatars and user-filtered Chat history.
 - [x] **Smart Admin UI**: Real-time CounterStrikeSharp permission management.
 - [x] **Metric Telemetry**: High-fidelity resource monitoring.
 - [x] **Elite Security Layer**: 2FA (TOTP) and Granular Session Management.

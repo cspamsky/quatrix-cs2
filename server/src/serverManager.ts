@@ -283,15 +283,30 @@ class ServerManager {
       return false;
   }
 
-  private convertSteamID(steam3: string): string {
-    if (!steam3 || !steam3.startsWith('[U:1:')) return steam3;
-    try {
-        const parts = steam3.split(':');
-        if (parts.length < 3) return steam3;
-        const accountId = parts[2]?.replace(']', '');
-        if (!accountId) return steam3;
-        return (BigInt('76561197960265728') + BigInt(accountId)).toString();
-    } catch { return steam3; }
+  private convertSteamID(sid: string): string {
+    if (!sid || typeof sid !== 'string') return sid;
+    const clean = sid.trim();
+    
+    // Steam3 format: [U:1:123456]
+    const steam3Match = clean.match(/\[?U:1:(\d+)\]?/i);
+    if (steam3Match && steam3Match[1]) {
+        try {
+            return (BigInt('76561197960265728') + BigInt(steam3Match[1])).toString();
+        } catch { return clean; }
+    }
+    
+    // legacy SteamID format: STEAM_0:0:12345
+    const legacyMatch = clean.match(/^STEAM_\d+:([01]):(\d+)$/i);
+    if (legacyMatch) {
+        try {
+            const v = BigInt('76561197960265728');
+            const y = BigInt(legacyMatch[1] || "0");
+            const z = BigInt(legacyMatch[2] || "0");
+            return (v + z * 2n + y).toString();
+        } catch { return clean; }
+    }
+
+    return clean;
   }
 
   private handleLog(id: string, line: string, onUiLog?: (l: string) => void) {
@@ -322,9 +337,12 @@ class ServerManager {
 
       const chatMatch = cleanLine.match(/"(.+?)<\d+><(.+?)><.*?>" (say|say_team) "(.*)"/i);
       if (chatMatch) {
-          const [, name, steamId, type, message] = chatMatch;
-          const safeSteamId = steamId || "";
-          const steamId64 = safeSteamId === "Console" ? "0" : this.convertSteamID(safeSteamId);
+          const name = chatMatch[1] || "Unknown";
+          const steamId = chatMatch[2] || "";
+          const type = chatMatch[3] || "say";
+          const message = chatMatch[4] || "";
+          
+          const steamId64 = steamId === "Console" ? "0" : this.convertSteamID(steamId);
           
           try {
               this.chatInsertStmt.run(id, name, steamId64, message, type);
