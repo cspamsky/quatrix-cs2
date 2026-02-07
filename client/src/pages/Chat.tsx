@@ -70,6 +70,7 @@ const Chat = () => {
     socket.on('chat_message', (msg: any) => {
         if (msg.serverId.toString() === id) {
             setChatLogs(prev => [
+                ...prev.slice(-99), // Keep last 99
                 {
                     id: Date.now(), // Local ID for key
                     server_id: parseInt(msg.serverId),
@@ -78,8 +79,7 @@ const Chat = () => {
                     message: msg.message,
                     type: msg.type,
                     created_at: msg.timestamp
-                },
-                ...prev.slice(0, 99) // Limit to last 100 in view
+                }
             ]);
         }
     });
@@ -96,7 +96,11 @@ const Chat = () => {
       const response = await apiFetch(`/api/chat/${id}?limit=100`);
       if (response.ok) {
         const data = await response.json();
-        setChatLogs(data);
+        // Sort Oldest -> Newest
+        const sorted = data.sort((a: ChatLog, b: ChatLog) => 
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        setChatLogs(sorted);
       }
     } catch (error) {
       console.error("Failed to fetch chat history:", error);
@@ -112,8 +116,15 @@ const Chat = () => {
   const filteredLogs = chatLogs.filter(log => 
     log.player_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    log.steam_id.includes(searchTerm)
+    log.steam_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Auto-scroll to bottom when logs change
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatLogs, filteredLogs]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden font-display">
@@ -169,7 +180,7 @@ const Chat = () => {
       {/* Chat Area */}
       <div className="flex-1 overflow-hidden flex flex-col px-6 pb-6 gap-6">
         <div className="flex-1 bg-[#0d1421] border border-gray-800 rounded-xl overflow-hidden shadow-2xl flex flex-col">
-          <div className="overflow-y-auto flex-1 p-4 flex flex-col-reverse custom-scrollbar" ref={chatContainerRef}>
+          <div className="overflow-y-auto flex-1 p-4 flex flex-col custom-scrollbar" ref={chatContainerRef}>
             <div className="space-y-4 pb-2">
               {filteredLogs.length === 0 ? (
                 <div className="h-64 flex flex-col items-center justify-center text-gray-500 gap-4">

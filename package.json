@@ -1,6 +1,6 @@
 {
   "name": "quatrix-root",
-  "version": "1.0.0",
+  "version": "1.0.0-Beta",
   "description": "Quatrix - Advanced Game Server Management Panel for CS2",
   "private": true,
   "type": "module",

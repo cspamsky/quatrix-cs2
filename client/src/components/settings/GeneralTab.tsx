@@ -110,7 +110,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
              </div>
              <div className="flex justify-between text-sm">
                <span className="text-gray-500">{t('settingsGeneral.panel_version')}</span>
-               <span className="text-gray-300 font-mono">{systemInfo?.runtime?.panel || '1.0.0-stable'}</span>
+               <span className="text-gray-300 font-mono">{systemInfo?.runtime?.panel || '1.0.0-Beta'}</span>
              </div>
              <div className="flex justify-between text-sm">
                <span className="text-gray-500">OS</span>

@@ -435,6 +435,18 @@ class ServerManager {
   }
 
   public async getPlayers(id: string | number): Promise<{ players: any[]; averagePing: number }> {
+      // Helper to convert Steam3 ([U:1:123]) to SteamID64
+      const steam3To64 = (steam3: string): string => {
+        if (!steam3.startsWith('[U:1:')) return steam3;
+        try {
+           const parts = steam3.split(':');
+           if (parts.length < 3) return steam3;
+           const accountId = parts[2]?.replace(']', '');
+           if (!accountId) return steam3;
+           return (BigInt('76561197960265728') + BigInt(accountId)).toString();
+        } catch { return steam3; }
+      };
+
       try {
           const rawOutput = await this.sendCommand(id, "css_players");
           if (process.env.DEBUG_RCON) console.log(`[RCON:${id}] css_players output:`, JSON.stringify(rawOutput));
@@ -501,7 +513,7 @@ class ServerManager {
                       players.push({
                           userId,
                           name,
-                          steamId,
+                          steamId: steam3To64(steamId),
                           ipAddress: adr ? adr.split(':')[0] : '',
                           ping: parseInt(ping || "0"),
                           connected: "Connected",
@@ -683,7 +695,7 @@ class ServerManager {
               },
               runtime: {
                   node: process.version,
-                  panel: "1.0.0-stable",
+                  panel: "1.0.0-Beta",
                   os: `${osInfo.distro} ${osInfo.release}`
               }
           };
