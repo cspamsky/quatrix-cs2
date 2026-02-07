@@ -305,11 +305,11 @@ export class PluginManager {
     // This addresses SAST concerns about user-controlled path expressions
     const resolvedFilePath = path.resolve(filePath);
     const expectedUploadDir = path.resolve('data/temp/uploads');
-    
+
     if (!resolvedFilePath.startsWith(expectedUploadDir)) {
       throw new Error('Security Error: Invalid upload file path detected');
     }
-    
+
     const tempExtractDir = path.join(POOL_DIR, `.temp_upload_${Date.now()}`);
     const lowerName = originalName.toLowerCase();
     console.log('[POOL] Processing upload:', originalName, '(ID:', pluginId + ')');

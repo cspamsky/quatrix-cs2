@@ -467,16 +467,33 @@ router.post('/:id/database/query', authenticateToken, async (req: Request, res: 
 
     // 2. Block dangerous keywords that could be used for SQL injection
     const dangerousKeywords = [
-      'drop', 'delete', 'update', 'insert', 'alter', 'create',
-      'truncate', 'replace', 'grant', 'revoke', 'exec', 'execute',
-      'call', 'procedure', 'function', 'trigger', 'into outfile',
-      'load_file', 'benchmark', 'sleep', 'waitfor'
+      'drop',
+      'delete',
+      'update',
+      'insert',
+      'alter',
+      'create',
+      'truncate',
+      'replace',
+      'grant',
+      'revoke',
+      'exec',
+      'execute',
+      'call',
+      'procedure',
+      'function',
+      'trigger',
+      'into outfile',
+      'load_file',
+      'benchmark',
+      'sleep',
+      'waitfor',
     ];
 
     for (const keyword of dangerousKeywords) {
       if (queryLower.includes(keyword)) {
-        return res.status(403).json({ 
-          message: `Query contains forbidden keyword: ${keyword}` 
+        return res.status(403).json({
+          message: `Query contains forbidden keyword: ${keyword}`,
         });
       }
     }
