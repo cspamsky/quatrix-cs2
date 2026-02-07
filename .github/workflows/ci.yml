@@ -2,51 +2,33 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: ['main']
   pull_request:
-    branches: [main, master]
+    branches: ['main']
 
 jobs:
-  client-build:
-    name: Client Build Check
+  build-and-lint:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./client
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
-          cache-dependency-path: ./client/package-lock.json
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: Type Check & Build
-        run: npm run build
+      - name: Lint Code
+        run: npm run lint
 
-  server-build:
-    name: Server Build Check
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./server
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: ./server/package-lock.json
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Type Check & Build
+      - name: Build Server and Client
         run: npm run build
