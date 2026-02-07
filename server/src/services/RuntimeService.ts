@@ -84,7 +84,7 @@ class RuntimeService {
         }
       }
     } catch (error: unknown) {
-      console.warn(`[Runtime] Maintenance failed:`, error);
+      console.warn('[Runtime] Maintenance failed:', error);
     }
   }
 
@@ -203,6 +203,12 @@ class RuntimeService {
     if (isNaN(ramLimitMb) || !isFinite(ramLimitMb)) ramLimitMb = 0;
 
     let executable = useRuntime ? runtimeWrapper : cs2BinLocal;
+
+    // SECURITY: Path Escalation / Shell Injection Protection
+    if (!fileSystemService.isPathSafe(executable) && executable !== 'nice') {
+       throw new Error(`Security Error: Executable path ${executable} is outside allowed directories.`);
+    }
+
     const finalArgs = [];
 
     // If we have performance tunables, we might need a wrapper or use 'nice' command
@@ -312,18 +318,28 @@ class RuntimeService {
     const logFd = fs.openSync(logFilePath, 'a');
 
     // Create a safe version of args for logging
-    const safeArgs = combinedArgs.map((arg) => {
-      // If it's one of the known sensitive keys, preserve it so we can redact the value next
+    // Create a safe version of args for logging
+    const safeArgs: string[] = [];
+    for (let i = 0; i < combinedArgs.length; i++) {
+      const arg = combinedArgs[i]!;
+
+      // 1. Exact match for sensitive flags (key + value pair)
       if (
         arg === '+sv_setsteamaccount' ||
         arg === '+sv_password' ||
         arg === '+rcon_password' ||
         arg === '-authkey'
       ) {
-        return arg;
+        safeArgs.push(arg);
+        // If the next argument exists, it's the sensitive value -> Redact it
+        if (i + 1 < combinedArgs.length) {
+          safeArgs.push('[REDACTED]');
+          i++; // Skip the value
+        }
+        continue;
       }
 
-      // If it starts with a key but has attached value (e.g. +sv_password=foo), redact it all
+      // 2. Starts with sensitive key (e.g. +sv_password=foo)
       if (
         typeof arg === 'string' &&
         (arg.startsWith('+sv_setsteamaccount') ||
@@ -331,22 +347,12 @@ class RuntimeService {
           arg.startsWith('+rcon_password') ||
           arg.startsWith('-authkey'))
       ) {
-        return '[REDACTED]';
+        safeArgs.push('[REDACTED]');
+        continue;
       }
-      return arg;
-    });
-
-    // Also check for pairs where the key is separate from value
-    for (let i = 0; i < safeArgs.length; i++) {
-      if (
-        (safeArgs[i] === '-authkey' ||
-          safeArgs[i] === '+sv_setsteamaccount' ||
-          safeArgs[i] === '+sv_password' ||
-          safeArgs[i] === '+rcon_password') &&
-        i + 1 < safeArgs.length
-      ) {
-        safeArgs[i + 1] = '[REDACTED]';
-      }
+      
+      // 3. Safe argument
+      safeArgs.push(arg);
     }
 
     console.log(

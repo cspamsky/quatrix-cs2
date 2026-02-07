@@ -41,6 +41,15 @@ class FileSystemService {
     return path.join(this.baseDir, 'steamrt', subPath);
   }
 
+  public isPathSafe(targetPath: string): boolean {
+    const resolvedPath = path.resolve(targetPath);
+    return (
+      resolvedPath.startsWith(this.baseDir) ||
+      resolvedPath.startsWith(this.coreDir) ||
+      resolvedPath.startsWith(path.join(this.baseDir, 'steamcmd'))
+    );
+  }
+
   /**
    * Prepares the filesystem for a new instance using Granular Symlinking.
    * Ensures that 'game/csgo/cfg' and 'game/csgo/maps' are writable directories,

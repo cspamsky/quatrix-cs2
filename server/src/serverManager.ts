@@ -245,7 +245,7 @@ class ServerManager {
     onLog?: (data: string) => void
   ) {
     const id = instanceId.toString();
-    console.log(`[SERVER] Request to start instance ${id}`);
+    console.log('[SERVER] Request to start instance', id);
 
     const server = this.getServerStmt.get(id) as Server | undefined;
     if (!server) throw new Error(`Server instance ${id} not found.`);
@@ -255,13 +255,13 @@ class ServerManager {
 
     // Feature Parity: Validate Files
     if (mergedOptions.validate_files) {
-      console.log(`[SERVER] Validation requested for server ${id}. Running SteamCMD verify...`);
+      console.log('[SERVER] Validation requested for server', id, 'Running SteamCMD verify...');
       try {
         // We use 730 (CS2 App ID)
         await this.validateServerFiles(id, '730');
       } catch (error: unknown) {
         const err = error as Error;
-        console.error(`[SERVER] Validation failed for ${id}, aborting start:`, err.message);
+        console.error('[SERVER] Validation failed for', id, 'aborting start:', err.message);
         throw new Error(`Validation failed: ${err.message}`);
       }
     }
@@ -319,7 +319,7 @@ class ServerManager {
           await this.sendCommand(id, `host_workshop_map ${originalMap}`, 10);
           // Note: database 'map' column already contains originalMap, so it remains persistent.
         } catch (e) {
-          console.error(`[SERVER] Bootstrap switch failed for instance ${id}:`, e);
+          console.error('[SERVER] Bootstrap switch failed for instance', id, ':', e);
         }
       }, 20000);
     } else {
