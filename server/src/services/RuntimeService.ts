@@ -261,11 +261,22 @@ class RuntimeService {
     let combinedArgs = [...finalArgs, ...args];
 
     // Apply RAM Limit via shell if set
+    // Apply RAM Limit via shell if set
     if (ramLimitMb > 0) {
       const limitKb = ramLimitMb * 1024;
-      const fullCommand = `${executable} ${combinedArgs.map((a) => `"${a}"`).join(' ')}`;
+      // Use positional arguments to avoid shell injection
+      // sh -c 'ulimit -v <limit> && exec "$@"' -- <executable> <args...>
+      const originalExecutable = executable;
+      const originalArgs = combinedArgs;
+
       executable = 'sh';
-      combinedArgs = ['-c', `ulimit -v ${limitKb} && exec ${fullCommand}`];
+      combinedArgs = [
+        '-c',
+        `ulimit -v ${limitKb} && exec "$@"`,
+        '--',
+        originalExecutable,
+        ...originalArgs,
+      ];
     }
 
     // 4. Environment (Linux Only)

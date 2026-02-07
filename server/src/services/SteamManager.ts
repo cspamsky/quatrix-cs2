@@ -34,12 +34,12 @@ export class SteamManager {
     const arrayBuffer = await response.arrayBuffer();
     await fs.promises.writeFile(archivePath, Buffer.from(arrayBuffer));
 
-    const { exec } = await import('child_process');
+    const { execFile } = await import('child_process');
     const { promisify } = await import('util');
-    const execAsync = promisify(exec);
+    const execFileAsync = promisify(execFile);
 
     console.log(`Extracting Linux SteamCMD...`);
-    await execAsync(`tar -xzf "${archivePath}" -C "${steamCmdDir}"`);
+    await execFileAsync('tar', ['-xzf', archivePath, '-C', steamCmdDir]);
 
     await fs.promises.unlink(archivePath);
   }
