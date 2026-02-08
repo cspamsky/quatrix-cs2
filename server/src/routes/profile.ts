@@ -6,9 +6,13 @@ import QRCode from 'qrcode';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import db from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import type { AuthenticatedRequest } from '../types/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface DbUser {
   id: number;
@@ -24,7 +28,8 @@ const router = Router();
 // --- Multer Configuration for Avatar Upload ---
 const avatarStorage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    const dir = 'uploads/avatars';
+    // Use absolute path relative to project root
+    const dir = path.join(__dirname, '../../uploads/avatars');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
@@ -76,10 +81,29 @@ router.post(
     try {
       if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
+      // Get current avatar URL to delete old file
+      const currentUser = db
+        .prepare('SELECT avatar_url FROM users WHERE id = ?')
+        .get(authReq.user.id) as { avatar_url?: string } | undefined;
+
       // Convert backslashes to forward slashes for URL
       const avatarUrl = `/uploads/avatars/${req.file.filename}`;
 
+      // Update database with new avatar
       db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(avatarUrl, authReq.user.id);
+
+      // Delete old avatar file if it exists and is a local upload
+      if (currentUser?.avatar_url && currentUser.avatar_url.startsWith('/uploads/avatars/')) {
+        const oldFilePath = path.join(__dirname, '../../', currentUser.avatar_url);
+        if (fs.existsSync(oldFilePath)) {
+          try {
+            fs.unlinkSync(oldFilePath);
+            console.log(`[AVATAR] Deleted old avatar: ${oldFilePath}`);
+          } catch (err) {
+            console.warn(`[AVATAR] Failed to delete old avatar: ${oldFilePath}`, err);
+          }
+        }
+      }
 
       res.json({ message: 'Avatar uploaded successfully', avatarUrl });
     } catch (error: unknown) {

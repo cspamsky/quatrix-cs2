@@ -287,7 +287,16 @@ monitoringService.start();
 // 2. Backup Scheduling
 backupService.startScheduledBackups();
 
-// 2. Map Sync Task (Every 10 seconds)
+// 3. Dashboard Stats Auto-Emit (Every 5 seconds)
+setInterval(async () => {
+  try {
+    await emitDashboardStats();
+  } catch (err) {
+    console.error('[DASHBOARD] Failed to emit stats:', err);
+  }
+}, 5000);
+
+// 4. Map Sync Task (Every 10 seconds)
 setInterval(async () => {
   try {
     const servers = db.prepare("SELECT id, map FROM servers WHERE status = 'ONLINE'").all() as {
