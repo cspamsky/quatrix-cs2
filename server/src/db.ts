@@ -383,4 +383,18 @@ db.exec(`
 
 db.exec(`CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at)`);
 
+// Create plugin_metadata_cache table for faster discovery
+db.exec(`
+  CREATE TABLE IF NOT EXISTS plugin_metadata_cache (
+    plugin_id TEXT PRIMARY KEY,
+    name TEXT,
+    category TEXT,
+    description TEXT,
+    folder_name TEXT,
+    version TEXT,
+    is_custom INTEGER DEFAULT 0,
+    last_scanned DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
 export default db;

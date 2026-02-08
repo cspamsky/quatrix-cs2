@@ -19,7 +19,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useConfirmDialog } from '../contexts/ConfirmDialogContext';
+import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 
 interface FileStat {
   name: string;

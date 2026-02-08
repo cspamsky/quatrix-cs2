@@ -1,32 +1,6 @@
-import React, { createContext, useEffect, useState } from 'react';
-import socket from '../utils/socket';
-
-export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed';
-
-export interface Task {
-  id: string;
-  type: string;
-  status: TaskStatus;
-  progress: number;
-  message: string;
-  metadata?: unknown;
-  error?: string;
-  startTime: number;
-}
-
-interface TaskContextType {
-  tasks: Task[];
-}
-
-export const TaskContext = createContext<TaskContextType | undefined>(undefined);
-
-export const useTasks = () => {
-  const context = React.useContext(TaskContext);
-  if (context === undefined) {
-    throw new Error('useTasks must be used within a TaskProvider');
-  }
-  return context;
-};
+import React, { useEffect, useState } from 'react';
+import socket from '../utils/socket.js';
+import { TaskContext, type Task } from './TaskContext.js';
 
 export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tasks, setTasks] = useState<Task[]>([]);

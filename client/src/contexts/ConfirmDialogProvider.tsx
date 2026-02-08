@@ -1,28 +1,7 @@
-import { createContext, useState, useContext, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-
-interface ConfirmDialogOptions {
-  title: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  type?: 'danger' | 'warning' | 'info';
-}
-
-interface ConfirmDialogContextType {
-  showConfirm: (options: ConfirmDialogOptions) => Promise<boolean>;
-}
-
-export const ConfirmDialogContext = createContext<ConfirmDialogContextType | undefined>(undefined);
-
-export const useConfirmDialog = () => {
-  const context = useContext(ConfirmDialogContext);
-  if (context === undefined) {
-    throw new Error('useConfirmDialog must be used within a ConfirmDialogProvider');
-  }
-  return context;
-};
+import { ConfirmDialogContext, type ConfirmDialogOptions } from './ConfirmDialogContext.js';
 
 export const ConfirmDialogProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();

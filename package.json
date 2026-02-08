@@ -22,7 +22,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "install-all": "npm install && npm install --prefix server && npm install --prefix client",
-    "fix": "npx rimraf node_modules server/node_modules client/node_modules && npm run install-all"
+    "fix": "npx rimraf node_modules server/node_modules client/node_modules && npm run install-all",
+    "test": "npm run test --prefix server"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

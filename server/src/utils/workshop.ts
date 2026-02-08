@@ -1,9 +1,21 @@
 import db from '../db.js';
+import { taskService } from '../services/TaskService.js';
 
-export async function registerWorkshopMap(workshopId: string, discoveredMapFile?: string) {
+export async function registerWorkshopMap(
+  workshopId: string,
+  discoveredMapFile?: string,
+  taskId?: string
+) {
   if (!workshopId || workshopId === '0') return null;
 
   try {
+    if (taskId) {
+      taskService.updateTask(taskId, {
+        status: 'running',
+        message: `Fetching Steam metadata for ${workshopId}...`,
+        progress: 30,
+      });
+    }
     // Fetch details from Steam Web API
     let name = `Workshop Map ${workshopId}`;
     let image_url: string | null = null;
@@ -71,8 +83,18 @@ export async function registerWorkshopMap(workshopId: string, discoveredMapFile?
         `
     ).run(workshopId, name, image_url, map_file);
 
+    if (taskId) {
+      taskService.completeTask(taskId, `Map ${name} registered successfully`);
+    }
+
     return { name, image_url, map_file };
   } catch (error) {
+    if (taskId) {
+      taskService.failTask(
+        taskId,
+        `Failed to register map: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
     console.error('[WORKSHOP] Add workshop map error for:', workshopId, error);
     return null;
   }

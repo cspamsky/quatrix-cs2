@@ -15,7 +15,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import socket from '../utils/socket';
-import { useConfirmDialog } from '../contexts/ConfirmDialogContext';
+import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import ServerCard from '../components/ServerCard';
 import ServerRow from '../components/ServerRow';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

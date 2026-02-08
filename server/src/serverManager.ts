@@ -998,14 +998,14 @@ class ServerManager {
   async checkAllPluginUpdates(id: string | number) {
     return pluginManager.checkAllPluginUpdates(id);
   }
-  async installPlugin(id: string | number, pid: PluginId) {
-    return pluginManager.installPlugin(this.installDir, id, pid);
+  async installPlugin(id: string | number, pid: PluginId, taskId?: string) {
+    return pluginManager.installPlugin(this.installDir, id, pid, taskId);
   }
-  async uninstallPlugin(id: string | number, pid: PluginId) {
-    return pluginManager.uninstallPlugin(this.installDir, id, pid);
+  async uninstallPlugin(id: string | number, pid: PluginId, taskId?: string) {
+    return pluginManager.uninstallPlugin(this.installDir, id, pid, taskId);
   }
-  async updatePlugin(id: string | number, pid: PluginId) {
-    return pluginManager.updatePlugin(this.installDir, id, pid);
+  async updatePlugin(id: string | number, pid: PluginId, taskId?: string) {
+    return pluginManager.updatePlugin(this.installDir, id, pid, taskId);
   }
   async getPluginConfigFiles(id: string | number, pid: PluginId) {
     return pluginManager.getPluginConfigFiles(this.installDir, id, pid);

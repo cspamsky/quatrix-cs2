@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 import { tr, enUS } from 'date-fns/locale';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
-import { useConfirmDialog } from '../contexts/ConfirmDialogContext';
+import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { apiFetch } from '../utils/api';
 import type { Backup, Instance } from '../types';
 

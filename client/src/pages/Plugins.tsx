@@ -4,9 +4,7 @@ import {
   Cpu,
   Zap,
   Server as ServerIcon,
-  Download,
   Loader2,
-  Trash2,
   Box,
   Layers,
   Search,
@@ -14,15 +12,16 @@ import {
   XCircle,
   AlertCircle,
   Tag,
-  Settings,
-  Save,
-  X,
 } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 import toast from 'react-hot-toast';
-import { useConfirmDialog } from '../contexts/ConfirmDialogContext';
+import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import ConfigEditor from '../components/plugins/ConfigEditor.js';
+import UploadModal from '../components/plugins/UploadModal.js';
+import PoolTable from '../components/plugins/PoolTable.js';
+import PluginRow from '../components/plugins/PluginRow.js';
 
 interface Instance {
   id: number;
@@ -382,124 +381,6 @@ const Plugins = () => {
     </div>
   );
 
-  const renderPoolTable = () => {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col lg:flex-row gap-4 shrink-0">
-          <TabSwitcher />
-          <div className="relative flex-1 group">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary transition-colors"
-              size={18}
-            />
-            <input
-              type="text"
-              placeholder={t('plugins.search_repository')}
-              className="w-full bg-[#111827]/40 border border-gray-800/50 rounded-2xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-primary/50 focus:bg-primary/[0.02] transition-all"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center gap-2 bg-[#111827]/40 border border-gray-800/50 p-1.5 rounded-2xl overflow-x-auto scrollbar-hide">
-            {['all', 'core', 'metamod', 'cssharp'].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat as 'all' | 'core' | 'metamod' | 'cssharp')}
-                className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-300'}`}
-              >
-                {t(`plugins.${cat === 'all' ? 'all_categories' : cat}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-[#111827]/40 border border-gray-800/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-[#0c1424] border-b border-gray-800/80">
-              <tr>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 w-1/3">
-                  {t('plugins.plugin')}
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">
-                  {t('plugins.status')}
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500 text-right">
-                  {t('plugins.actions')}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800/20">
-              {poolPlugins.map((info) => (
-                <tr key={info.id} className="group hover:bg-primary/[0.01] transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center bg-gray-800/40 text-gray-500 border border-gray-800/40`}
-                      >
-                        {info.category === 'metamod' ? (
-                          <Cpu size={18} />
-                        ) : info.category === 'cssharp' ? (
-                          <Zap size={18} />
-                        ) : (
-                          <Layers size={18} />
-                        )}
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">
-                          {info.name}
-                        </div>
-                        <div className="text-[10px] text-gray-500 font-mono mt-0.5">{info.id}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {info.inPool ? (
-                      <div className="flex items-center gap-2 text-green-500">
-                        <CheckCircle2 size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">
-                          {t('plugins.installed')}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-orange-500">
-                        <AlertCircle size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">
-                          {t('plugins.not_in_pool')}
-                        </span>
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      {info.inPool ? (
-                        <button
-                          onClick={() => handleDeletePool(info.id)}
-                          className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-500/20 transition-all border border-red-500/20"
-                        >
-                          <Trash2 size={14} />
-                          {t('plugins.delete')}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setUploadModalPlugin({ id: info.id, name: info.name })}
-                          className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-primary/20 transition-all border border-primary/20"
-                        >
-                          <Download size={14} />
-                          {t('plugins.upload')}
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  };
-
   const renderUnifiedPluginTable = () => {
     const sections = [
       {
@@ -661,174 +542,21 @@ const Plugins = () => {
                             </td>
                           </tr>
 
-                          {sectionPlugins.map((info) => {
-                            const pid = info.id;
-                            const status = pluginStatus[pid];
-                            const isInstalled = !!status?.installed;
-                            const hasConfigs = !!status?.hasConfigs;
-                            const hasUpdate = !!pluginUpdates?.[pid]?.hasUpdate;
-                            const isLoading = actionLoading === pid;
-                            const updates = pluginUpdates?.[pid];
-
-                            return (
-                              <tr
-                                key={pid}
-                                className="group hover:bg-primary/[0.01] transition-colors"
-                              >
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center gap-4">
-                                    <div
-                                      className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${isInstalled ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-gray-800/40 text-gray-500 border border-gray-800/40'}`}
-                                    >
-                                      {pid === 'metamod' || info.category === 'metamod' ? (
-                                        <Cpu size={18} />
-                                      ) : pid === 'cssharp' || info.category === 'cssharp' ? (
-                                        <Zap size={18} />
-                                      ) : (
-                                        <Layers size={18} />
-                                      )}
-                                    </div>
-                                    <div>
-                                      <div className="text-sm font-bold text-white group-hover:text-primary transition-colors">
-                                        {info.name}
-                                      </div>
-                                      <span
-                                        className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 inline-block ${isInstalled ? 'bg-green-500/10 text-green-500' : 'bg-gray-800/60 text-gray-500'}`}
-                                      >
-                                        {isInstalled
-                                          ? t('plugins.installed')
-                                          : t('plugins.not_installed')}
-                                      </span>
-                                      {info.isCustom && (
-                                        <span className="text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 ml-1 inline-block bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                                          {t('plugins.custom')}
-                                        </span>
-                                      )}
-                                      {!info.inPool && (
-                                        <span className="text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded mt-1 ml-1 inline-block bg-orange-500/10 text-orange-500 border border-orange-500/20">
-                                          {t('plugins.not_in_pool')}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 hidden lg:table-cell">
-                                  <p className="text-xs text-gray-500 max-w-sm line-clamp-1 mb-2">
-                                    {info.description || `High-performance module.`}
-                                  </p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {info.tags?.map((t: string) => (
-                                      <span
-                                        key={t}
-                                        className="text-[8px] font-bold text-primary/40 group-hover:text-primary/70 transition-colors uppercase tracking-tight"
-                                      >
-                                        #{t}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                  <div className="flex flex-col">
-                                    <span className="text-[11px] font-mono font-bold text-gray-400">
-                                      {isInstalled
-                                        ? `v${updates?.currentVersion || '?.?.?'}`
-                                        : '--'}
-                                    </span>
-                                    {hasUpdate && isInstalled && (
-                                      <div className="flex items-center gap-1 mt-1">
-                                        <span className="text-[9px] font-black text-yellow-500 animate-pulse uppercase">
-                                          {t('plugins.update')}
-                                        </span>
-                                        <span className="text-[9px] text-yellow-500/50 font-medium">
-                                          → v{updates?.latestVersion}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                  <div className="flex justify-end gap-2 text-right">
-                                    {isInstalled ? (
-                                      <>
-                                        {hasUpdate && (
-                                          <button
-                                            disabled={actionLoading !== null}
-                                            onClick={() => handleAction(pid, 'update')}
-                                            className="p-1.5 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                            title="Update Plugin"
-                                          >
-                                            {isLoading ? (
-                                              <Loader2 size={14} className="animate-spin" />
-                                            ) : (
-                                              <Download size={14} />
-                                            )}
-                                          </button>
-                                        )}
-                                        {hasConfigs && (
-                                          <button
-                                            disabled={actionLoading !== null}
-                                            onClick={() => openConfigEditor(pid, info.name)}
-                                            className="p-1.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                            title="Plugin Settings"
-                                          >
-                                            <Settings size={14} />
-                                          </button>
-                                        )}
-                                        <button
-                                          disabled={actionLoading !== null}
-                                          onClick={() => handleAction(pid, 'uninstall')}
-                                          className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                          title="Uninstall Plugin"
-                                        >
-                                          {isLoading ? (
-                                            <Loader2 size={14} className="animate-spin" />
-                                          ) : (
-                                            <Trash2 size={14} />
-                                          )}
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <div className="flex items-center gap-2">
-                                        {!info.inPool && (
-                                          <button
-                                            onClick={() =>
-                                              setUploadModalPlugin({ id: pid, name: info.name })
-                                            }
-                                            className="p-1.5 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-all"
-                                            title="Upload to Pool"
-                                          >
-                                            <Layers size={14} />
-                                          </button>
-                                        )}
-                                        <button
-                                          disabled={
-                                            actionLoading !== null ||
-                                            !info.inPool ||
-                                            (pid !== 'metamod' &&
-                                              !pluginStatus['metamod']?.installed) ||
-                                            (info.category === 'cssharp' &&
-                                              pid !== 'cssharp' &&
-                                              !pluginStatus['cssharp']?.installed)
-                                          }
-                                          onClick={() => handleAction(pid, 'install')}
-                                          className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-blue-600 transition-all active:scale-95 shadow-lg shadow-primary/10 disabled:bg-gray-800/50 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed"
-                                        >
-                                          {isLoading ? (
-                                            <Loader2 size={14} className="animate-spin" />
-                                          ) : (
-                                            <Download size={14} />
-                                          )}
-                                          {info.inPool
-                                            ? t('plugins.install')
-                                            : t('plugins.not_in_pool')}
-                                        </button>
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
+                          {sectionPlugins.map((info) => (
+                            <PluginRow
+                              key={info.id}
+                              id={info.id}
+                              info={info}
+                              status={pluginStatus[info.id]}
+                              updates={pluginUpdates?.[info.id]}
+                              actionLoading={actionLoading}
+                              onAction={handleAction}
+                              onOpenConfig={openConfigEditor}
+                              onOpenUpload={(id, name) => setUploadModalPlugin({ id, name })}
+                              metamodInstalled={!!pluginStatus['metamod']?.installed}
+                              cssharpInstalled={!!pluginStatus['cssharp']?.installed}
+                            />
+                          ))}
                         </React.Fragment>
                       );
                     })
@@ -959,205 +687,42 @@ const Plugins = () => {
         </div>
       </header>
 
-      {activeTab === 'instances' ? renderUnifiedPluginTable() : renderPoolTable()}
-
-      {/* Config Editor Modal */}
-      {configModalPlugin && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => setConfigModalPlugin(null)}
-          />
-          <div className="relative w-full max-w-6xl bg-[#0c1424] border border-gray-800 rounded-3xl shadow-2xl flex flex-col h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200">
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 text-primary">
-                  <Settings size={18} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                    {configModalPlugin.name} Settings
-                  </h3>
-                  <p className="text-[10px] text-gray-500 font-mono tracking-tight mt-0.5">
-                    {selectedFilePath || 'Select a file'}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setConfigModalPlugin(null)}
-                className="p-2 text-gray-500 hover:text-white transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="flex flex-1 min-h-0">
-              {/* Sidebar (File List) */}
-              <div className="w-1/4 border-r border-gray-800 bg-[#111827]/40 overflow-y-auto">
-                <div className="p-3 uppercase text-[9px] font-black text-gray-600 tracking-widest">
-                  {t('plugins.available_files')}
-                </div>
-                {isLoadingConfigs ? (
-                  <div className="p-6 flex justify-center">
-                    <Loader2 size={24} className="text-primary animate-spin" />
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-1 p-2">
-                    {configFiles.map((file) => (
-                      <button
-                        key={file.path}
-                        onClick={() => handleFileSelect(file.path)}
-                        className={`px-3 py-2 rounded-xl text-left text-xs font-bold transition-all ${selectedFilePath === file.path ? 'bg-primary/20 text-primary' : 'text-gray-500 hover:bg-gray-800/50 hover:text-gray-300'}`}
-                      >
-                        {file.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Editor */}
-              <div className="flex-1 flex flex-col bg-[#080c14]">
-                <textarea
-                  className="flex-1 w-full bg-transparent p-6 text-sm font-mono text-gray-300 focus:outline-none resize-none scrollbar-hide leading-relaxed"
-                  value={editingContent}
-                  onChange={(e) => setEditingContent(e.target.value)}
-                  spellCheck={false}
-                  placeholder={t('plugins.no_content')}
-                />
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-800 bg-[#111827]/40 flex items-center justify-between">
-              <span className="text-[10px] text-gray-500 font-medium">
-                {t('plugins.changes_applied')}
-              </span>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setConfigModalPlugin(null)}
-                  className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-300 transition-all uppercase tracking-widest"
-                >
-                  {t('plugins.cancel')}
-                </button>
-                <button
-                  disabled={isSaving || !selectedFilePath}
-                  onClick={handleSaveConfig}
-                  className="flex items-center gap-2 bg-primary text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-600 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
-                >
-                  {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                  {isSaving ? t('plugins.saving') : t('plugins.save')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {activeTab === 'instances' ? (
+        renderUnifiedPluginTable()
+      ) : (
+        <PoolTable
+          plugins={poolPlugins}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          activeCategory={activeCategory}
+          onCategoryChange={(cat) => setActiveCategory(cat as any)}
+          onDelete={handleDeletePool}
+          onUpload={(id, name) => setUploadModalPlugin({ id, name })}
+          tabSwitcher={<TabSwitcher />}
+        />
       )}
 
-      {/* Plugin Upload Modal */}
-      {uploadModalPlugin && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => !isUploading && setUploadModalPlugin(null)}
-          />
-          <div className="relative bg-[#0c1424] border border-gray-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 border border-orange-500/20">
-                  <Layers size={20} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                    {uploadModalPlugin.id === 'unknown'
-                      ? t('plugins.upload_custom_plugin')
-                      : t('plugins.upload')}
-                  </h3>
-                  <p className="text-[10px] text-gray-500 font-mono tracking-tight mt-0.5">
-                    {uploadModalPlugin.name}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setUploadModalPlugin(null)}
-                className="p-2 text-gray-500 hover:text-white transition-colors"
-                disabled={isUploading}
-              >
-                <X size={20} />
-              </button>
-            </div>
+      <ConfigEditor
+        plugin={configModalPlugin}
+        onClose={() => setConfigModalPlugin(null)}
+        isLoading={isLoadingConfigs}
+        configFiles={configFiles}
+        selectedFilePath={selectedFilePath}
+        onFileSelect={handleFileSelect}
+        editingContent={editingContent}
+        onContentChange={setEditingContent}
+        isSaving={isSaving}
+        onSave={handleSaveConfig}
+      />
 
-            <form onSubmit={handleUpload} className="p-6 space-y-6">
-              <div className="space-y-4">
-                <div className="p-4 bg-orange-500/5 border border-orange-500/10 rounded-2xl flex items-start gap-3">
-                  <AlertCircle size={16} className="text-orange-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-gray-400 leading-relaxed">
-                    {t('plugins.upload_instruction')}
-                  </p>
-                </div>
-
-                <div className="relative group">
-                  <input
-                    type="file"
-                    accept=".zip,.rar,.gz,.tgz,.tar"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    disabled={isUploading}
-                  />
-                  <div
-                    className={`p-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-3 transition-all ${selectedFile ? 'border-primary/50 bg-primary/5' : 'border-gray-800 group-hover:border-gray-700 hover:bg-white/5'}`}
-                  >
-                    <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center ${selectedFile ? 'bg-primary/20 text-primary' : 'bg-gray-800 text-gray-600'}`}
-                    >
-                      {selectedFile ? <CheckCircle2 size={24} /> : <Download size={24} />}
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-bold text-white">
-                        {selectedFile ? selectedFile.name : t('plugins.select_zip')}
-                      </p>
-                      <p className="text-[10px] text-gray-500 mt-1 font-mono uppercase tracking-widest">
-                        {selectedFile
-                          ? `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`
-                          : 'MAX 50MB'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setUploadModalPlugin(null)}
-                  className="flex-1 px-4 py-3 bg-gray-800/40 text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-gray-800 transition-all border border-gray-800"
-                  disabled={isUploading}
-                >
-                  {t('plugins.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={!selectedFile || isUploading}
-                  className="flex-[2] px-4 py-3 bg-primary text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      {t('plugins.uploading')}
-                    </>
-                  ) : (
-                    <>
-                      <Layers size={16} />
-                      {t('plugins.upload')}
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <UploadModal
+        plugin={uploadModalPlugin}
+        onClose={() => setUploadModalPlugin(null)}
+        isUploading={isUploading}
+        selectedFile={selectedFile}
+        onFileChange={setSelectedFile}
+        onSubmit={handleUpload}
+      />
     </div>
   );
 };

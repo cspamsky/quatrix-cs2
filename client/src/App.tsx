@@ -6,8 +6,8 @@ import { Oval } from 'react-loading-icons';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
-import { ConfirmDialogProvider } from './contexts/ConfirmDialogContext';
-import { TaskProvider } from './contexts/TaskContext';
+import { ConfirmDialogProvider } from './contexts/ConfirmDialogProvider.js';
+import { TaskProvider } from './contexts/TaskProvider.js';
 import GlobalTaskOverlay from './components/GlobalTaskOverlay';
 
 // Lazy load pages for code splitting

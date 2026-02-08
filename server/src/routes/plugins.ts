@@ -9,6 +9,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import type { AuthenticatedRequest } from '../types/index.js';
+import { taskService } from '../services/TaskService.js';
 
 const router = Router();
 router.use(authenticateToken);
@@ -133,12 +134,20 @@ router.post('/:id/plugins/:plugin/:action', async (req: Request, res: Response) 
       });
     }
 
+    const taskId = `plugin_${action}_${plugin}_${Date.now()}`;
+    const pluginName = registry[pluginId]?.name || plugin;
+    taskService.createTask(taskId, `plugin_${action}`, {
+      pluginId: plugin,
+      serverId: id,
+      pluginName,
+    });
+
     if (action === 'install') {
-      await serverManager.installPlugin(id as string, plugin as PluginId);
+      await serverManager.installPlugin(id as string, plugin as PluginId, taskId);
     } else if (action === 'uninstall') {
-      await serverManager.uninstallPlugin(id as string, plugin as PluginId);
+      await serverManager.uninstallPlugin(id as string, plugin as PluginId, taskId);
     } else if (action === 'update') {
-      await serverManager.updatePlugin(id as string, plugin as PluginId);
+      await serverManager.updatePlugin(id as string, plugin as PluginId, taskId);
     }
 
     res.json({ message: `${registry[pluginId]?.name || plugin} ${action}ed successfully` });

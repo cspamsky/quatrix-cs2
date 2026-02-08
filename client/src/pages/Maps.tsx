@@ -1,21 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import {
-  Search,
-  Play,
-  RefreshCcw,
-  CheckCircle2,
-  Server as ServerIcon,
-  Loader2,
-  Globe,
-  Plus,
-  Trash2,
-  X,
-  Settings,
-} from 'lucide-react';
+import { Search, RefreshCcw, Server as ServerIcon, Loader2, Plus } from 'lucide-react';
 import { apiFetch } from '../utils/api';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import MapCard from '../components/maps/MapCard.js';
+import WorkshopModal from '../components/maps/WorkshopModal.js';
+import MapConfigEditor from '../components/maps/MapConfigEditor.js';
 
 interface CS2Map {
   id: string;
@@ -407,188 +398,42 @@ const Maps = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
               {filteredMaps.map((map) => (
-                <div
+                <MapCard
                   key={map.id}
-                  className={`group relative aspect-[16/10] rounded-2xl overflow-hidden border border-gray-800 transition-all hover:border-primary/50 ${map.isActive ? 'ring-2 ring-primary ring-offset-4 ring-offset-[#0F172A]' : ''}`}
-                >
-                  <img
-                    src={map.image}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-
-                  <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
-                    <div className="truncate mr-2">
-                      <h4 className="text-white font-bold text-sm truncate">{map.displayName}</h4>
-                      <p className="text-gray-400 text-[9px] font-mono truncate opacity-60">
-                        {map.name}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => openConfigEditor(map)}
-                        className="p-3 bg-gray-900/80 text-gray-400 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-primary hover:text-white"
-                      >
-                        <Settings size={16} />
-                      </button>
-                      {map.type === 'Workshop' && (
-                        <button
-                          onClick={() => removeWorkshopMutation.mutate(map.id)}
-                          className="p-3 bg-red-500/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                      {!map.isActive && (
-                        <button
-                          onClick={() => changeMapMutation.mutate(map)}
-                          disabled={changeMapMutation.isPending || !isServerOnline}
-                          className="p-3 bg-primary text-white rounded-xl shadow-xl shadow-primary/40 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 disabled:opacity-50"
-                        >
-                          <Play size={18} fill="white" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {map.isActive && (
-                    <div className="absolute top-4 right-4 bg-green-500 p-1.5 rounded-full text-white">
-                      <CheckCircle2 size={16} />
-                    </div>
-                  )}
-                </div>
+                  map={map}
+                  onOpenConfig={openConfigEditor}
+                  onRemoveWorkshop={(id) => removeWorkshopMutation.mutate(id)}
+                  onChangeMap={(m) => changeMapMutation.mutate(m)}
+                  isServerOnline={isServerOnline}
+                  isChanging={changeMapMutation.isPending}
+                />
               ))}
             </div>
           )}
         </div>
       </div>
 
-      {/* Workshop Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-gray-800 rounded-3xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <Globe className="text-primary" size={20} />
-                <h3 className="text-white font-bold">{t('maps.add_workshop_title')}</h3>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-gray-500 hover:text-white transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-8 space-y-5">
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3 ml-1">
-                  {t('maps.workshop_id_label')}
-                </label>
-                <input
-                  type="text"
-                  placeholder={t('maps.workshop_id_placeholder')}
-                  className="w-full bg-[#0c1424] border border-gray-800 rounded-2xl py-4 px-6 text-white focus:border-primary transition-all outline-none text-lg font-mono placeholder:text-gray-700"
-                  value={newWorkshopId}
-                  onChange={(e) => setNewWorkshopId(e.target.value)}
-                  autoFocus
-                />
-              </div>
+      <WorkshopModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        workshopId={newWorkshopId}
+        onWorkshopIdChange={setNewWorkshopId}
+        mapFile={newMapFile}
+        onMapFileChange={setNewMapFile}
+        onSubmit={() =>
+          addWorkshopMutation.mutate({ workshopId: newWorkshopId, mapFile: newMapFile })
+        }
+        isPending={addWorkshopMutation.isPending}
+      />
 
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 mb-3 ml-1">
-                  {t('maps.map_name_label')}
-                </label>
-                <input
-                  type="text"
-                  placeholder={t('maps.map_name_placeholder')}
-                  className="w-full bg-[#0c1424] border border-gray-800 rounded-2xl py-4 px-6 text-white focus:border-primary transition-all outline-none text-lg font-mono placeholder:text-gray-700"
-                  value={newMapFile}
-                  onChange={(e) => setNewMapFile(e.target.value)}
-                />
-                <p className="mt-3 text-[10px] text-gray-600 flex items-center gap-2">
-                  <Plus size={10} /> {t('maps.map_name_hint')}
-                </p>
-              </div>
-
-              <button
-                onClick={() =>
-                  addWorkshopMutation.mutate({ workshopId: newWorkshopId, mapFile: newMapFile })
-                }
-                disabled={!newWorkshopId || addWorkshopMutation.isPending}
-                className="w-full bg-primary hover:bg-blue-600 disabled:opacity-50 text-white py-4 rounded-2xl font-bold uppercase tracking-widest text-xs transition-all shadow-xl shadow-primary/20"
-              >
-                {addWorkshopMutation.isPending ? t('maps.verifying') : t('maps.link_to_server')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Map Config Editor Modal */}
-      {editingMapConfig && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center p-6">
-          <div className="bg-[#111827] border border-gray-800 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#0d1421]">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                  <Settings size={20} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white">
-                    {t('maps.config_editor_title')} {editingMapConfig.displayName}
-                  </h3>
-                  <p className="text-[10px] text-gray-500 font-mono tracking-widest mt-0.5 uppercase">
-                    quatrix_maps/{editingMapConfig.name}.cfg
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setEditingMapConfig(null)}
-                className="p-2 text-gray-500 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="flex-1 bg-black/40 p-1">
-              <textarea
-                className="w-full h-full min-h-[400px] bg-transparent text-primary/90 p-8 font-mono text-sm outline-none resize-none leading-relaxed selection:bg-primary/20"
-                spellCheck={false}
-                placeholder={t('maps.config_placeholder')}
-                value={currentConfig}
-                onChange={(e) => setCurrentConfig(e.target.value)}
-                autoFocus
-              />
-            </div>
-
-            <div className="p-6 bg-[#0d1421] border-t border-gray-800 flex justify-between items-center">
-              <div className="text-[10px] text-gray-500 flex items-center gap-2 font-bold uppercase tracking-widest">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                {t('maps.auto_executed')}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setEditingMapConfig(null)}
-                  className="px-6 py-2.5 text-xs font-bold text-gray-400 hover:text-white transition-all capitalize"
-                >
-                  {t('maps.discard')}
-                </button>
-                <button
-                  onClick={saveConfig}
-                  disabled={isSavingConfig}
-                  className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-8 py-2.5 rounded-xl text-xs font-black tracking-[0.1em] transition-all shadow-xl shadow-primary/20 disabled:opacity-50"
-                >
-                  {isSavingConfig ? (
-                    <Loader2 className="animate-spin" size={16} />
-                  ) : (
-                    <CheckCircle2 size={16} />
-                  )}
-                  {t('maps.save_configuration')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <MapConfigEditor
+        map={editingMapConfig}
+        onClose={() => setEditingMapConfig(null)}
+        configContent={currentConfig}
+        onConfigChange={setCurrentConfig}
+        onSave={saveConfig}
+        isSaving={isSavingConfig}
+      />
     </div>
   );
 };

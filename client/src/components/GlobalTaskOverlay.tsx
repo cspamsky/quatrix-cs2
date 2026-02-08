@@ -1,4 +1,5 @@
-import { useTasks, type Task } from '../contexts/TaskContext';
+import { useTasks } from '../hooks/useTasks.js';
+import { type Task } from '../contexts/TaskContext.js';
 import { useTranslation } from 'react-i18next';
 import { Loader2, CheckCircle2, XCircle, Server, Download, Database, Info } from 'lucide-react';
 import { clsx } from 'clsx';
