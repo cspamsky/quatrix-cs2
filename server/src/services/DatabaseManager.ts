@@ -236,11 +236,12 @@ export class DatabaseManager {
      *    FROM target is limited to letters, numbers, underscores and backticks.
      *    This aligns with how table names are built in servers.ts.
      */
-    const selectFromPattern =
-      /^select\s+.+?\s+from\s+[`a-z0-9_]+\s*(where\s+.+)?$/;
+    const selectFromPattern = /^select\s+.+?\s+from\s+[`a-z0-9_]+\s*(where\s+.+)?$/;
 
     if (!selectFromPattern.test(normalized)) {
-      throw new Error('Query shape is not allowed. Only simple SELECT ... FROM ... [WHERE ...] queries are permitted.');
+      throw new Error(
+        'Query shape is not allowed. Only simple SELECT ... FROM ... [WHERE ...] queries are permitted.'
+      );
     }
 
     // 5. Limit query length
