@@ -472,72 +472,14 @@ router.post('/:id/database/query', authenticateToken, async (req: Request, res: 
     const { query } = req.body as { query: string };
     if (!query) return res.status(400).json({ message: 'Query is required' });
 
-    const queryLower = query.trim().toLowerCase();
-
-    // SECURITY: Strict SQL Injection Protection
-    // 1. Only allow SELECT statements (must be at the beginning)
-    if (!queryLower.startsWith('select')) {
-      return res.status(403).json({ message: 'Only SELECT queries are allowed.' });
-    }
-
-    // 2. Block dangerous keywords and symbols that could be used for SQL injection
-    // Using word boundaries to prevent false positives (e.g., 'selecting' containing 'select')
-    const dangerousKeywords = [
-      'drop',
-      'delete',
-      'update',
-      'insert',
-      'alter',
-      'create',
-      'truncate',
-      'replace',
-      'grant',
-      'revoke',
-      'exec',
-      'execute',
-      'call',
-      'procedure',
-      'function',
-      'trigger',
-      'into outfile',
-      'load_file',
-      'benchmark',
-      'sleep',
-      'waitfor',
-      'union',
-      'all',
-      'join',
-    ];
-
-    // Check for comments and multiple statements
-    if (
-      query.includes('--') ||
-      query.includes('/*') ||
-      query.includes('#') ||
-      query.includes(';')
-    ) {
-      return res.status(403).json({ message: 'Special characters (-- , /*, #, ;) are forbidden.' });
-    }
-
-    for (const keyword of dangerousKeywords) {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-      if (regex.test(queryLower)) {
-        return res.status(403).json({
-          message: `Query contains forbidden keyword: ${keyword}`,
-        });
-      }
-    }
-
-    // 3. Additional safety: limit query length
-    if (query.length > 5000) {
-      return res.status(400).json({ message: 'Query too long (max 5000 characters)' });
-    }
-
+    // SECURITY: Validation is handled centrally in databaseManager.executeQuery
     const results = await databaseManager.executeQuery(query);
     res.json({ results });
   } catch (error: unknown) {
     const err = error as Error;
-    res.status(400).json({ message: err.message });
+    // Log error but return clean message to client
+    console.error('[DB_CONSOLE] Query execution failed:', err.message);
+    res.status(403).json({ message: err.message });
   }
 });
 

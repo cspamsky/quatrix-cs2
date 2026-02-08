@@ -197,12 +197,79 @@ export class DatabaseManager {
   }
 
   /**
+   * SECURITY: Validates if a SQL query is a safe SELECT statement.
+   * Blocks dangerous keywords, multiple statements, and administrative commands.
+   */
+  private checkIsSafeSelect(query: string): void {
+    const queryLower = query.trim().toLowerCase();
+
+    // 1. Only allow SELECT statements
+    if (!queryLower.startsWith('select')) {
+      throw new Error('Only SELECT queries are allowed.');
+    }
+
+    // 2. Block dangerous keywords
+    const dangerousKeywords = [
+      'drop',
+      'delete',
+      'update',
+      'insert',
+      'alter',
+      'create',
+      'truncate',
+      'replace',
+      'grant',
+      'revoke',
+      'exec',
+      'execute',
+      'call',
+      'procedure',
+      'function',
+      'trigger',
+      'into outfile',
+      'load_file',
+      'benchmark',
+      'sleep',
+      'waitfor',
+      'union',
+      'all',
+      'join',
+    ];
+
+    for (const keyword of dangerousKeywords) {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+      if (regex.test(queryLower)) {
+        throw new Error(`Query contains forbidden keyword: ${keyword}`);
+      }
+    }
+
+    // 3. Block special characters and comments
+    if (
+      query.includes('--') ||
+      query.includes('/*') ||
+      query.includes('#') ||
+      query.includes(';')
+    ) {
+      throw new Error('Special characters (-- , /*, #, ;) are forbidden.');
+    }
+
+    // 4. Limit query length
+    if (query.length > 5000) {
+      throw new Error('Query too long (max 5000 characters)');
+    }
+  }
+
+  /**
    * Executes a raw SQL query against the local master database.
-   * SECURITY: This is a highly sensitive method. It is protected by
-   * strict validation in the API route to only allow SELECT queries.
+   * SECURITY: This is a highly sensitive method. It performs
+   * strict validation internally to only allow SELECT queries.
    */
   async executeQuery(query: string) {
     if (!this.pool) throw new Error('MySQL service is not available.');
+
+    // SECURITY: Validate query before execution
+    this.checkIsSafeSelect(query);
+
     try {
       const [rows] = await this.pool.query(query);
       return rows;
