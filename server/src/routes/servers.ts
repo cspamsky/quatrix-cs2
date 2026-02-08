@@ -555,7 +555,7 @@ router.post('/:id/database/query', authenticateToken, async (req: Request, res: 
     }
 
     // SECURITY: Additional validation is handled centrally in databaseManager.executeQuery
-    const results = await databaseManager.executeQuery(sql, queryParams);
+    const results = await databaseManager.executeQuery(req.params.id as string, sql, queryParams);
     res.json({ results });
   } catch (error: unknown) {
     const err = error as Error;
