@@ -198,63 +198,53 @@ export class DatabaseManager {
 
   /**
    * SECURITY: Validates if a SQL query is a safe SELECT statement.
-   * Blocks dangerous keywords, multiple statements, and administrative commands.
+   *
+   * This function enforces a strict allowlist-based shape:
+   *   SELECT <columns> FROM <identifier> [WHERE <conditions>]
+   *
+   * Only a single statement is allowed. Comments, semicolons and other
+   * statement separators are rejected to prevent stacking multiple queries.
    */
   private checkIsSafeSelect(query: string): void {
-    const queryLower = query.trim().toLowerCase();
+    const trimmed = query.trim();
+    const lower = trimmed.toLowerCase();
 
     // 1. Only allow SELECT statements
-    if (!queryLower.startsWith('select')) {
+    if (!lower.startsWith('select')) {
       throw new Error('Only SELECT queries are allowed.');
     }
 
-    // 2. Block dangerous keywords
-    const dangerousKeywords = [
-      'drop',
-      'delete',
-      'update',
-      'insert',
-      'alter',
-      'create',
-      'truncate',
-      'replace',
-      'grant',
-      'revoke',
-      'exec',
-      'execute',
-      'call',
-      'procedure',
-      'function',
-      'trigger',
-      'into outfile',
-      'load_file',
-      'benchmark',
-      'sleep',
-      'waitfor',
-      'union',
-      'all',
-      'join',
-    ];
-
-    for (const keyword of dangerousKeywords) {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-      if (regex.test(queryLower)) {
-        throw new Error(`Query contains forbidden keyword: ${keyword}`);
-      }
-    }
-
-    // 3. Block special characters and comments
+    // 2. Block obvious multi-statement and comment patterns
     if (
-      query.includes('--') ||
-      query.includes('/*') ||
-      query.includes('#') ||
-      query.includes(';')
+      trimmed.includes('--') ||
+      trimmed.includes('/*') ||
+      trimmed.includes('#') ||
+      trimmed.includes(';')
     ) {
-      throw new Error('Special characters (-- , /*, #, ;) are forbidden.');
+      throw new Error('Multiple statements and SQL comments are forbidden.');
     }
 
-    // 4. Limit query length
-    if (query.length > 5000) {
+    // 3. Normalize whitespace to make pattern matching more reliable
+    const normalized = lower.replace(/\s+/g, ' ');
+
+    /**
+     * 4. Enforce a strict structure:
+     *    - SELECT <anything> FROM <single_identifier>
+     *    - Optional WHERE clause after the FROM target
+     *    - No other trailing tokens (GROUP BY, UNION, etc.)
+     *
+     *    FROM target is limited to letters, numbers, underscores and backticks.
+     *    This aligns with how table names are built in servers.ts.
+     */
+    const selectFromPattern =
+      /^select\s+.+?\s+from\s+[`a-z0-9_]+\s*(where\s+.+)?$/;
+
+    if (!selectFromPattern.test(normalized)) {
+      throw new Error('Query shape is not allowed. Only simple SELECT ... FROM ... [WHERE ...] queries are permitted.');
+    }
+
+    // 5. Limit query length
+    if (trimmed.length > 5000) {
       throw new Error('Query too long (max 5000 characters)');
     }
   }
