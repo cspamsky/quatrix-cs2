@@ -316,9 +316,9 @@ const Plugins = () => {
     return allPlugins.filter((plugin) => {
       // Search filter
       const matchesSearch =
-        plugin.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        plugin.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        plugin.id.toLowerCase().includes(searchQuery.toLowerCase());
+        (plugin.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (plugin.description?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (plugin.id?.toLowerCase() || '').includes(searchQuery.toLowerCase());
 
       // Category filter
       const matchesCategory = activeCategory === 'all' || plugin.category === activeCategory;
@@ -355,8 +355,8 @@ const Plugins = () => {
   const poolPlugins = useMemo(() => {
     return allPlugins.filter((plugin) => {
       const matchesSearch =
-        plugin.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        plugin.id.toLowerCase().includes(searchQuery.toLowerCase());
+        (plugin.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (plugin.id?.toLowerCase() || '').includes(searchQuery.toLowerCase());
       const matchesCategory = activeCategory === 'all' || plugin.category === activeCategory;
       return matchesSearch && matchesCategory;
     });

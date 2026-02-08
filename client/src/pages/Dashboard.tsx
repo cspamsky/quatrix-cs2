@@ -226,8 +226,8 @@ const Dashboard = () => {
 
   const filteredModalActivities = modalActivities.filter(
     (a) =>
-      a.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.type.toLowerCase().includes(searchQuery.toLowerCase())
+      (a.message?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (a.type?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
   return (

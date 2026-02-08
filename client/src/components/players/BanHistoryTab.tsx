@@ -86,8 +86,8 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
   const filteredBans = Array.isArray(bans)
     ? bans.filter(
         (ban: BanRecord) =>
-          ban.player_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          ban.steam_id?.toLowerCase().includes(searchQuery.toLowerCase())
+          (ban.player_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+          (ban.steam_id?.toLowerCase() || '').includes(searchQuery.toLowerCase())
       )
     : [];
 

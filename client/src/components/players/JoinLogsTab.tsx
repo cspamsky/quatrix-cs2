@@ -59,8 +59,8 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
 
   const filteredLogs = logs.filter(
     (log: JoinLog) =>
-      log.player_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.steam_id.toLowerCase().includes(searchQuery.toLowerCase())
+      (log.player_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (log.steam_id?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
   return (
