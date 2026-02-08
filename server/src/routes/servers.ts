@@ -469,10 +469,19 @@ router.post('/:id/database/custom', authenticateToken, async (req: Request, res:
 // POST /api/servers/:id/database/query (Raw SQL Console)
 router.post('/:id/database/query', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { table, columns, where, params } = req.body as {
+    const { table, columns, filters, params } = req.body as {
       table: string;
       columns?: string[];
-      where?: string;
+      // filters is an optional object mapping column names to values or
+      // to { op, value } objects for simple comparisons.
+      filters?: Record<
+        string,
+        | unknown
+        | {
+            op?: '=' | '>' | '<' | '>=' | '<=' | 'like';
+            value: unknown;
+          }
+      >;
       params?: unknown[];
     };
 
@@ -500,20 +509,49 @@ router.post('/:id/database/query', authenticateToken, async (req: Request, res: 
     let sql = `SELECT ${selectedColumns} FROM \`${table}\``;
     const queryParams: unknown[] = Array.isArray(params) ? params : [];
 
-    if (where) {
-      // SECURITY: Sanitize WHERE clause
-      // 1. Block quotes to enforce use of ? placeholders
-      // 2. Block comments and statement terminators
-      // 3. Block nested queries or modification keywords
-      const dangerousPattern = /['";#]|--|\/\*|\b(select|union|insert|update|delete|drop|alter)\b/i;
-      if (dangerousPattern.test(where)) {
-        return res.status(400).json({
-          message:
-            'Invalid characters in WHERE clause. Use ? placeholders and avoid forbidden keywords.',
-        });
+    // Build WHERE clause from structured filters using parameter binding
+    if (filters && typeof filters === 'object') {
+      const whereClauses: string[] = [];
+
+      for (const [rawColumn, rawCondition] of Object.entries(filters)) {
+        if (!identifierRegex.test(rawColumn)) {
+          return res.status(400).json({ message: `Invalid column name in filters: ${rawColumn}` });
+        }
+
+        const column = `\`${rawColumn}\``;
+
+        if (rawCondition !== null && typeof rawCondition === 'object' && 'value' in rawCondition) {
+          const condition = rawCondition as {
+            op?: '=' | '>' | '<' | '>=' | '<=' | 'like';
+            value: unknown;
+          };
+
+          const op = condition.op ? condition.op.toLowerCase() : '=';
+          const allowedOps: Array<'=' | '>' | '<' | '>=' | '<=' | 'like'> = [
+            '=',
+            '>',
+            '<',
+            '>=',
+            '<=',
+            'like',
+          ];
+
+          if (!allowedOps.includes(op as any)) {
+            return res.status(400).json({ message: `Invalid operator for column ${rawColumn}` });
+          }
+
+          whereClauses.push(`${column} ${op.toUpperCase()} ?`);
+          queryParams.push(condition.value);
+        } else {
+          // Simple equality filter: { filters: { column: value } }
+          whereClauses.push(`${column} = ?`);
+          queryParams.push(rawCondition);
+        }
       }
 
-      sql += ` WHERE ${where}`;
+      if (whereClauses.length > 0) {
+        sql += ' WHERE ' + whereClauses.join(' AND ');
+      }
     }
 
     // SECURITY: Additional validation is handled centrally in databaseManager.executeQuery
