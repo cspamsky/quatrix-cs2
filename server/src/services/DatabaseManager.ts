@@ -263,15 +263,17 @@ export class DatabaseManager {
    * Executes a raw SQL query against the local master database.
    * SECURITY: This is a highly sensitive method. It performs
    * strict validation internally to only allow SELECT queries.
+   * Always use parameter binding instead of interpolating values
+   * directly into the query string.
    */
-  async executeQuery(query: string) {
+  async executeQuery(query: string, params: unknown[] = []) {
     if (!this.pool) throw new Error('MySQL service is not available.');
 
     // SECURITY: Validate query before execution
     this.checkIsSafeSelect(query);
 
     try {
-      const [rows] = await this.pool.query(query);
+      const [rows] = await this.pool.query(query, params);
       return rows;
     } catch (error: unknown) {
       const err = error as Error;

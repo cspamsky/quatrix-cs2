@@ -469,11 +469,45 @@ router.post('/:id/database/custom', authenticateToken, async (req: Request, res:
 // POST /api/servers/:id/database/query (Raw SQL Console)
 router.post('/:id/database/query', authenticateToken, async (req: Request, res: Response) => {
   try {
-    const { query } = req.body as { query: string };
-    if (!query) return res.status(400).json({ message: 'Query is required' });
+    const { table, columns, where, params } = req.body as {
+      table: string;
+      columns?: string[];
+      where?: string;
+      params?: unknown[];
+    };
 
-    // SECURITY: Validation is handled centrally in databaseManager.executeQuery
-    const results = await databaseManager.executeQuery(query);
+    if (!table) {
+      return res.status(400).json({ message: 'Table is required' });
+    }
+
+    // Basic identifier validation: only allow letters, numbers and underscores
+    const identifierRegex = /^[A-Za-z0-9_]+$/;
+    if (!identifierRegex.test(table)) {
+      return res.status(400).json({ message: 'Invalid table name' });
+    }
+
+    let selectedColumns = '*';
+    if (Array.isArray(columns) && columns.length > 0) {
+      const safeColumns = columns.filter(
+        (col) => typeof col === 'string' && identifierRegex.test(col)
+      );
+      if (safeColumns.length === 0) {
+        return res.status(400).json({ message: 'No valid column names provided' });
+      }
+      selectedColumns = safeColumns.map((col) => `\`${col}\``).join(', ');
+    }
+
+    let sql = `SELECT ${selectedColumns} FROM \`${table}\``;
+    const queryParams: unknown[] = Array.isArray(params) ? params : [];
+
+    if (where) {
+      // NOTE: `where` must be a template string using `?` placeholders only.
+      // Do not interpolate user values directly; they go into `queryParams`.
+      sql += ` WHERE ${where}`;
+    }
+
+    // SECURITY: Additional validation is handled centrally in databaseManager.executeQuery
+    const results = await databaseManager.executeQuery(sql, queryParams);
     res.json({ results });
   } catch (error: unknown) {
     const err = error as Error;
