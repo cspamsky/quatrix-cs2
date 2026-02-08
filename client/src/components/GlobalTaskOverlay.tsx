@@ -1,5 +1,4 @@
-import React from 'react';
-import { useTasks } from '../contexts/TaskContext';
+import { useTasks, type Task } from '../contexts/TaskContext';
 import { useTranslation } from 'react-i18next';
 import { Loader2, CheckCircle2, XCircle, Server, Download, Database, Info } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -36,7 +35,7 @@ const GlobalTaskOverlay: React.FC = () => {
 
   return (
     <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 w-80 max-w-[calc(100vw-3rem)]">
-      {tasks.map((task) => (
+      {tasks.map((task: Task) => (
         <div
           key={task.id}
           className={clsx(
@@ -52,7 +51,7 @@ const GlobalTaskOverlay: React.FC = () => {
                 {getTaskIcon(task.type)}
               </div>
               <span className="text-sm font-semibold text-white truncate">
-                {t(`tasks.type.${task.type}`, task.type)}
+                {String(t(`tasks.type.${task.type}`, { defaultValue: task.type }))}
               </span>
             </div>
             {getStatusIcon(task.status)}

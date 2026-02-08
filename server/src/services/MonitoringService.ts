@@ -21,7 +21,11 @@ class MonitoringService {
   private interval: NodeJS.Timeout | null = null;
 
   private lastNetworkStats: si.Systeminformation.NetworkStatsData[] | null = null;
-  private lastDiskStats: any = null; // complex si nested type, keeping as any for now but safer usage
+  private lastDiskStats: {
+    rIO?: number;
+    wIO?: number;
+    fs?: { rx?: number; wx?: number };
+  } | null = null;
 
   public setSocketIO(io: Server) {
     this.io = io;
@@ -112,7 +116,9 @@ class MonitoringService {
     let diskRead = 0,
       diskWrite = 0;
 
-    const getDiskSum = (d: any) => {
+    const getDiskSum = (
+      d: { rIO?: number; wIO?: number; fs?: { rx?: number; wx?: number } } | null
+    ) => {
       if (!d) return { rIO: 0, wIO: 0, f_rx: 0, f_wx: 0 };
       let rIO = 0,
         wIO = 0,

@@ -11,7 +11,12 @@ import { runtimeService } from '../services/RuntimeService.js';
 import { fileSystemService } from '../services/FileSystemService.js';
 import { databaseManager } from '../services/DatabaseManager.js';
 import { logActivity, emitDashboardStats } from '../index.js';
-import type { AuthenticatedRequest } from '../types/index.js';
+import type {
+  AuthenticatedRequest,
+  Server,
+  DashboardStats,
+  UpdateServerBody,
+} from '../types/index.js';
 
 const router = Router();
 
@@ -160,7 +165,9 @@ router.get('/stats', (req: Request, res: Response) => {
         (SELECT IFNULL(SUM(CAST(max_players AS INTEGER)), 0) FROM servers WHERE user_id = ?) as totalCapacity
     `
       )
-      .get(authReq.user.id, authReq.user.id, authReq.user.id, authReq.user.id) as any;
+      .get(authReq.user.id, authReq.user.id, authReq.user.id, authReq.user.id) as
+      | DashboardStats
+      | undefined;
 
     res.json(
       counts || { totalServers: 0, activeServers: 0, maps: 0, onlinePlayers: 0, totalCapacity: 0 }
@@ -197,21 +204,21 @@ router.get('/:id/logs', (req: Request, res: Response) => {
 router.delete('/:id', async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
-    const server = db
-      .prepare('SELECT * FROM servers WHERE id = ?')
-      .get(req.params.id as string) as any;
+    const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(req.params.id as string) as
+      | Server
+      | undefined;
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
     // Stop server if running
     if (server.status === 'ONLINE') {
-      await serverManager.stopServer(server.id as string);
+      await serverManager.stopServer(server.id.toString());
     }
 
     // Physically delete server folder
-    await fileSystemService.deleteInstance(server.id as string);
+    await fileSystemService.deleteInstance(server.id.toString());
 
     // Drop associated database and user
-    await databaseManager.dropDatabase(server.id as string);
+    await databaseManager.dropDatabase(server.id.toString());
 
     db.prepare('DELETE FROM servers WHERE id = ?').run(req.params.id as string);
     emitDashboardStats();
@@ -252,7 +259,7 @@ router.put('/:id', (req: Request, res: Response) => {
     additional_args,
     cpu_priority,
     ram_limit,
-  } = req.body as any;
+  } = req.body as UpdateServerBody;
 
   try {
     const server = db
@@ -409,10 +416,18 @@ router.post('/', createServerLimiter, (req: Request, res: Response) => {
           if (io) io.emit('status_update', { serverId, status: 'OFFLINE' });
 
           // Optionally start the server after installation
-          const serverData = db.prepare('SELECT * FROM servers WHERE id = ?').get(serverId) as any;
-          await serverManager.startServer(serverId.toString(), serverData, (data: string) => {
-            if (io) io.emit(`console:${serverId}`, data);
-          });
+          const serverData = db.prepare('SELECT * FROM servers WHERE id = ?').get(serverId) as
+            | Server
+            | undefined;
+          if (serverData) {
+            await serverManager.startServer(
+              serverId.toString(),
+              serverData as Partial<Server>,
+              (data: string) => {
+                if (io) io.emit(`console:${serverId}`, data);
+              }
+            );
+          }
           db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(serverId);
           if (io) io.emit('status_update', { serverId, status: 'ONLINE' });
         })

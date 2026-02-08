@@ -14,6 +14,13 @@ interface AdminData {
   immunity: number;
 }
 
+interface DbAdminRow {
+  player_steamid: string | number;
+  player_name: string;
+  flags?: string;
+  immunity?: number;
+}
+
 type AdminsJson = Record<string, AdminData>;
 
 const router = Router();
@@ -73,10 +80,10 @@ router.get('/:id/admins', async (req: Request, res: Response) => {
             ]);
 
             // Merge MariaDB admins into JSON format (if not already present)
-            for (const row of rows as any[]) {
+            for (const row of rows as DbAdminRow[]) {
               // Check if this Steam ID already exists in JSON (by checking identity field)
               const existsInJson = Object.values(jsonAdmins).some(
-                (admin: any) => admin.identity === row.player_steamid.toString()
+                (admin) => admin.identity === row.player_steamid.toString()
               );
 
               if (!existsInJson) {
@@ -148,10 +155,8 @@ router.post('/:id/admins', async (req: Request, res: Response) => {
 
             // Insert each admin into sa_admins table
             for (const [adminName, adminData] of Object.entries(admins)) {
-              const admin = adminData as any;
-
               // Extract Steam ID from identity field
-              const steamId = admin.identity || adminName;
+              const steamId = adminData.identity || adminName;
 
               // Skip if Steam ID is invalid
               if (!/^\d{17}$/.test(steamId)) {
@@ -173,8 +178,8 @@ router.post('/:id/admins', async (req: Request, res: Response) => {
                 [
                   steamId,
                   adminName,
-                  admin.flags?.join(',') || '@css/root',
-                  admin.immunity || 100,
+                  adminData.flags?.join(',') || '@css/root',
+                  adminData.immunity || 100,
                   id as string,
                 ]
               );

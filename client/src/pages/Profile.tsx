@@ -67,7 +67,7 @@ const Profile = () => {
 
   // 3. Update Password Mutation
   const updatePasswordMutation = useMutation({
-    mutationFn: (passwords: any) =>
+    mutationFn: (passwords: { currentPassword: string; newPassword: string }) =>
       apiFetch('/api/profile/password', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

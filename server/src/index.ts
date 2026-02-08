@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { authenticateToken } from './middleware/auth.js';
 import type { Request, Response, NextFunction } from 'express';
+import type { ClientRequest, IncomingMessage, ServerResponse } from 'http';
 
 // Routes
 import authRouter from './routes/auth.js';
@@ -89,10 +90,13 @@ app.use(
     xfwd: true,
     pathRewrite: { '^/phpmyadmin/': '/' },
     on: {
-      proxyReq: (proxyReq: any) => proxyReq.setHeader('X-Forwarded-Proto', 'https'),
-      error: (err: any, _req: any, res: any) => {
-        if (!res.headersSent)
-          res.status(502).send('phpMyAdmin is not reachable. Check Docker (sudo docker ps).');
+      proxyReq: (proxyReq: ClientRequest) => proxyReq.setHeader('X-Forwarded-Proto', 'https'),
+      error: (err: Error, _req: IncomingMessage, res: ServerResponse | unknown) => {
+        const response = res as ServerResponse;
+        if (!response.headersSent)
+          response
+            .writeHead(502)
+            .end('phpMyAdmin is not reachable. Check Docker (sudo docker ps).');
       },
     },
   }) as express.RequestHandler
@@ -230,7 +234,7 @@ app.get('/api/system-info', authenticateToken, async (_req, res) => {
     if (totalMem === 0 && process.platform === 'win32') {
       // Fallback for Windows if WMI fails
       try {
-        const osMem = (os as any).totalmem; // Some si versions put it here
+        const osMem = (os as si.Systeminformation.OsData & { totalmem?: number }).totalmem;
         if (osMem) totalMem = Math.round(osMem / (1024 * 1024));
       } catch {
         /* ignore */

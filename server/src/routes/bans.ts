@@ -18,6 +18,17 @@ interface BanRecord {
   is_active: string | number;
 }
 
+interface DbBan {
+  id: number;
+  player_steamid?: string;
+  player_name: string;
+  status: string;
+}
+
+interface DbInsertResult {
+  insertId: number;
+}
+
 const router = Router();
 
 router.use(authenticateToken);
@@ -127,7 +138,7 @@ router.post('/:id/bans/:banId/unban', async (req: Request, res: Response) => {
       const [rows] = await connection.execute('SELECT * FROM sa_bans WHERE id = ?', [
         banId as string,
       ]);
-      const ban = (rows as any[])[0];
+      const ban = (rows as DbBan[])[0];
 
       if (!ban) {
         return res.status(404).json({ message: 'Ban not found' });
@@ -151,7 +162,7 @@ router.post('/:id/bans/:banId/unban', async (req: Request, res: Response) => {
           'INSERT INTO sa_unbans (ban_id, admin_id, reason, date) VALUES (?, ?, ?, NOW())',
           [banId as string, 0, 'Unbanned via Web Panel'] // Using 0 (Console) as admin_id
         );
-        const unbanId = (result as any).insertId;
+        const unbanId = (result as DbInsertResult).insertId;
 
         // 2. Update sa_bans with unban_id and status
         await connection.execute(
@@ -162,8 +173,9 @@ router.post('/:id/bans/:banId/unban', async (req: Request, res: Response) => {
                 `,
           [unbanId, banId as string]
         );
-      } catch (dbError: any) {
-        console.warn('[UNBAN] Database compatibility fallback:', dbError.message);
+      } catch (dbError: unknown) {
+        const err = dbError as { message: string };
+        console.warn('[UNBAN] Database compatibility fallback:', err.message);
         // Fallback for older schemas or missing sa_unbans
         await connection.execute(
           `

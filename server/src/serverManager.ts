@@ -11,30 +11,10 @@ import { runtimeService } from './services/RuntimeService.js';
 import { taskService } from './services/TaskService.js';
 import type { PluginId } from './config/plugins.js';
 import { emitDashboardStats } from './index.js';
+import type { Server } from './types/index.js';
 
 import { promisify } from 'util';
 const execAsync = promisify(exec);
-
-export interface Server {
-  id: number | string;
-  user_id: number;
-  name: string;
-  ip: string;
-  port: number;
-  rcon_port?: number;
-  rcon_password?: string;
-  status: string;
-  map?: string;
-  current_players: number;
-  max_players: number;
-  settings?: string;
-  auto_start?: number;
-  hibernate?: number;
-  validate_files?: number;
-  region?: number;
-  additional_args?: string;
-  password?: string;
-}
 
 export interface Player {
   userId: string;
@@ -71,7 +51,7 @@ class ServerManager {
     {
       send: (cmd: string) => Promise<string>;
       end: () => Promise<void>;
-      on: (event: string, cb: (...args: any[]) => void) => void;
+      on: (event: string, cb: (...args: unknown[]) => void) => void;
     }
   > = new Map();
   private playerIdentityCache: Map<string, Map<string, string>> = new Map();
@@ -545,7 +525,7 @@ class ServerManager {
           })) as {
             send: (cmd: string) => Promise<string>;
             end: () => Promise<void>;
-            on: (event: string, cb: (...args: any[]) => void) => void;
+            on: (event: string, cb: (...args: unknown[]) => void) => void;
           };
           rconClient.on('error', () => this.rconConnections.delete(idStr));
           rconClient.on('end', () => this.rconConnections.delete(idStr));

@@ -5,7 +5,7 @@ import { serverManager } from '../serverManager.js';
 import { taskService } from '../services/TaskService.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { logActivity, emitDashboardStats } from '../index.js';
-import type { AuthenticatedRequest } from '../types/index.js';
+import type { AuthenticatedRequest, Server } from '../types/index.js';
 
 const router = Router();
 
@@ -16,7 +16,9 @@ router.post('/:id/start', async (req: Request, res: Response) => {
   const { id } = req.params;
   const authReq = req as AuthenticatedRequest;
   try {
-    const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id as string) as any;
+    const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id as string) as
+      | Server
+      | undefined;
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
     const io = req.app.get('io');
@@ -44,7 +46,9 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
   try {
     await serverManager.stopServer(id as string);
 
-    const server = db.prepare('SELECT name FROM servers WHERE id = ?').get(id as string) as any;
+    const server = db.prepare('SELECT name FROM servers WHERE id = ?').get(id as string) as
+      | { name: string }
+      | undefined;
     db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id as string);
     const io = req.app.get('io');
     if (io) io.emit('status_update', { serverId: parseInt(id as string), status: 'OFFLINE' });
@@ -67,7 +71,9 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
 router.post('/:id/restart', async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
-    const server: any = db.prepare('SELECT * FROM servers WHERE id = ?').get(id as string);
+    const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(id as string) as
+      | Server
+      | undefined;
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
     const io = req.app.get('io');
@@ -122,11 +128,12 @@ router.post('/:id/install', async (req: Request, res: Response) => {
         );
         if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
       })
-      .catch((err: any) => {
-        console.error('[SYSTEM] Installation failed for:', id, err);
+      .catch((err: unknown) => {
+        const error = err as { message?: string };
+        console.error('[SYSTEM] Installation failed for:', id, error);
         db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(id as string);
         if (io) io.emit('status_update', { serverId: id, status: 'OFFLINE' });
-        taskService.failTask(taskId, err.message || 'Installation failed');
+        taskService.failTask(taskId, error.message || 'Installation failed');
       });
 
     res.json({ message: 'Installation started', taskId });
@@ -188,7 +195,9 @@ router.post('/:id/rcon', async (req: Request, res: Response) => {
       safeCommand = '[SENSITIVE COMMAND MASKED]';
     }
 
-    const server = db.prepare('SELECT name FROM servers WHERE id = ?').get(id as string) as any;
+    const server = db.prepare('SELECT name FROM servers WHERE id = ?').get(id as string) as
+      | { name: string }
+      | undefined;
     logActivity(
       'RCON_COMMAND',
       `${server?.name || id}: ${safeCommand} komutu gönderildi`,

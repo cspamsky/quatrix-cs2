@@ -78,7 +78,7 @@ router.get('/:id/plugins/:plugin/configs', async (req: Request, res: Response) =
       .get(id as string, authReq.user.id);
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
-    const configs = await serverManager.getPluginConfigFiles(id as string, plugin as any);
+    const configs = await serverManager.getPluginConfigFiles(id as string, plugin as PluginId);
     res.json(configs);
   } catch (error: unknown) {
     const err = error as Error;
@@ -102,7 +102,7 @@ router.post('/:id/plugins/:plugin/configs', async (req: Request, res: Response) 
       .get(id as string, authReq.user.id);
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
-    await serverManager.savePluginConfigFile(id as string, plugin as any, filePath, content);
+    await serverManager.savePluginConfigFile(id as string, plugin as PluginId, filePath, content);
     res.json({ message: 'Configuration saved successfully' });
   } catch (error: unknown) {
     const err = error as Error;
@@ -134,11 +134,11 @@ router.post('/:id/plugins/:plugin/:action', async (req: Request, res: Response) 
     }
 
     if (action === 'install') {
-      await serverManager.installPlugin(id as string, plugin as any);
+      await serverManager.installPlugin(id as string, plugin as PluginId);
     } else if (action === 'uninstall') {
-      await serverManager.uninstallPlugin(id as string, plugin as any);
+      await serverManager.uninstallPlugin(id as string, plugin as PluginId);
     } else if (action === 'update') {
-      await serverManager.updatePlugin(id as string, plugin as any);
+      await serverManager.updatePlugin(id as string, plugin as PluginId);
     }
 
     res.json({ message: `${registry[pluginId]?.name || plugin} ${action}ed successfully` });

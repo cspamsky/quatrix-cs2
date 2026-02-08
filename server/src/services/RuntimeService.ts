@@ -21,18 +21,18 @@ export interface InstanceOptions {
   ram_limit?: string | number;
   map?: string;
   auto_update?: boolean;
-  steam_api_key?: string;
+  steam_api_key?: string | null;
   max_players?: number;
   tickrate?: number;
-  vac_enabled?: boolean;
+  vac_enabled?: boolean | number;
   port: number;
-  gslt_token?: string;
+  gslt_token?: string | null;
   name?: string;
-  password?: string;
+  password?: string | null;
   rcon_password?: string;
   hibernate?: number | boolean;
   tv_enabled?: boolean;
-  additional_args?: string;
+  additional_args?: string | null;
 }
 
 class RuntimeService {

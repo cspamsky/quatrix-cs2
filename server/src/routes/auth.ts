@@ -5,6 +5,22 @@ import { verify } from 'otplib';
 import db from '../db.js';
 import { rateLimiter } from '../rateLimiter.js';
 
+interface DbUser {
+  id: number;
+  username: string;
+  password: string;
+  avatar_url?: string | null;
+  two_factor_enabled?: number;
+  two_factor_secret?: string;
+}
+
+interface JwtPayload {
+  id: number;
+  username: string;
+  jti?: string;
+  pending_2fa?: boolean;
+}
+
 const router: Router = express.Router();
 
 const authLimiter = rateLimiter({
@@ -52,12 +68,13 @@ router.post('/register', authLimiter, async (req, res) => {
       token,
       user: { id: result.lastInsertRowid, username, avatar_url: null },
     });
-  } catch (error: any) {
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+  } catch (error: unknown) {
+    const err = error as { code?: string; message: string };
+    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(409).json({ message: 'Username or email already exists' });
     }
     console.error('Registration error:', error);
-    res.status(500).json({ message: 'Registration failed', error: error.message });
+    res.status(500).json({ message: 'Registration failed', error: err.message });
   }
 });
 
@@ -71,7 +88,9 @@ router.post('/login', authLimiter, async (req, res) => {
   }
 
   try {
-    const user: any = db.prepare('SELECT * FROM users WHERE username = ?').get(identity);
+    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(identity) as
+      | DbUser
+      | undefined;
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -134,13 +153,18 @@ router.post('/login/2fa', authLimiter, async (req, res) => {
   }
 
   try {
-    const payload = jwt.verify(temp_token, process.env.JWT_SECRET) as any;
+    const payload = jwt.verify(temp_token, process.env.JWT_SECRET) as JwtPayload;
     if (!payload.pending_2fa) {
       return res.status(401).json({ message: 'Invalid temporary token' });
     }
 
-    const user: any = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.id);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.id) as
+      | DbUser
+      | undefined;
     if (!user) return res.status(404).json({ message: 'User no longer exists' });
+    if (!user.two_factor_secret) {
+      return res.status(500).json({ message: '2FA not properly configured' });
+    }
 
     const isValid = verify({
       token: code,

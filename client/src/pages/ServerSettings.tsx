@@ -259,7 +259,7 @@ const ServerSettings = () => {
                       onChange={(e) => setServer({ ...server, region: parseInt(e.target.value) })}
                       className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer"
                     >
-                      {SERVER_REGIONS.map((r: any) => (
+                      {SERVER_REGIONS.map((r) => (
                         <option key={r.id} value={r.id}>
                           {t(`regions.${r.code}`)}
                         </option>

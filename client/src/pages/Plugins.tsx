@@ -109,7 +109,10 @@ const Plugins = () => {
   });
 
   // 4. Fetch Plugin Updates for selected server
-  const { data: pluginUpdates = null } = useQuery<any>({
+  const { data: pluginUpdates = null } = useQuery<Record<
+    string,
+    { hasUpdate: boolean; currentVersion?: string; latestVersion?: string }
+  > | null>({
     queryKey: ['plugin-updates', selectedServer],
     queryFn: () =>
       apiFetch(`/api/servers/${selectedServer}/plugins/updates`).then((res) => res.json()),
@@ -327,7 +330,7 @@ const Plugins = () => {
       let matchesStatus = true;
       if (statusFilter === 'installed') matchesStatus = isInstalled;
       if (statusFilter === 'not-installed') matchesStatus = !isInstalled;
-      if (statusFilter === 'update') matchesStatus = isInstalled && hasUpdate;
+      if (statusFilter === 'update') matchesStatus = isInstalled && hasUpdate === true;
 
       // Tag filter
       const matchesTag = !selectedTag || plugin.tags?.includes(selectedTag);
@@ -402,7 +405,7 @@ const Plugins = () => {
             {['all', 'core', 'metamod', 'cssharp'].map((cat) => (
               <button
                 key={cat}
-                onClick={() => setActiveCategory(cat as any)}
+                onClick={() => setActiveCategory(cat as 'all' | 'core' | 'metamod' | 'cssharp')}
                 className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeCategory === cat ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-300'}`}
               >
                 {t(`plugins.${cat === 'all' ? 'all_categories' : cat}`)}
@@ -737,7 +740,7 @@ const Plugins = () => {
                                           {t('plugins.update')}
                                         </span>
                                         <span className="text-[9px] text-yellow-500/50 font-medium">
-                                          → v{updates.latestVersion}
+                                          → v{updates?.latestVersion}
                                         </span>
                                       </div>
                                     )}

@@ -20,7 +20,7 @@ router.get('/:serverId', (req: Request, res: Response) => {
 });
 
 // Yeni yedek oluştur
-router.post('/:serverId/create', (async (req: Request, res: Response) => {
+router.post('/:serverId/create', async (req: Request, res: Response) => {
   try {
     const { serverId } = req.params;
     const { comment, type } = req.body as { comment?: string; type?: string };
@@ -42,10 +42,10 @@ router.post('/:serverId/create', (async (req: Request, res: Response) => {
     const err = error as Error;
     res.status(500).json({ error: err.message });
   }
-}) as any);
+});
 
 // Yedekten geri yükle
-router.post('/:id/restore', (async (req: Request, res: Response) => {
+router.post('/:id/restore', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -63,10 +63,10 @@ router.post('/:id/restore', (async (req: Request, res: Response) => {
     const err = error as Error;
     res.status(500).json({ error: err.message });
   }
-}) as any);
+});
 
 // Yedek sil
-router.delete('/:id', (async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     await backupService.deleteBackup(req.params.id as string);
     res.json({ message: 'Yedek silindi.' });
@@ -74,6 +74,6 @@ router.delete('/:id', (async (req: Request, res: Response) => {
     const err = error as Error;
     res.status(500).json({ error: err.message });
   }
-}) as any);
+});
 
 export default router;

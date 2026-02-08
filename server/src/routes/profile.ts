@@ -10,6 +10,15 @@ import db from '../db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 
+interface DbUser {
+  id: number;
+  username: string;
+  password: string;
+  avatar_url?: string | null;
+  two_factor_enabled?: number;
+  two_factor_secret?: string;
+}
+
 const router = Router();
 
 // --- Multer Configuration for Avatar Upload ---
@@ -47,13 +56,11 @@ router.use(authenticateToken);
 router.get('/', (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
-    const user = db
-      .prepare(
-        'SELECT id, username, avatar_url, two_factor_enabled, created_at FROM users WHERE id = ?'
-      )
-      .get(authReq.user.id);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(authReq.user.id) as
+      | DbUser
+      | undefined;
     if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json({ ...(user as any), currentJti: authReq.user.jti });
+    res.json({ ...user, currentJti: authReq.user.jti });
   } catch {
     res.status(500).json({ message: 'Failed to fetch profile' });
   }
@@ -95,7 +102,10 @@ router.put('/password', async (req: Request, res: Response) => {
   }
 
   try {
-    const user = db.prepare('SELECT password FROM users WHERE id = ?').get(authReq.user.id) as any;
+    const user = db.prepare('SELECT password FROM users WHERE id = ?').get(authReq.user.id) as
+      | { password: string }
+      | undefined;
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     const validPassword = await bcrypt.compare(currentPassword, user.password);
     if (!validPassword) {
@@ -179,7 +189,8 @@ router.post('/2fa/setup', async (req: Request, res: Response) => {
   try {
     const user = db
       .prepare('SELECT username, two_factor_enabled FROM users WHERE id = ?')
-      .get(authReq.user.id) as any;
+      .get(authReq.user.id) as DbUser | undefined;
+    if (!user) return res.status(404).json({ message: 'User not found' });
     if (user.two_factor_enabled) {
       return res.status(400).json({ message: '2FA is already enabled' });
     }
@@ -210,7 +221,11 @@ router.post('/2fa/verify', async (req: Request, res: Response) => {
   try {
     const user = db
       .prepare('SELECT two_factor_secret FROM users WHERE id = ?')
-      .get(authReq.user.id) as any;
+      .get(authReq.user.id) as DbUser | undefined;
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user.two_factor_secret) {
+      return res.status(500).json({ message: '2FA not properly configured' });
+    }
 
     const isValid = verify({
       token: code,
@@ -235,7 +250,10 @@ router.post('/2fa/disable', async (req: Request, res: Response) => {
   if (!password) return res.status(400).json({ message: 'Password is required' });
 
   try {
-    const user = db.prepare('SELECT password FROM users WHERE id = ?').get(authReq.user.id) as any;
+    const user = db.prepare('SELECT password FROM users WHERE id = ?').get(authReq.user.id) as
+      | { password: string }
+      | undefined;
+    if (!user) return res.status(404).json({ message: 'User not found' });
     const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {

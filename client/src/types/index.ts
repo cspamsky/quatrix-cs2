@@ -62,5 +62,5 @@ export interface Settings {
   default_port?: string | number;
   auto_backup?: boolean;
   auto_plugin_updates?: boolean;
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }

@@ -34,6 +34,14 @@ interface Instance {
   map: string;
 }
 
+interface WorkshopMapData {
+  id: number;
+  workshop_id: string;
+  map_file?: string;
+  name: string;
+  image_url?: string;
+}
+
 const Maps = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -196,7 +204,7 @@ const Maps = () => {
       },
     ];
 
-    const wMaps: CS2Map[] = workshopMaps.map((m: any) => ({
+    const wMaps: CS2Map[] = workshopMaps.map((m: WorkshopMapData) => ({
       id: `w-${m.id}`,
       workshop_id: m.workshop_id,
       name: m.map_file || m.workshop_id,
@@ -228,7 +236,7 @@ const Maps = () => {
       toast.success(t('maps.map_change_success'));
       queryClient.invalidateQueries({ queryKey: ['servers'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast.error(error.message || t('maps.map_change_error'));
     },
   });
@@ -331,7 +339,9 @@ const Maps = () => {
             ].map((cat) => (
               <button
                 key={cat.key}
-                onClick={() => setActiveCategory(cat.key as any)}
+                onClick={() =>
+                  setActiveCategory(cat.key as 'all' | 'Defusal' | 'Hostage' | 'Workshop')
+                }
                 className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${activeCategory === cat.key ? 'bg-primary text-white' : 'text-gray-500 hover:text-gray-300'}`}
               >
                 {cat.label}
