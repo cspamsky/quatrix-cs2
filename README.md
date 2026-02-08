@@ -132,7 +132,7 @@ npm start
 
 ### Post-Installation
 
-Access the panel at `http://your-server-ip:3000`
+Access the panel at `http://your-server-ip:3001`
 
 Default credentials are created on first run. Check the console output for login details.
 
@@ -227,7 +227,7 @@ npm install
 cd client && npm install && cd ..
 
 # Run in development mode
-npm run dev          # Backend (port 3000)
+npm run dev          # Backend (port 3001)
 cd client && npm run dev  # Frontend (port 5173)
 ```
 
