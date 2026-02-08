@@ -169,20 +169,26 @@ mp_warmup_end
 
 ```
 quatrix/
-├── client/              # React frontend
-│   ├── src/
-│   │   ├── components/  # UI components
-│   │   ├── pages/       # Route pages
-│   │   └── services/    # API clients
-│   └── dist/            # Production build
-├── server/              # Node.js backend
-│   ├── routes/          # Express routes
-│   ├── services/        # Business logic
-│   ├── database/        # SQLite schema
-│   └── utils/           # Helpers
-├── instances/           # CS2 server instances
-├── plugins/             # Central plugin pool
-└── install.sh           # Automated installer
+├── client/              # React frontend (Vite + React 19)
+│   └── src/
+│       ├── components/  # Reusable UI components
+│       ├── pages/       # Route-based page components
+│       ├── contexts/    # React context providers
+│       ├── hooks/       # Custom React hooks
+│       ├── utils/       # Client-side utilities
+│       ├── config/      # Frontend configuration
+│       ├── locales/     # i18n translation files
+│       └── types/       # TypeScript type definitions
+├── server/              # Node.js backend (Express + Socket.IO)
+│   └── src/
+│       ├── routes/      # API endpoint definitions
+│       ├── services/    # Business logic and integrations
+│       ├── middleware/  # Express middleware (auth, rate limiting)
+│       ├── utils/       # Server-side utilities
+│       ├── config/      # Backend configuration
+│       └── types/       # TypeScript type definitions
+├── data/                # Application data (database, SteamCMD)
+└── install.sh           # Automated installation script
 ```
 
 ---

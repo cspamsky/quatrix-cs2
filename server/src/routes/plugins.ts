@@ -71,15 +71,25 @@ router.get('/:id/plugins/updates', async (req: Request, res: Response) => {
 
 // GET /api/servers/:id/plugins/:plugin/configs
 router.get('/:id/plugins/:plugin/configs', async (req: Request, res: Response) => {
-  const { id, plugin } = req.params;
+  const id = req.params.id as string;
+  const plugin = req.params.plugin as string;
   const authReq = req as AuthenticatedRequest;
+
+  // SECURITY: Validate plugin/pluginId format
+  if (!plugin || !/^[a-zA-Z0-9\-_]+$/.test(plugin)) {
+    return res.status(400).json({ message: 'Invalid plugin ID format' });
+  }
+
   try {
     const server = db
       .prepare('SELECT id FROM servers WHERE id = ? AND user_id = ?')
       .get(id as string, authReq.user.id);
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
-    const configs = await serverManager.getPluginConfigFiles(id as string, plugin as PluginId);
+    const configs = await serverManager.getPluginConfigFiles(
+      id as string,
+      plugin as any as PluginId
+    );
     res.json(configs);
   } catch (error: unknown) {
     const err = error as Error;
@@ -89,9 +99,15 @@ router.get('/:id/plugins/:plugin/configs', async (req: Request, res: Response) =
 
 // POST /api/servers/:id/plugins/:plugin/configs
 router.post('/:id/plugins/:plugin/configs', async (req: Request, res: Response) => {
-  const { id, plugin } = req.params;
+  const id = req.params.id as string;
+  const plugin = req.params.plugin as string;
   const { filePath, content } = req.body as { filePath: string; content: string };
   const authReq = req as AuthenticatedRequest;
+
+  // SECURITY: Validate plugin/pluginId format
+  if (!plugin || !/^[a-zA-Z0-9\-_]+$/.test(plugin)) {
+    return res.status(400).json({ message: 'Invalid plugin ID format' });
+  }
 
   if (!filePath || content === undefined) {
     return res.status(400).json({ message: 'File path and content are required' });
@@ -103,7 +119,12 @@ router.post('/:id/plugins/:plugin/configs', async (req: Request, res: Response) 
       .get(id as string, authReq.user.id);
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
-    await serverManager.savePluginConfigFile(id as string, plugin as PluginId, filePath, content);
+    await serverManager.savePluginConfigFile(
+      id as string,
+      plugin as any as PluginId,
+      filePath,
+      content
+    );
     res.json({ message: 'Configuration saved successfully' });
   } catch (error: unknown) {
     const err = error as Error;
@@ -113,44 +134,56 @@ router.post('/:id/plugins/:plugin/configs', async (req: Request, res: Response) 
 
 // Generic Plugin Action (Install/Uninstall/Update)
 router.post('/:id/plugins/:plugin/:action', async (req: Request, res: Response) => {
-  const { id, plugin, action } = req.params;
+  const id = req.params.id as string;
+  const plugin = req.params.plugin as string;
+  const action = req.params.action as string;
+  const { taskId: providedTaskId } = req.body as { taskId?: string };
   const authReq = req as AuthenticatedRequest;
+
+  // SECURITY: Validate plugin format
+  if (!plugin || !/^[a-zA-Z0-9\-_]+$/.test(plugin)) {
+    return res.status(400).json({ message: 'Invalid plugin ID format' });
+  }
+
   try {
     const server = db
       .prepare('SELECT id FROM servers WHERE id = ? AND user_id = ?')
-      .get(id as string, authReq.user.id);
+      .get(id, authReq.user.id);
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
     const registry = await serverManager.getPluginRegistry();
-    const pluginId = plugin as PluginId;
+    const pluginId = plugin as any as PluginId;
 
     if (!registry[pluginId]) {
       return res.status(400).json({ message: 'Invalid plugin' });
     }
 
-    if (serverManager.isServerRunning(id as string)) {
+    if (serverManager.isServerRunning(id)) {
       return res.status(400).json({
         message: 'ERR_SERVER_RUNNING',
       });
     }
 
-    const taskId = `plugin_${action}_${plugin}_${Date.now()}`;
+    const taskId = providedTaskId || `plugin_${action}_${plugin}_${Date.now()}`;
     const pluginName = registry[pluginId]?.name || plugin;
-    taskService.createTask(taskId, `plugin_${action}`, {
-      pluginId: plugin,
-      serverId: id,
-      pluginName,
-    });
 
-    if (action === 'install') {
-      await serverManager.installPlugin(id as string, plugin as PluginId, taskId);
-    } else if (action === 'uninstall') {
-      await serverManager.uninstallPlugin(id as string, plugin as PluginId, taskId);
-    } else if (action === 'update') {
-      await serverManager.updatePlugin(id as string, plugin as PluginId, taskId);
+    if (!providedTaskId) {
+      taskService.createTask(taskId, `plugin_${action}`, {
+        pluginId: plugin,
+        serverId: id,
+        pluginName,
+      });
     }
 
-    res.json({ message: `${registry[pluginId]?.name || plugin} ${action}ed successfully` });
+    if (action === 'install') {
+      await serverManager.installPlugin(id, pluginId, taskId);
+    } else if (action === 'uninstall') {
+      await serverManager.uninstallPlugin(id, pluginId, taskId);
+    } else if (action === 'update') {
+      await serverManager.updatePlugin(id, pluginId, taskId);
+    }
+
+    res.json({ message: `Plugin ${action} started`, taskId });
   } catch (error: unknown) {
     const err = error as Error;
     console.error('Plugin action failed:', action, err.message);
@@ -194,7 +227,13 @@ router.post(
 
 // DELETE /api/servers/plugins/pool/:pluginId
 router.delete('/plugins/pool/:pluginId', async (req: Request, res: Response) => {
-  const { pluginId } = req.params;
+  const pluginId = req.params.pluginId as string;
+
+  // Validate pluginId format before processing
+  if (!pluginId || typeof pluginId !== 'string' || !/^[a-zA-Z0-9\-_]+$/.test(pluginId)) {
+    return res.status(400).json({ message: 'Invalid plugin ID format' });
+  }
+
   try {
     await serverManager.pluginManager.deleteFromPool(pluginId as string);
     res.json({ message: 'Plugin removed from pool' });

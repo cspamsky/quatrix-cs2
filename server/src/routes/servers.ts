@@ -475,12 +475,13 @@ router.post('/:id/database/query', authenticateToken, async (req: Request, res: 
     const queryLower = query.trim().toLowerCase();
 
     // SECURITY: Strict SQL Injection Protection
-    // 1. Only allow SELECT statements
+    // 1. Only allow SELECT statements (must be at the beginning)
     if (!queryLower.startsWith('select')) {
       return res.status(403).json({ message: 'Only SELECT queries are allowed.' });
     }
 
-    // 2. Block dangerous keywords that could be used for SQL injection
+    // 2. Block dangerous keywords and symbols that could be used for SQL injection
+    // Using word boundaries to prevent false positives (e.g., 'selecting' containing 'select')
     const dangerousKeywords = [
       'drop',
       'delete',
@@ -503,10 +504,24 @@ router.post('/:id/database/query', authenticateToken, async (req: Request, res: 
       'benchmark',
       'sleep',
       'waitfor',
+      'union',
+      'all',
+      'join',
     ];
 
+    // Check for comments and multiple statements
+    if (
+      query.includes('--') ||
+      query.includes('/*') ||
+      query.includes('#') ||
+      query.includes(';')
+    ) {
+      return res.status(403).json({ message: 'Special characters (-- , /*, #, ;) are forbidden.' });
+    }
+
     for (const keyword of dangerousKeywords) {
-      if (queryLower.includes(keyword)) {
+      const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+      if (regex.test(queryLower)) {
         return res.status(403).json({
           message: `Query contains forbidden keyword: ${keyword}`,
         });

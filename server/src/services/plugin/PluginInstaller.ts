@@ -370,6 +370,11 @@ export class PluginInstaller {
     pluginInfo: PluginMetadata,
     taskId?: string
   ): Promise<void> {
+    // SECURITY: Validate pluginId
+    if (!/^[a-zA-Z0-9\-_]+$/.test(pluginId) && pluginId !== 'metamod' && pluginId !== 'cssharp') {
+      throw new Error(`Invalid plugin ID: ${pluginId}`);
+    }
+
     if (taskId) {
       taskService.updateTask(taskId, {
         status: 'running',
@@ -379,22 +384,50 @@ export class PluginInstaller {
     }
     const csgoDir = path.join(installDir, instanceId.toString(), 'game', 'csgo');
     const addonsDir = path.join(csgoDir, 'addons');
+    const addonsDirResolved = path.resolve(addonsDir);
 
     console.log('[PLUGIN] Uninstalling', pluginInfo.name);
 
+    // SECURITY: Sanitize folder name
+    const rawFolderName = pluginInfo.folderName || pluginId;
+    const baseFolderName = path.basename(rawFolderName).replace(/[^a-zA-Z0-9\-_]/g, '');
+
+    if (!baseFolderName) {
+      throw new Error(`Invalid plugin folder name: ${rawFolderName}`);
+    }
+
     if (pluginInfo.category === 'cssharp') {
       const cssBase = path.join(addonsDir, 'counterstrikesharp');
+      const cssBaseResolved = path.resolve(cssBase);
+
       const targets = [
-        path.join(cssBase, 'plugins', pluginInfo.folderName || pluginId),
-        path.join(cssBase, 'configs', 'plugins', pluginInfo.folderName || pluginId),
-        path.join(cssBase, 'shared', pluginInfo.folderName || pluginId),
-        path.join(cssBase, 'translations', pluginInfo.folderName || pluginId),
+        path.resolve(cssBase, 'plugins', baseFolderName),
+        path.resolve(cssBase, 'configs', 'plugins', baseFolderName),
+        path.resolve(cssBase, 'shared', baseFolderName),
+        path.resolve(cssBase, 'translations', baseFolderName),
       ];
 
-      await Promise.all(targets.map((t) => fs.rm(t, { recursive: true, force: true })));
+      // SECURITY: Ensure all targets are within cssBase
+      for (const target of targets) {
+        if (!target.startsWith(cssBaseResolved)) {
+          console.warn(
+            `[PLUGIN] Blocked unauthorized path traversal attempt during uninstall: ${target}`
+          );
+          continue;
+        }
+        await fs.rm(target, { recursive: true, force: true });
+      }
     } else if (pluginInfo.category === 'metamod') {
-      const target = path.join(addonsDir, pluginInfo.folderName || pluginId);
-      await fs.rm(target, { recursive: true, force: true });
+      const target = path.resolve(addonsDir, baseFolderName);
+
+      // SECURITY: Ensure target is within addonsDir
+      if (target.startsWith(addonsDirResolved)) {
+        await fs.rm(target, { recursive: true, force: true });
+      } else {
+        console.warn(
+          `[PLUGIN] Blocked unauthorized path traversal attempt during uninstall: ${target}`
+        );
+      }
     }
 
     // Remove from database

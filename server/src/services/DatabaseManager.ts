@@ -198,7 +198,8 @@ export class DatabaseManager {
 
   /**
    * Executes a raw SQL query against the local master database.
-   * Careful: This should only be used by admins and is highly sensitive.
+   * SECURITY: This is a highly sensitive method. It is protected by
+   * strict validation in the API route to only allow SELECT queries.
    */
   async executeQuery(query: string) {
     if (!this.pool) throw new Error('MySQL service is not available.');

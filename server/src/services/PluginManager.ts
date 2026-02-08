@@ -442,6 +442,12 @@ export class PluginManager {
    * Deletes a plugin from the pool
    */
   async deleteFromPool(pluginId: string): Promise<void> {
+    // 1. Sanitize the pluginId (only allow alphanumeric, dash, underscore)
+    // This prevents basic path traversal attempts like ../../secret
+    if (!/^[a-zA-Z0-9\-_]+$/.test(pluginId)) {
+      throw new Error(`Invalid plugin ID format: ${pluginId}`);
+    }
+
     const registry = await this.getRegistry();
     const pluginInfo = registry[pluginId];
 
@@ -449,7 +455,13 @@ export class PluginManager {
       throw new Error(`Plugin "${pluginId}" not found in registry`);
     }
 
-    const poolPath = path.join(POOL_DIR, pluginInfo.folderName || pluginId);
+    // 2. Resolve and verify the path is within the pool directory
+    const folderName = pluginInfo.folderName || pluginId;
+    const poolPath = path.resolve(POOL_DIR, folderName);
+
+    if (!poolPath.startsWith(POOL_DIR)) {
+      throw new Error('Access denied: Unauthorized path access attempted.');
+    }
 
     if (!fs.existsSync(poolPath)) {
       throw new Error(`Plugin "${pluginId}" not found in pool`);

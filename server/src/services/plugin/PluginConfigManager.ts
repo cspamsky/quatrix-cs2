@@ -22,13 +22,21 @@ export class PluginConfigManager {
     instanceId: string | number,
     pluginId: string
   ): Promise<string[]> {
+    // SECURITY: Validate pluginId
+    if (!/^[a-zA-Z0-9\-_]+$/.test(pluginId)) {
+      throw new Error(`Invalid plugin ID: ${pluginId}`);
+    }
+
     const csgoDir = path.join(installDir, instanceId.toString(), 'game', 'csgo');
     const cssBase = path.join(csgoDir, 'addons', 'counterstrikesharp');
 
+    // SECURITY: Absolute base for validation
+    const cssBaseResolved = path.resolve(cssBase);
+
     const searchPaths = [
-      path.join(cssBase, 'configs', 'plugins', pluginId),
-      path.join(cssBase, 'plugins', pluginId),
-      path.join(cssBase, 'plugins', pluginId, 'configs'),
+      path.resolve(cssBase, 'configs', 'plugins', pluginId),
+      path.resolve(cssBase, 'plugins', pluginId),
+      path.resolve(cssBase, 'plugins', pluginId, 'configs'),
     ];
 
     const configFiles: string[] = [];
@@ -37,6 +45,12 @@ export class PluginConfigManager {
 
     for (const searchPath of searchPaths) {
       try {
+        // SECURITY: Ensure the searchPath is within the CSS base directory
+        if (!searchPath.startsWith(cssBaseResolved)) {
+          console.warn(`[CONFIG] Blocked unauthorized path traversal attempt: ${searchPath}`);
+          continue;
+        }
+
         const items = await fs.readdir(searchPath);
         for (const item of items) {
           const lowerItem = item.toLowerCase();
