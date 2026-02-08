@@ -116,7 +116,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
             <div className="text-2xl font-black text-blue-500">{currentStats.cpu}%</div>
           </div>
 
-          <div className="relative h-32 w-full mt-2">
+          <div className="relative h-32 w-full mt-2" style={{ minWidth: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                 <defs>
@@ -165,7 +165,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
             <div className="text-2xl font-black text-purple-500">{currentStats.ram}%</div>
           </div>
 
-          <div className="relative h-32 w-full mt-2">
+          <div className="relative h-32 w-full mt-2" style={{ minWidth: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                 <defs>
@@ -220,7 +220,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
             </div>
           </div>
 
-          <div className="relative h-32 w-full mt-2">
+          <div className="relative h-32 w-full mt-2" style={{ minWidth: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                 <defs>
@@ -270,7 +270,7 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
             </div>
           </div>
 
-          <div className="relative h-32 w-full mt-2">
+          <div className="relative h-32 w-full mt-2" style={{ minWidth: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                 <defs>

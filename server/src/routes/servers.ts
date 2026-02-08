@@ -501,8 +501,18 @@ router.post('/:id/database/query', authenticateToken, async (req: Request, res: 
     const queryParams: unknown[] = Array.isArray(params) ? params : [];
 
     if (where) {
-      // NOTE: `where` must be a template string using `?` placeholders only.
-      // Do not interpolate user values directly; they go into `queryParams`.
+      // SECURITY: Sanitize WHERE clause
+      // 1. Block quotes to enforce use of ? placeholders
+      // 2. Block comments and statement terminators
+      // 3. Block nested queries or modification keywords
+      const dangerousPattern = /['";#]|--|\/\*|\b(select|union|insert|update|delete|drop|alter)\b/i;
+      if (dangerousPattern.test(where)) {
+        return res.status(400).json({
+          message:
+            'Invalid characters in WHERE clause. Use ? placeholders and avoid forbidden keywords.',
+        });
+      }
+
       sql += ` WHERE ${where}`;
     }
 

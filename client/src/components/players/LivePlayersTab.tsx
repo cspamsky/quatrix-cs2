@@ -117,8 +117,9 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
 
   const filteredPlayers = players.filter(
     (p: LivePlayer) =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.steamId.toLowerCase().includes(searchQuery.toLowerCase())
+      p &&
+      ((p.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (p.steamId?.toLowerCase() || '').includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -216,7 +217,7 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
                         <div
                           className={`avatar-fallback w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-primary font-bold border border-gray-700 ${avatars[player.steamId] ? 'hidden' : ''}`}
                         >
-                          {player.name[0].toUpperCase()}
+                          {player.name?.charAt(0)?.toUpperCase()}
                         </div>
                         <div>
                           <span className="font-bold text-white text-sm block">{player.name}</span>
@@ -296,7 +297,7 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
                 <div
                   className={`avatar-fallback w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center text-red-500 font-bold border border-gray-700 ${banDialog.player.avatar ? 'hidden' : ''}`}
                 >
-                  {banDialog.player.name[0].toUpperCase()}
+                  {banDialog.player.name?.charAt(0)?.toUpperCase()}
                 </div>
                 <div>
                   <p className="font-bold text-white">{banDialog.player.name}</p>
