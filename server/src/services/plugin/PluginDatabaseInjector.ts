@@ -63,8 +63,24 @@ export class PluginDatabaseInjector {
         if (item.isDirectory()) {
           await walk(fullPath);
         } else if (item.isFile()) {
-           const ext = path.extname(item.name).toLowerCase();
+          const ext = path.extname(item.name).toLowerCase();
           if (ext !== '.json' && ext !== '.toml' && ext !== '.cfg' && ext !== '.ini') continue;
+
+          // SECURITY: Skip critical .NET runtime/dependency files that are also JSON
+          if (
+            item.name.endsWith('.deps.json') ||
+            item.name.endsWith('.runtimeconfig.json') ||
+            item.name.toLowerCase() === 'package.json' ||
+            item.name.toLowerCase() === 'package-lock.json'
+          ) {
+            continue;
+          }
+
+          const stats = await fs.stat(fullPath).catch(() => null);
+          if (stats && stats.size > 1024 * 1024) {
+            // Skip files larger than 1MB (configs are rarely this big, deps.json often is)
+            continue;
+          }
 
           const content = await fs.readFile(fullPath, 'utf8');
           const contentLower = content.toLowerCase();
