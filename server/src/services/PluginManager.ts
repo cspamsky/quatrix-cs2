@@ -249,6 +249,13 @@ export class PluginManager {
       return;
     }
 
+    // Special handling for core plugins
+    if (pluginId === 'metamod') {
+      await this.uninstallMetamod(installDir, instanceId);
+    } else if (pluginId === 'cssharp') {
+      await this.uninstallCounterStrikeSharp(installDir, instanceId);
+    }
+
     await pluginInstaller.uninstall(installDir, instanceId, pluginId, pluginInfo, taskId);
   }
 
