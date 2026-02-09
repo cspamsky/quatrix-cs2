@@ -56,6 +56,8 @@ export class PluginConfigManager {
     const validExtensions = ['.json', '.cfg', '.toml', '.ini', '.txt'];
     const blacklist = ['.deps.json'];
 
+    const instanceRoot = path.join(installDir, instanceId.toString());
+
     for (const searchPath of searchPaths) {
       try {
         // SECURITY: Ensure the searchPath is within the CSS base directory
@@ -71,7 +73,8 @@ export class PluginConfigManager {
           const isBlacklisted = blacklist.some((bl) => lowerItem.endsWith(bl));
 
           if (isValidExt && !isBlacklisted) {
-            configFiles.push(path.join(searchPath, item));
+            const fullPath = path.join(searchPath, item);
+            configFiles.push(path.relative(instanceRoot, fullPath).replace(/\\/g, '/'));
           }
         }
       } catch {
@@ -112,15 +115,17 @@ export class PluginConfigManager {
       throw new Error(`Invalid plugin ID: ${pluginId}`);
     }
 
-    const csgoDir = path.join(installDir, instanceId.toString(), 'game', 'csgo');
+    const instanceRoot = path.join(installDir, instanceId.toString());
+    const csgoDir = path.join(instanceRoot, 'game', 'csgo');
     const cssBase = path.join(csgoDir, 'addons', 'counterstrikesharp');
 
     // Resolve the full path
-    const fullPath = path.resolve(cssBase, relativeFilePath);
+    const fullPath = path.resolve(instanceRoot, relativeFilePath);
 
-    // SECURITY: Ensure the resolved path is within the CSS directory
+    // SECURITY: Ensure the resolved path is within the CSS directory (addons/counterstrikesharp)
+    // Most plugin configs reside here.
     if (!fullPath.startsWith(path.resolve(cssBase))) {
-      throw new Error('Security Error: Path traversal detected');
+      throw new Error('Security Error: Path traversal detected or unauthorized config location');
     }
 
     await fs.writeFile(fullPath, content, 'utf-8');
