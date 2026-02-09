@@ -424,6 +424,8 @@ export class PluginInstaller {
         path.resolve(cssBase, 'configs', 'plugins', baseFolderName),
         path.resolve(cssBase, 'shared', baseFolderName),
         path.resolve(cssBase, 'translations', baseFolderName),
+        path.resolve(cssBase, 'gamedata', baseFolderName),
+        path.resolve(cssBase, 'gamedata', `${baseFolderName}.json`),
       ];
 
       // SECURITY: Ensure all targets are within cssBase
