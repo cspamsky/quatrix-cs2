@@ -37,6 +37,16 @@ const ServerSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [server, setServer] = useState<ServerData | null>(null);
+  const [user] = useState(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : { permissions: [] };
+    } catch {
+      return { permissions: [] };
+    }
+  });
+
+  const canEdit = user?.permissions?.includes('*') || user?.permissions?.includes('servers.update');
 
   useEffect(() => {
     fetchServerData();
@@ -147,8 +157,9 @@ const ServerSettings = () => {
                   type="text"
                   value={server.name}
                   onChange={(e) => setServer({ ...server, name: e.target.value })}
-                  className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all placeholder:text-gray-700"
+                  className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all placeholder:text-gray-700 disabled:opacity-50"
                   placeholder="Quatrix Dedicated Server"
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -162,7 +173,8 @@ const ServerSettings = () => {
                     <select
                       value={server.map}
                       onChange={(e) => setServer({ ...server, map: e.target.value })}
-                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer"
+                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer disabled:opacity-50"
+                      disabled={!canEdit}
                     >
                       <option value="de_dust2">de_dust2</option>
                       <option value="de_mirage">de_mirage</option>
@@ -190,7 +202,8 @@ const ServerSettings = () => {
                       onChange={(e) =>
                         setServer({ ...server, max_players: parseInt(e.target.value) })
                       }
-                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
+                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all disabled:opacity-50"
+                      disabled={!canEdit}
                     />
                   </div>
                 </div>
@@ -207,7 +220,8 @@ const ServerSettings = () => {
                     max="65535"
                     value={server.port}
                     onChange={(e) => setServer({ ...server, port: parseInt(e.target.value) })}
-                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono focus:border-primary outline-none transition-all"
+                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono focus:border-primary outline-none transition-all disabled:opacity-50"
+                    disabled={!canEdit}
                   />
                 </div>
 
@@ -218,7 +232,8 @@ const ServerSettings = () => {
                   <select
                     value={server.game_alias || ''}
                     onChange={(e) => setServer({ ...server, game_alias: e.target.value })}
-                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer"
+                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer disabled:opacity-50"
+                    disabled={!canEdit}
                   >
                     <option value="">{t('createInstance.game_alias_default')}</option>
                     <option value="competitive">
@@ -244,7 +259,8 @@ const ServerSettings = () => {
                     max="128"
                     value={server.tickrate || 128}
                     onChange={(e) => setServer({ ...server, tickrate: parseInt(e.target.value) })}
-                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
+                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all disabled:opacity-50"
+                    disabled={!canEdit}
                   />
                 </div>
 
@@ -257,7 +273,8 @@ const ServerSettings = () => {
                     <select
                       value={server.region || 3}
                       onChange={(e) => setServer({ ...server, region: parseInt(e.target.value) })}
-                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer"
+                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer disabled:opacity-50"
+                      disabled={!canEdit}
                     >
                       {SERVER_REGIONS.map((r) => (
                         <option key={r.id} value={r.id}>
@@ -276,8 +293,9 @@ const ServerSettings = () => {
                     type="text"
                     value={server.additional_args || ''}
                     onChange={(e) => setServer({ ...server, additional_args: e.target.value })}
-                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
+                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all disabled:opacity-50"
                     placeholder="-tickrate 128 +sv_infinite_ammo 1..."
+                    disabled={!canEdit}
                   />
                 </div>
 
@@ -296,7 +314,8 @@ const ServerSettings = () => {
                         onChange={(e) =>
                           setServer({ ...server, cpu_priority: parseInt(e.target.value) })
                         }
-                        className="w-full px-4 py-2 bg-black/20 border border-gray-800 rounded-xl text-white text-xs outline-none focus:border-primary transition-all"
+                        disabled={!canEdit}
+                        className="w-full px-4 py-2 bg-black/20 border border-gray-800 rounded-xl text-white text-xs outline-none focus:border-primary transition-all disabled:opacity-50"
                       >
                         <option value="-10">{t('serverSettings.cpu_high')}</option>
                         <option value="0">{t('serverSettings.cpu_normal')}</option>
@@ -313,7 +332,8 @@ const ServerSettings = () => {
                         onChange={(e) =>
                           setServer({ ...server, ram_limit: parseInt(e.target.value) })
                         }
-                        className="w-full px-4 py-2 bg-black/20 border border-gray-800 rounded-xl text-white text-xs outline-none focus:border-primary transition-all"
+                        disabled={!canEdit}
+                        className="w-full px-4 py-2 bg-black/20 border border-gray-800 rounded-xl text-white text-xs outline-none focus:border-primary transition-all disabled:opacity-50"
                       >
                         <option value="0">{t('serverSettings.ram_unlimited')}</option>
                         <option value="4096">4 GB</option>
@@ -345,8 +365,9 @@ const ServerSettings = () => {
                       type="password"
                       value={server.password || ''}
                       onChange={(e) => setServer({ ...server, password: e.target.value })}
-                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
+                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all disabled:opacity-50"
                       placeholder={t('serverSettings.optional')}
+                      disabled={!canEdit}
                     />
                   </div>
                 </div>
@@ -361,8 +382,9 @@ const ServerSettings = () => {
                       type="password"
                       value={server.rcon_password || ''}
                       onChange={(e) => setServer({ ...server, rcon_password: e.target.value })}
-                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all"
+                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all disabled:opacity-50"
                       placeholder={t('serverSettings.required')}
+                      disabled={!canEdit}
                     />
                   </div>
                 </div>
@@ -376,8 +398,9 @@ const ServerSettings = () => {
                   type="text"
                   value={server.gslt_token || ''}
                   onChange={(e) => setServer({ ...server, gslt_token: e.target.value })}
-                  className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm focus:border-primary outline-none transition-all"
+                  className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm focus:border-primary outline-none transition-all disabled:opacity-50"
                   placeholder={t('serverSettings.gslt_placeholder')}
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -389,8 +412,9 @@ const ServerSettings = () => {
                   type="text"
                   value={server.steam_api_key || ''}
                   onChange={(e) => setServer({ ...server, steam_api_key: e.target.value })}
-                  className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm focus:border-primary outline-none transition-all"
+                  className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white font-mono text-sm focus:border-primary outline-none transition-all disabled:opacity-50"
                   placeholder={t('serverSettings.steam_api_placeholder')}
+                  disabled={!canEdit}
                 />
               </div>
 
@@ -402,6 +426,7 @@ const ServerSettings = () => {
                       checked={Boolean(server.vac_enabled)}
                       onChange={(e) => setServer({ ...server, vac_enabled: e.target.checked })}
                       className="sr-only peer"
+                      disabled={!canEdit}
                     />
                     <div className="w-12 h-6 bg-gray-800 rounded-full peer peer-checked:bg-primary transition-all duration-300"></div>
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
@@ -427,6 +452,7 @@ const ServerSettings = () => {
                         setServer({ ...server, hibernate: e.target.checked ? 1 : 0 })
                       }
                       className="sr-only peer"
+                      disabled={!canEdit}
                     />
                     <div className="w-12 h-6 bg-gray-800 rounded-full peer peer-checked:bg-primary transition-all duration-300"></div>
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
@@ -450,6 +476,7 @@ const ServerSettings = () => {
                         setServer({ ...server, validate_files: e.target.checked ? 1 : 0 })
                       }
                       className="sr-only peer"
+                      disabled={!canEdit}
                     />
                     <div className="w-12 h-6 bg-gray-800 rounded-full peer peer-checked:bg-primary transition-all duration-300"></div>
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
@@ -473,6 +500,7 @@ const ServerSettings = () => {
                         setServer({ ...server, auto_update: e.target.checked ? 1 : 0 })
                       }
                       className="sr-only peer"
+                      disabled={!canEdit}
                     />
                     <div className="w-12 h-6 bg-gray-800 rounded-full peer peer-checked:bg-amber-600 transition-all duration-300"></div>
                     <div className="absolute left-1 top-1 w-4 h-4 bg-white rounded-full peer-checked:translate-x-6 transition-all duration-300"></div>
@@ -492,23 +520,25 @@ const ServerSettings = () => {
         </div>
 
         {/* Global Action Footer */}
-        <div className="flex items-center justify-end gap-4 p-6 bg-[#111827] rounded-2xl border border-gray-800">
-          <button
-            type="button"
-            onClick={() => navigate('/instances')}
-            className="px-6 py-2 text-gray-400 hover:text-white transition-colors font-semibold"
-          >
-            {t('serverSettings.discard')}
-          </button>
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-8 py-2 bg-primary hover:bg-blue-600 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            {saving ? t('serverSettings.saving') : t('serverSettings.save_changes')}
-          </button>
-        </div>
+        {canEdit && (
+          <div className="flex items-center justify-end gap-4 p-6 bg-[#111827] rounded-2xl border border-gray-800">
+            <button
+              type="button"
+              onClick={() => navigate('/instances')}
+              className="px-6 py-2 text-gray-400 hover:text-white transition-colors font-semibold"
+            >
+              {t('serverSettings.discard')}
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-8 py-2 bg-primary hover:bg-blue-600 text-white rounded-xl font-bold transition-all flex items-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {saving ? t('serverSettings.saving') : t('serverSettings.save_changes')}
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

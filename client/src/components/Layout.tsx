@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Map as MapIcon,
   Users,
+  UserCog,
   Puzzle,
   Settings,
   LogOut,
@@ -14,6 +15,7 @@ import {
   Database,
   Globe,
   Archive,
+  Activity,
 } from 'lucide-react';
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { useState, useEffect, Suspense } from 'react';
@@ -27,20 +29,6 @@ const Layout = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navItems = [
-    { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
-    { path: '/instances', icon: Layers, label: t('nav.instances') },
-    { path: '/chat', icon: MessageSquare, label: t('nav.chat') },
-    { path: '/console', icon: Terminal, label: t('nav.console') },
-    { path: '/maps', icon: MapIcon, label: t('nav.maps') },
-    { path: '/players', icon: Users, label: t('nav.players') },
-    { path: '/plugins', icon: Puzzle, label: t('nav.plugins') },
-    { path: '/admins', icon: ShieldCheck, label: t('nav.admins') },
-    { path: '/database', icon: Database, label: t('nav.database') },
-    { path: '/backups', icon: Archive, label: t('nav.backups') },
-    { path: '/settings', icon: Settings, label: t('nav.settings') },
-  ];
-
   const [user, setUser] = useState<User>(() => {
     try {
       const stored = localStorage.getItem('user');
@@ -51,6 +39,57 @@ const Layout = () => {
   });
 
   const displayName = user?.username || 'User';
+
+  const navItems = [
+    { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
+    { path: '/instances', icon: Layers, label: t('nav.instances') },
+    { path: '/chat', icon: MessageSquare, label: t('nav.chat') },
+    { path: '/console', icon: Terminal, label: t('nav.console') },
+    {
+      path: '/maps',
+      icon: MapIcon,
+      label: t('nav.maps'),
+    },
+    {
+      path: '/players',
+      icon: Users,
+      label: t('nav.players'),
+    },
+    {
+      path: '/plugins',
+      icon: Puzzle,
+      label: t('nav.plugins'),
+    },
+    { path: '/admins', icon: ShieldCheck, label: t('nav.admins') },
+    {
+      path: '/database',
+      icon: Database,
+      label: t('nav.database'),
+    },
+    {
+      path: '/analytics',
+      icon: Activity,
+      label: t('nav.analytics'),
+    },
+    {
+      path: '/users',
+      icon: UserCog,
+      label: t('nav.users'),
+    },
+    { path: '/backups', icon: Archive, label: t('nav.backups') },
+    { path: '/settings', icon: Settings, label: t('nav.settings') },
+  ];
+
+  const filteredNavItems = navItems.filter((item: any) => {
+    // Users with '*' (root) see everything
+    if (user?.permissions?.includes('*')) return true;
+
+    // If item has no restrictions, show it
+    if (!item.permission) return true;
+
+    // check if specific permission is allowed
+    return user?.permissions && user.permissions.includes(item.permission);
+  });
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -157,7 +196,7 @@ const Layout = () => {
           className="flex-1 px-4 space-y-1 overflow-y-auto scrollbar-hide"
           aria-label="Main navigation"
         >
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
@@ -219,10 +258,12 @@ const Layout = () => {
                 <p className="text-sm font-semibold text-white truncate group-hover:text-primary transition-colors">
                   {displayName}
                 </p>
-                <p className="text-[10px] text-green-500 truncate font-bold flex items-center gap-1.5 uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                  {t('common.online')}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[10px] text-green-500 truncate font-bold flex items-center gap-1.5 uppercase tracking-wider">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                    {t('common.online')}
+                  </p>
+                </div>
               </div>
             </Link>
             <button

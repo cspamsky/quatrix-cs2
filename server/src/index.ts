@@ -30,6 +30,8 @@ import chatRouter from './routes/chat.js';
 import logsRouter from './routes/logs.js';
 import profileRouter from './routes/profile.js';
 import steamRouter from './routes/steam.js';
+import analyticsRouter from './routes/analytics.js';
+import usersRouter from './routes/users.js';
 import { databaseManager } from './services/DatabaseManager.js';
 import { taskService } from './services/TaskService.js';
 import { monitoringService } from './services/MonitoringService.js';
@@ -128,6 +130,8 @@ app.use('/api/chat', chatRouter);
 app.use('/api/maps', mapsRouter);
 app.use('/api/profile', authenticateToken, profileRouter);
 app.use('/api/steam', authenticateToken, steamRouter);
+app.use('/api/analytics', analyticsRouter);
+app.use('/api/users', usersRouter);
 
 // --- Serve Frontend in Production ---
 if (isProduction) {

@@ -3,6 +3,7 @@ import type { Request } from 'express';
 export interface User {
   id: number;
   username: string;
+  permissions?: string[];
   jti?: string;
   iat?: number;
   exp?: number;

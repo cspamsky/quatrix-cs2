@@ -12,11 +12,13 @@ interface DbUser {
   avatar_url?: string | null;
   two_factor_enabled?: number;
   two_factor_secret?: string;
+  permissions: string; // JSON string in DB
 }
 
 interface JwtPayload {
   id: number;
   username: string;
+  permissions: string[];
   jti?: string;
   pending_2fa?: boolean;
 }
@@ -39,6 +41,9 @@ router.post('/register', authLimiter, async (req, res) => {
   }
 
   try {
+    const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+    const permissions = userCount.count === 0 ? ['*'] : [];
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = db
       .prepare('INSERT INTO users (username, password) VALUES (?, ?)')
@@ -46,7 +51,7 @@ router.post('/register', authLimiter, async (req, res) => {
 
     const tokenId = Math.random().toString(36).substring(7);
     const token = jwt.sign(
-      { id: result.lastInsertRowid, username, jti: tokenId },
+      { id: result.lastInsertRowid, username, permissions, jti: tokenId },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -64,9 +69,15 @@ router.post('/register', authLimiter, async (req, res) => {
       req.ip || '127.0.0.1'
     );
 
+    // Also set permissions string in DB for this new user
+    db.prepare('UPDATE users SET permissions = ? WHERE id = ?').run(
+      JSON.stringify(permissions),
+      result.lastInsertRowid
+    );
+
     res.status(201).json({
       token,
-      user: { id: result.lastInsertRowid, username, avatar_url: null },
+      user: { id: result.lastInsertRowid, username, permissions, avatar_url: null },
     });
   } catch (error: unknown) {
     const err = error as { code?: string; message: string };
@@ -101,11 +112,13 @@ router.post('/login', authLimiter, async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    const permissions = JSON.parse(user.permissions || '[]');
+
     // Check 2FA
     if (user.two_factor_enabled) {
-      // Return a temporary token or just a flag
+      // Return a temporary token
       const tempToken = jwt.sign(
-        { id: user.id, username: user.username, pending_2fa: true },
+        { id: user.id, username: user.username, permissions, pending_2fa: true },
         process.env.JWT_SECRET,
         { expiresIn: '5m' }
       );
@@ -117,7 +130,7 @@ router.post('/login', authLimiter, async (req, res) => {
 
     const tokenId = Math.random().toString(36).substring(7);
     const token = jwt.sign(
-      { id: user.id, username: user.username, jti: tokenId },
+      { id: user.id, username: user.username, permissions, jti: tokenId },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -132,7 +145,12 @@ router.post('/login', authLimiter, async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, username: user.username, avatar_url: user.avatar_url },
+      user: {
+        id: user.id,
+        username: user.username,
+        permissions,
+        avatar_url: user.avatar_url,
+      },
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -175,9 +193,10 @@ router.post('/login/2fa', authLimiter, async (req, res) => {
       return res.status(401).json({ message: 'Invalid 2FA code' });
     }
 
+    const permissions = JSON.parse(user.permissions || '[]');
     const tokenId = Math.random().toString(36).substring(7);
     const token = jwt.sign(
-      { id: user.id, username: user.username, jti: tokenId },
+      { id: user.id, username: user.username, permissions, jti: tokenId },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -192,7 +211,12 @@ router.post('/login/2fa', authLimiter, async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, username: user.username, avatar_url: user.avatar_url },
+      user: {
+        id: user.id,
+        username: user.username,
+        permissions,
+        avatar_url: user.avatar_url,
+      },
     });
   } catch {
     res.status(401).json({ message: 'Invalid or expired session' });

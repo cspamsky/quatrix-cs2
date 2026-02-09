@@ -6,6 +6,7 @@ import { z } from 'zod';
 import db from '../db.js';
 import { serverManager } from '../serverManager.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 import { createServerLimiter } from '../middleware/rateLimiter.js';
 import { runtimeService } from '../services/RuntimeService.js';
 import { fileSystemService } from '../services/FileSystemService.js';
@@ -41,18 +42,22 @@ router.get('/:id/database', authenticateToken, async (req: Request, res: Respons
 });
 
 // POST /api/servers/:id/database/provision
-router.post('/:id/database/provision', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const creds = await databaseManager.provisionDatabase(req.params.id as string);
-    res.json({ message: 'Database provisioned successfully', credentials: creds });
-  } catch (error: unknown) {
-    const err = error as Error;
-    res.status(500).json({ message: 'Failed to provision database', error: err.message });
+router.post(
+  '/:id/database/provision',
+  authorize('servers.database'),
+  async (req: Request, res: Response) => {
+    try {
+      const creds = await databaseManager.provisionDatabase(req.params.id as string);
+      res.json({ message: 'Database provisioned successfully', credentials: creds });
+    } catch (error: unknown) {
+      const err = error as Error;
+      res.status(500).json({ message: 'Failed to provision database', error: err.message });
+    }
   }
-});
+);
 
 // POST /api/servers/:id/database
-router.post('/:id/database', authenticateToken, async (req: Request, res: Response) => {
+router.post('/:id/database', authorize('servers.database'), async (req: Request, res: Response) => {
   try {
     const { host, port, user, password, database } = req.body as {
       host: string;
@@ -201,7 +206,7 @@ router.get('/:id/logs', (req: Request, res: Response) => {
 });
 
 // DELETE /api/servers/:id
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', authorize('servers.delete'), async (req: Request, res: Response) => {
   const authReq = req as AuthenticatedRequest;
   try {
     const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(req.params.id as string) as
@@ -237,7 +242,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 // PUT /api/servers/:id
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', authorize('servers.update'), (req: Request, res: Response) => {
   const { id } = req.params;
   const authReq = req as AuthenticatedRequest;
   const {
@@ -309,49 +314,55 @@ router.put('/:id', (req: Request, res: Response) => {
   }
 });
 
-router.post('/', createServerLimiter, (req: Request, res: Response) => {
-  const authReq = req as AuthenticatedRequest;
-  console.log(`[API] POST /api/servers - Creating new server instance for user ${authReq.user.id}`);
-  try {
-    const result = createServerSchema.safeParse(req.body);
-    if (!result.success) {
-      return res
-        .status(400)
-        .json({ message: result.error.issues[0]?.message || 'Validation failed' });
-    }
+router.post(
+  '/',
+  authorize('servers.create'),
+  createServerLimiter,
+  (req: Request, res: Response) => {
+    const authReq = req as AuthenticatedRequest;
+    console.log(
+      `[API] POST /api/servers - Creating new server instance for user ${authReq.user.id}`
+    );
+    try {
+      const result = createServerSchema.safeParse(req.body);
+      if (!result.success) {
+        return res
+          .status(400)
+          .json({ message: result.error.issues[0]?.message || 'Validation failed' });
+      }
 
-    const {
-      name,
-      port,
-      rcon_password,
-      map,
-      max_players,
-      password,
-      gslt_token,
-      steam_api_key,
-      vac_enabled,
-      game_type,
-      game_mode,
-      tickrate,
-      auto_start,
-      game_alias,
-      hibernate,
-      validate_files,
-      additional_args,
-      cpu_priority,
-      ram_limit,
-    } = result.data;
+      const {
+        name,
+        port,
+        rcon_password,
+        map,
+        max_players,
+        password,
+        gslt_token,
+        steam_api_key,
+        vac_enabled,
+        game_type,
+        game_mode,
+        tickrate,
+        auto_start,
+        game_alias,
+        hibernate,
+        validate_files,
+        additional_args,
+        cpu_priority,
+        ram_limit,
+      } = result.data;
 
-    const result_count = db
-      .prepare('SELECT count(*) as count FROM servers WHERE port = ?')
-      .get(port) as { count: number } | undefined;
-    if (result_count && result_count.count > 0) {
-      return res.status(400).json({ message: 'Port is already in use' });
-    }
+      const result_count = db
+        .prepare('SELECT count(*) as count FROM servers WHERE port = ?')
+        .get(port) as { count: number } | undefined;
+      if (result_count && result_count.count > 0) {
+        return res.status(400).json({ message: 'Port is already in use' });
+      }
 
-    const info = db
-      .prepare(
-        `
+      const info = db
+        .prepare(
+          `
       INSERT INTO servers (
         name, port, rcon_password, status, is_installed, user_id, 
         map, max_players, password, gslt_token, steam_api_key, 
@@ -361,208 +372,223 @@ router.post('/', createServerLimiter, (req: Request, res: Response) => {
       )
       VALUES (?, ?, ?, 'OFFLINE', 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
-      )
-      .run(
-        name,
-        port,
-        rcon_password,
-        authReq.user.id,
-        map,
-        max_players,
-        password,
-        gslt_token,
-        steam_api_key,
-        vac_enabled,
-        game_type || 0,
-        game_mode || 0,
-        tickrate || 128,
-        auto_start ? 1 : 0,
-        game_alias || null,
-        hibernate ?? 1,
-        validate_files ?? 0,
-        additional_args || null,
-        cpu_priority || 0,
-        ram_limit || 0
+        )
+        .run(
+          name,
+          port,
+          rcon_password,
+          authReq.user.id,
+          map,
+          max_players,
+          password,
+          gslt_token,
+          steam_api_key,
+          vac_enabled,
+          game_type || 0,
+          game_mode || 0,
+          tickrate || 128,
+          auto_start ? 1 : 0,
+          game_alias || null,
+          hibernate ?? 1,
+          validate_files ?? 0,
+          additional_args || null,
+          cpu_priority || 0,
+          ram_limit || 0
+        );
+
+      const serverId = info.lastInsertRowid as number;
+      emitDashboardStats();
+      logActivity(
+        'SERVER_CREATE',
+        `${name} adlı yeni sunucu oluşturuldu`,
+        'SUCCESS',
+        authReq.user.id
       );
 
-    const serverId = info.lastInsertRowid as number;
-    emitDashboardStats();
-    logActivity(
-      'SERVER_CREATE',
-      `${name} adlı yeni sunucu oluşturuldu`,
-      'SUCCESS',
-      authReq.user.id
-    );
+      // Emit socket event for real-time UI update (e.g. server list)
+      const io = req.app.get('io');
+      if (io) io.emit('server_update', { serverId });
 
-    // Emit socket event for real-time UI update (e.g. server list)
-    const io = req.app.get('io');
-    if (io) io.emit('server_update', { serverId });
+      // If auto_start is enabled, trigger installation immediately
+      if (auto_start) {
+        console.log(`[SYSTEM] Auto-starting installation for server ${serverId}`);
 
-    // If auto_start is enabled, trigger installation immediately
-    if (auto_start) {
-      console.log(`[SYSTEM] Auto-starting installation for server ${serverId}`);
+        db.prepare("UPDATE servers SET status = 'INSTALLING' WHERE id = ?").run(serverId);
+        if (io) io.emit('status_update', { serverId, status: 'INSTALLING' });
 
-      db.prepare("UPDATE servers SET status = 'INSTALLING' WHERE id = ?").run(serverId);
-      if (io) io.emit('status_update', { serverId, status: 'INSTALLING' });
-
-      serverManager
-        .installOrUpdateServer(serverId.toString(), (data: string) => {
-          if (io) io.emit(`console:${serverId}`, data);
-        })
-        .then(async () => {
-          db.prepare("UPDATE servers SET status = 'OFFLINE', is_installed = 1 WHERE id = ?").run(
-            serverId
-          );
-          if (io) io.emit('status_update', { serverId, status: 'OFFLINE' });
-
-          // Optionally start the server after installation
-          const serverData = db.prepare('SELECT * FROM servers WHERE id = ?').get(serverId) as
-            | Server
-            | undefined;
-          if (serverData) {
-            await serverManager.startServer(
-              serverId.toString(),
-              serverData as Partial<Server>,
-              (data: string) => {
-                if (io) io.emit(`console:${serverId}`, data);
-              }
+        serverManager
+          .installOrUpdateServer(serverId.toString(), (data: string) => {
+            if (io) io.emit(`console:${serverId}`, data);
+          })
+          .then(async () => {
+            db.prepare("UPDATE servers SET status = 'OFFLINE', is_installed = 1 WHERE id = ?").run(
+              serverId
             );
-          }
-          db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(serverId);
-          if (io) io.emit('status_update', { serverId, status: 'ONLINE' });
-        })
-        .catch((err: unknown) => {
-          const error = err as Error;
-          console.error(`[SYSTEM] Auto-install failed for server ${serverId}:`, error);
-          db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(serverId);
-          if (io) io.emit('status_update', { serverId, status: 'OFFLINE' });
-        });
-    }
+            if (io) io.emit('status_update', { serverId, status: 'OFFLINE' });
 
-    res.status(201).json({ id: serverId, ...result.data });
-  } catch (error) {
-    console.error('Server creation error:', error);
-    res.status(500).json({ message: 'Failed to create server' });
+            // Optionally start the server after installation
+            const serverData = db.prepare('SELECT * FROM servers WHERE id = ?').get(serverId) as
+              | Server
+              | undefined;
+            if (serverData) {
+              await serverManager.startServer(
+                serverId.toString(),
+                serverData as Partial<Server>,
+                (data: string) => {
+                  if (io) io.emit(`console:${serverId}`, data);
+                }
+              );
+            }
+            db.prepare("UPDATE servers SET status = 'ONLINE' WHERE id = ?").run(serverId);
+            if (io) io.emit('status_update', { serverId, status: 'ONLINE' });
+          })
+          .catch((err: unknown) => {
+            const error = err as Error;
+            console.error(`[SYSTEM] Auto-install failed for server ${serverId}:`, error);
+            db.prepare("UPDATE servers SET status = 'OFFLINE' WHERE id = ?").run(serverId);
+            if (io) io.emit('status_update', { serverId, status: 'OFFLINE' });
+          });
+      }
+
+      res.status(201).json({ id: serverId, ...result.data });
+    } catch (error) {
+      console.error('Server creation error:', error);
+      res.status(500).json({ message: 'Failed to create server' });
+    }
   }
-});
+);
 
 // POST /api/servers/:id/database/custom (Create local DB with user-provided info)
-router.post('/:id/database/custom', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { user, password, database } = req.body as {
-      user: string;
-      password?: string;
-      database: string;
-    };
-    if (!user || !password || !database) {
-      return res.status(400).json({ message: 'Missing required fields for custom database' });
+router.post(
+  '/:id/database/custom',
+  authorize('servers.database'),
+  async (req: Request, res: Response) => {
+    try {
+      const { user, password, database } = req.body as {
+        user: string;
+        password?: string;
+        database: string;
+      };
+      if (!user || !password || !database) {
+        return res.status(400).json({ message: 'Missing required fields for custom database' });
+      }
+      const creds = { host: 'localhost', port: 3306, user, password, database };
+      await databaseManager.createCustomDatabase(req.params.id as string, creds);
+      res.json({ message: 'Custom local database created successfully', credentials: creds });
+    } catch (error: unknown) {
+      const err = error as Error;
+      res.status(500).json({ message: 'Failed to create custom database', error: err.message });
     }
-    const creds = { host: 'localhost', port: 3306, user, password, database };
-    await databaseManager.createCustomDatabase(req.params.id as string, creds);
-    res.json({ message: 'Custom local database created successfully', credentials: creds });
-  } catch (error: unknown) {
-    const err = error as Error;
-    res.status(500).json({ message: 'Failed to create custom database', error: err.message });
   }
-});
+);
 
 // POST /api/servers/:id/database/query (Raw SQL Console)
-router.post('/:id/database/query', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { table, columns, filters, params } = req.body as {
-      table: string;
-      columns?: string[];
-      // filters is an optional object mapping column names to values or
-      // to { op, value } objects for simple comparisons.
-      filters?: Record<
-        string,
-        | unknown
-        | {
-            op?: '=' | '>' | '<' | '>=' | '<=' | 'like';
-            value: unknown;
-          }
-      >;
-      params?: unknown[];
-    };
+router.post(
+  '/:id/database/query',
+  authorize('servers.database'),
+  async (req: Request, res: Response) => {
+    try {
+      const { table, columns, filters, params } = req.body as {
+        table: string;
+        columns?: string[];
+        // filters is an optional object mapping column names to values or
+        // to { op, value } objects for simple comparisons.
+        filters?: Record<
+          string,
+          | unknown
+          | {
+              op?: '=' | '>' | '<' | '>=' | '<=' | 'like';
+              value: unknown;
+            }
+        >;
+        params?: unknown[];
+      };
 
-    if (!table) {
-      return res.status(400).json({ message: 'Table is required' });
-    }
-
-    // Basic identifier validation: only allow letters, numbers and underscores
-    const identifierRegex = /^[A-Za-z0-9_]+$/;
-    if (!identifierRegex.test(table)) {
-      return res.status(400).json({ message: 'Invalid table name' });
-    }
-
-    let selectedColumns = '*';
-    if (Array.isArray(columns) && columns.length > 0) {
-      const safeColumns = columns.filter(
-        (col) => typeof col === 'string' && identifierRegex.test(col)
-      );
-      if (safeColumns.length === 0) {
-        return res.status(400).json({ message: 'No valid column names provided' });
+      if (!table) {
+        return res.status(400).json({ message: 'Table is required' });
       }
-      selectedColumns = safeColumns.map((col) => `\`${col}\``).join(', ');
-    }
 
-    let sql = `SELECT ${selectedColumns} FROM \`${table}\``;
-    const queryParams: unknown[] = Array.isArray(params) ? params : [];
+      // Basic identifier validation: only allow letters, numbers and underscores
+      const identifierRegex = /^[A-Za-z0-9_]+$/;
+      if (!identifierRegex.test(table)) {
+        return res.status(400).json({ message: 'Invalid table name' });
+      }
 
-    // Build WHERE clause from structured filters using parameter binding
-    if (filters && typeof filters === 'object') {
-      const whereClauses: string[] = [];
-
-      for (const [rawColumn, rawCondition] of Object.entries(filters)) {
-        if (!identifierRegex.test(rawColumn)) {
-          return res.status(400).json({ message: `Invalid column name in filters: ${rawColumn}` });
+      let selectedColumns = '*';
+      if (Array.isArray(columns) && columns.length > 0) {
+        const safeColumns = columns.filter(
+          (col) => typeof col === 'string' && identifierRegex.test(col)
+        );
+        if (safeColumns.length === 0) {
+          return res.status(400).json({ message: 'No valid column names provided' });
         }
+        selectedColumns = safeColumns.map((col) => `\`${col}\``).join(', ');
+      }
 
-        const column = `\`${rawColumn}\``;
+      let sql = `SELECT ${selectedColumns} FROM \`${table}\``;
+      const queryParams: unknown[] = Array.isArray(params) ? params : [];
 
-        if (rawCondition !== null && typeof rawCondition === 'object' && 'value' in rawCondition) {
-          const condition = rawCondition as {
-            op?: '=' | '>' | '<' | '>=' | '<=' | 'like';
-            value: unknown;
-          };
+      // Build WHERE clause from structured filters using parameter binding
+      if (filters && typeof filters === 'object') {
+        const whereClauses: string[] = [];
 
-          const op = condition.op ? condition.op.toLowerCase() : '=';
-          const allowedOps: Array<'=' | '>' | '<' | '>=' | '<=' | 'like'> = [
-            '=',
-            '>',
-            '<',
-            '>=',
-            '<=',
-            'like',
-          ];
-
-          if (!allowedOps.includes(op as any)) {
-            return res.status(400).json({ message: `Invalid operator for column ${rawColumn}` });
+        for (const [rawColumn, rawCondition] of Object.entries(filters)) {
+          if (!identifierRegex.test(rawColumn)) {
+            return res
+              .status(400)
+              .json({ message: `Invalid column name in filters: ${rawColumn}` });
           }
 
-          whereClauses.push(`${column} ${op.toUpperCase()} ?`);
-          queryParams.push(condition.value);
-        } else {
-          // Simple equality filter: { filters: { column: value } }
-          whereClauses.push(`${column} = ?`);
-          queryParams.push(rawCondition);
+          const column = `\`${rawColumn}\``;
+
+          if (
+            rawCondition !== null &&
+            typeof rawCondition === 'object' &&
+            'value' in rawCondition
+          ) {
+            const condition = rawCondition as {
+              op?: '=' | '>' | '<' | '>=' | '<=' | 'like';
+              value: unknown;
+            };
+
+            const op = condition.op ? condition.op.toLowerCase() : '=';
+            const allowedOps: Array<'=' | '>' | '<' | '>=' | '<=' | 'like'> = [
+              '=',
+              '>',
+              '<',
+              '>=',
+              '<=',
+              'like',
+            ];
+
+            if (!allowedOps.includes(op as any)) {
+              return res.status(400).json({ message: `Invalid operator for column ${rawColumn}` });
+            }
+
+            whereClauses.push(`${column} ${op.toUpperCase()} ?`);
+            queryParams.push(condition.value);
+          } else {
+            // Simple equality filter: { filters: { column: value } }
+            whereClauses.push(`${column} = ?`);
+            queryParams.push(rawCondition);
+          }
+        }
+
+        if (whereClauses.length > 0) {
+          sql += ' WHERE ' + whereClauses.join(' AND ');
         }
       }
 
-      if (whereClauses.length > 0) {
-        sql += ' WHERE ' + whereClauses.join(' AND ');
-      }
+      // SECURITY: Additional validation is handled centrally in databaseManager.executeQuery
+      const results = await databaseManager.executeQuery(req.params.id as string, sql, queryParams);
+      res.json({ results });
+    } catch (error: unknown) {
+      const err = error as Error;
+      // Log error but return clean message to client
+      console.error('[DB_CONSOLE] Query execution failed:', err.message);
+      res.status(403).json({ message: err.message });
     }
-
-    // SECURITY: Additional validation is handled centrally in databaseManager.executeQuery
-    const results = await databaseManager.executeQuery(req.params.id as string, sql, queryParams);
-    res.json({ results });
-  } catch (error: unknown) {
-    const err = error as Error;
-    // Log error but return clean message to client
-    console.error('[DB_CONSOLE] Query execution failed:', err.message);
-    res.status(403).json({ message: err.message });
   }
-});
+);
 
 export default router;

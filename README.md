@@ -34,6 +34,7 @@ Quatrix addresses common pain points in CS2 server management:
 - **Player Management**: Live player list with Steam profiles, connection times, and kick/ban controls
 - **Chat Monitor**: Real-time in-game chat with player avatars and filtering
 - **File Manager**: Web-based config editor (supports `.cfg`, `.json`, `.txt`, `.toml`)
+- **Analytics Dashboard**: Historical system performance metrics with customizable time ranges (24h, 7d, 30d)
 
 ### Instance Management
 
@@ -41,12 +42,14 @@ Quatrix addresses common pain points in CS2 server management:
 - **Granular symlinking**: Shares game files (`.vpk` assets) while isolating configs and plugins
 - **Plugin pool**: Deploy plugins to multiple instances from a central repository
 - **Auto-repair**: Validates and fixes file structure issues on server start
+- **Automated backups**: Scheduled database and configuration backups with retention policies
 
 ### Administration
 
-- **Admin system**: Integrated with CounterStrikeSharp's admin framework
+- **ACL Permission System**: Granular access control with permissions like `servers.create`, `servers.update`, `users.manage`
+- **Transparent Observer Mode**: All users can view all pages, but actions are restricted based on permissions
 - **User authentication**: JWT-based sessions with optional 2FA (TOTP)
-- **Role-based access**: Per-user permissions for server control
+- **Admin system**: Integrated with CounterStrikeSharp's admin framework
 - **Multi-language**: English and Turkish localization (i18next)
 
 ---
@@ -163,6 +166,23 @@ mp_warmup_end
 - Deploy to instances: Select plugin → Choose instances → Deploy
 - Edit configs: File Manager → Navigate to plugin folder → Edit `.json`/`.cfg`
 
+### User Permissions
+
+Quatrix uses a granular ACL (Access Control List) system. Available permissions:
+
+- `*` - Root access (all permissions)
+- `servers.create` - Create new server instances
+- `servers.delete` - Delete server instances
+- `servers.update` - Modify server settings
+- `servers.console` - Access RCON console
+- `servers.files` - Manage server files
+- `servers.database` - Access database management
+- `plugins.manage` - Install and configure plugins
+- `analytics.view` - View system analytics
+- `users.manage` - Manage users and permissions
+
+Users without specific permissions can view pages in read-only mode (Transparent Observer).
+
 ---
 
 ## 📁 Project Structure
@@ -204,14 +224,18 @@ quatrix/
 - ✅ Web-based file editor
 - ✅ Admin permission management
 - ✅ 2FA authentication
+- ✅ ACL-based permission system (granular access control)
+- ✅ Transparent Observer mode (read-only access for unauthorized users)
+- ✅ System analytics dashboard with historical metrics
+- ✅ Automated backup system for configs and database
 
 **Planned:**
 
-- [ ] Automated backup system for configs and database
 - [ ] Workshop map downloader integration
 - [ ] External database support (MySQL/MariaDB) for shared stats
-- [ ] REST API for third-party integrations
-- [ ] Server performance analytics and graphs
+- [ ] REST API documentation for third-party integrations
+- [ ] Advanced server performance analytics and alerting
+- [ ] Multi-server cluster management
 
 ---
 

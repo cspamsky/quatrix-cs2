@@ -20,6 +20,7 @@ interface GeneralTabProps {
     };
   };
   isLoading?: boolean;
+  canEdit?: boolean;
 }
 
 const GeneralTab: React.FC<GeneralTabProps> = ({
@@ -34,6 +35,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
   onSave,
   systemInfo,
   isLoading,
+  canEdit = true,
 }) => {
   const { t } = useTranslation();
   return (
@@ -56,6 +58,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
                 type="text"
                 value={panelName}
                 onChange={(e) => setPanelName(e.target.value)}
+                disabled={!canEdit}
               />
             </div>
             <div>
@@ -63,10 +66,11 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
                 {t('settingsGeneral.default_port')}
               </label>
               <input
-                className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600"
+                className="w-full bg-[#0F172A]/50 border border-gray-800 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-600 disabled:opacity-50"
                 type="number"
                 value={defaultPort}
                 onChange={(e) => setDefaultPort(e.target.value)}
+                disabled={!canEdit}
               />
             </div>
             <div className="flex items-center justify-between p-5 bg-[#0d1624] rounded-2xl border border-gray-800/50">
@@ -82,8 +86,11 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
                   className="sr-only peer"
                   checked={autoBackup}
                   onChange={(e) => setAutoBackup(e.target.checked)}
+                  disabled={!canEdit}
                 />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                <div
+                  className={`w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
+                ></div>
               </label>
             </div>
             <div className="flex items-center justify-between p-5 bg-[#0d1624] rounded-2xl border border-gray-800/50">
@@ -101,18 +108,23 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
                   className="sr-only peer"
                   checked={autoPluginUpdates}
                   onChange={(e) => setAutoPluginUpdates(e.target.checked)}
+                  disabled={!canEdit}
                 />
-                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                <div
+                  className={`w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
+                ></div>
               </label>
             </div>
-            <button
-              onClick={onSave}
-              className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/20 active:scale-95"
-              type="button"
-            >
-              <Save size={18} />
-              {t('settingsGeneral.save_changes')}
-            </button>
+            {canEdit && (
+              <button
+                onClick={onSave}
+                className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/20 active:scale-95"
+                type="button"
+              >
+                <Save size={18} />
+                {t('settingsGeneral.save_changes')}
+              </button>
+            )}
           </form>
         </div>
       </div>

@@ -61,6 +61,9 @@
     "no_messages": "No messages matching your search",
     "no_history": "No chat history found for this server"
   },
+  "analytics": {
+    "subtitle": "Visual insights into historical system performance and resource utilization"
+  },
   "common": {
     "logout": "Logout",
     "online": "Online",
@@ -376,9 +379,11 @@
     "plugins": "Plugins",
     "admins": "Admins",
     "database": "Database",
+    "analytics": "Analytics",
     "backups": "Backups",
     "settings": "Settings",
-    "profile": "Profile"
+    "profile": "Profile",
+    "users": "User Management"
   },
   "players": {
     "title": "Player Management",

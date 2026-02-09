@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, Tooltip, ResponsiveContainer } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { Cpu, Database, Globe, HardDrive, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
@@ -37,6 +37,11 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
   currentStats,
 }) => {
   const { t } = useTranslation();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const chartData = (Array.isArray(data) ? data : []).filter(Boolean).map((item) => ({
     ...item,
@@ -115,28 +120,32 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
           </div>
 
           <div className="relative h-32 w-full mt-2">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Tooltip content={<CustomTooltip unit="%" />} />
-                <Area
-                  name="CPU"
-                  type="monotone"
-                  dataKey="cpu"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorCpu)"
-                  animationDuration={800}
-                  isAnimationActive={true}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="absolute inset-0">
+              {isMounted && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Tooltip content={<CustomTooltip unit="%" />} />
+                    <Area
+                      name="CPU"
+                      type="monotone"
+                      dataKey="cpu"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorCpu)"
+                      animationDuration={800}
+                      isAnimationActive={true}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
         <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-blue-500/5 blur-2xl rounded-full group-hover:bg-blue-500/10 transition-all"></div>
@@ -164,28 +173,32 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
           </div>
 
           <div className="relative h-32 w-full mt-2">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Tooltip content={<CustomTooltip unit="%" />} />
-                <Area
-                  name="RAM"
-                  type="monotone"
-                  dataKey="ram"
-                  stroke="#a855f7"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorRam)"
-                  animationDuration={800}
-                  isAnimationActive={true}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="absolute inset-0">
+              {isMounted && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Tooltip content={<CustomTooltip unit="%" />} />
+                    <Area
+                      name="RAM"
+                      type="monotone"
+                      dataKey="ram"
+                      stroke="#a855f7"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorRam)"
+                      animationDuration={800}
+                      isAnimationActive={true}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
         <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-purple-500/5 blur-2xl rounded-full group-hover:bg-purple-500/10 transition-all"></div>
@@ -219,28 +232,32 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
           </div>
 
           <div className="relative h-32 w-full mt-2">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Tooltip content={<CustomTooltip unit="MB/s" />} />
-                <Area
-                  name="Network"
-                  type="monotone"
-                  dataKey="netIn"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorNet)"
-                  animationDuration={800}
-                  isAnimationActive={true}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="absolute inset-0">
+              {isMounted && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Tooltip content={<CustomTooltip unit="MB/s" />} />
+                    <Area
+                      name="Network"
+                      type="monotone"
+                      dataKey="netIn"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorNet)"
+                      animationDuration={800}
+                      isAnimationActive={true}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
         <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-emerald-500/5 blur-2xl rounded-full group-hover:bg-emerald-500/10 transition-all"></div>
@@ -269,28 +286,32 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
           </div>
 
           <div className="relative h-32 w-full mt-2">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorDisk" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Tooltip content={<CustomTooltip unit="MB/s" />} />
-                <Area
-                  name="Disk"
-                  type="monotone"
-                  dataKey="diskRead"
-                  stroke="#f97316"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorDisk)"
-                  animationDuration={800}
-                  isAnimationActive={true}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="absolute inset-0">
+              {isMounted && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorDisk" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Tooltip content={<CustomTooltip unit="MB/s" />} />
+                    <Area
+                      name="Disk"
+                      type="monotone"
+                      dataKey="diskRead"
+                      stroke="#f97316"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorDisk)"
+                      animationDuration={800}
+                      isAnimationActive={true}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
         <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-orange-500/5 blur-2xl rounded-full group-hover:bg-orange-500/10 transition-all"></div>

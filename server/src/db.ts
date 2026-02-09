@@ -23,24 +23,78 @@ const db: DatabaseType = new Database(dbPath);
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
 
+export const ALL_PERMISSIONS = [
+  'servers.create',
+  'servers.delete',
+  'servers.update',
+  'servers.console',
+  'servers.files',
+  'servers.database',
+  'plugins.manage',
+  'analytics.view',
+  'users.manage',
+];
+
 // Create users table
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
+    role TEXT DEFAULT 'viewer',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
 
 // Migration to add profile columns if they don't exist
+// Migration to add profile columns if they don't exist
+const addColumn = (col: string) => {
+  try {
+    db.exec(`ALTER TABLE users ADD COLUMN ${col}`);
+  } catch {
+    // Column already exists
+  }
+};
+
+addColumn('avatar_url TEXT');
+addColumn('two_factor_enabled INTEGER DEFAULT 0');
+addColumn('two_factor_secret TEXT');
+addColumn('role TEXT DEFAULT "viewer"');
+addColumn('permissions TEXT DEFAULT "[]"');
+
+// Ensure at least one admin exists if there are users
 try {
-  db.exec(`ALTER TABLE users ADD COLUMN avatar_url TEXT`);
-  db.exec(`ALTER TABLE users ADD COLUMN two_factor_enabled INTEGER DEFAULT 0`);
-  db.exec(`ALTER TABLE users ADD COLUMN two_factor_secret TEXT`);
-  console.log('Migration: Added profile columns to users table.');
-} catch {
-  // Columns already exist
+  const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+  if (userCount.count > 0) {
+    const adminExists = db.prepare("SELECT 1 FROM users WHERE role = 'admin'").get();
+    if (!adminExists) {
+      const firstUser = db.prepare('SELECT id FROM users ORDER BY id ASC LIMIT 1').get() as {
+        id: number;
+      };
+      if (firstUser) {
+        db.prepare("UPDATE users SET role = 'admin', permissions = ? WHERE id = ?").run(
+          JSON.stringify(['*']),
+          firstUser.id
+        );
+        console.log(`Migration: First user (ID: ${firstUser.id}) granted all permissions.`);
+      }
+    }
+  }
+} catch (error) {
+  console.error('Error in admin migration:', error);
+}
+
+// Migration to convert all existing admins to full permission set (ACL Transition)
+try {
+  const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all() as { id: number }[];
+  for (const admin of admins) {
+    db.prepare('UPDATE users SET permissions = ? WHERE id = ?').run(
+      JSON.stringify(['*']),
+      admin.id
+    );
+  }
+} catch (error) {
+  console.error('Error in Pure ACL migration:', error);
 }
 
 // Create user_sessions table
@@ -73,14 +127,26 @@ try {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
+        role TEXT DEFAULT 'viewer',
+        avatar_url TEXT,
+        two_factor_enabled INTEGER DEFAULT 0,
+        two_factor_secret TEXT,
+        permissions TEXT DEFAULT "[]",
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
     // 2. Copy data
     db.exec(`
-      INSERT INTO users_new (id, username, password, created_at)
-      SELECT id, username, password, created_at FROM users
+      INSERT INTO users_new (id, username, password, role, avatar_url, two_factor_enabled, two_factor_secret, permissions, created_at)
+      SELECT id, username, password, 
+             COALESCE(role, 'viewer'), 
+             avatar_url, 
+             COALESCE(two_factor_enabled, 0), 
+             two_factor_secret, 
+             COALESCE(permissions, '[]'),
+             created_at 
+      FROM users
     `);
 
     // 3. Drop old table
@@ -396,5 +462,21 @@ db.exec(`
     last_scanned DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+// Create system_analytics table for historical data
+db.exec(`
+  CREATE TABLE IF NOT EXISTS system_analytics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cpu REAL,
+    ram REAL,
+    net_in REAL,
+    net_out REAL,
+    disk_read REAL,
+    disk_write REAL,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+db.exec(`CREATE INDEX IF NOT EXISTS idx_system_analytics_timestamp ON system_analytics(timestamp)`);
 
 export default db;

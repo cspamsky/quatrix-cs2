@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { serverManager } from '../serverManager.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 import db from '../db.js';
 import { fileSystemService } from '../services/FileSystemService.js';
 import path from 'path';
@@ -26,6 +27,7 @@ type AdminsJson = Record<string, AdminData>;
 const router = Router();
 
 router.use(authenticateToken);
+router.use(authorize('servers.update'));
 
 const ADMINS_FILE_PATH = 'addons/counterstrikesharp/configs/admins.json';
 // Ensure all path parts are lowercase for Linux consistency

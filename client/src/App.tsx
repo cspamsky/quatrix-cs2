@@ -28,6 +28,8 @@ const Chat = lazy(() => import('./pages/Chat'));
 const Database = lazy(() => import('./pages/Database'));
 const Backups = lazy(() => import('./pages/Backups'));
 const Profile = lazy(() => import('./pages/Profile'));
+const Analytics = lazy(() => import('./pages/Analytics'));
+const Users = lazy(() => import('./pages/Users'));
 
 // Loading component with react-loading-icons
 const PageLoader = () => (
@@ -109,20 +111,64 @@ const App = () => {
                 >
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/instances" element={<Instances />} />
-                  <Route path="/instances/create" element={<CreateInstance />} />
+                  <Route
+                    path="/instances/create"
+                    element={
+                      <ProtectedRoute requiredPermission="servers.create">
+                        <CreateInstance />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="/instances/:id/console" element={<Console />} />
                   <Route path="/console/:id" element={<Console />} />
-                  <Route path="/instances/:id/settings" element={<ServerSettings />} />
+                  <Route
+                    path="/instances/:id/settings"
+                    element={
+                      <ProtectedRoute requiredPermission="servers.update">
+                        <ServerSettings />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="/instances/:id/files" element={<FileManager />} />
                   <Route path="/console" element={<Console />} />
-                  <Route path="/settings" element={<Settings />} />
+                  <Route
+                    path="/settings"
+                    element={
+                      <ProtectedRoute>
+                        <Settings />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="/players" element={<Players />} />
                   <Route path="/maps" element={<Maps />} />
                   <Route path="/plugins" element={<Plugins />} />
-                  <Route path="/admins" element={<Admins />} />
+                  <Route
+                    path="/admins"
+                    element={
+                      <ProtectedRoute>
+                        <Admins />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="/database" element={<Database />} />
                   <Route path="/backups" element={<Backups />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route
+                    path="/analytics"
+                    element={
+                      <ProtectedRoute>
+                        <Analytics />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/users"
+                    element={
+                      <ProtectedRoute>
+                        <Users />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="/chat/:id" element={<Chat />} />
                   <Route path="/chat" element={<Chat />} />
                 </Route>

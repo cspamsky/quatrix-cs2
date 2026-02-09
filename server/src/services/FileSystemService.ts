@@ -78,6 +78,16 @@ class FileSystemService {
     const instanceId = id.toString();
     const targetDir = this.getInstancePath(instanceId);
 
+    // Windows Dev Check: Skip intensive preparation that requires Linux binaries/symlinks
+    if (process.platform !== 'linux' && process.env.NODE_ENV === 'development') {
+      console.log(`[FileSystem] Instance ${id} preparation skipped (Windows Development).`);
+      // Only create basic base structure if missing
+      const baseDir = path.dirname(targetDir);
+      if (!fs.existsSync(baseDir)) await fs.promises.mkdir(baseDir, { recursive: true });
+      if (!fs.existsSync(targetDir)) await fs.promises.mkdir(targetDir, { recursive: true });
+      return true;
+    }
+
     // 1. Create Base Structure
     const dirsToCreate = [
       'cfg', // Top level cfg (custom)
@@ -323,6 +333,7 @@ class FileSystemService {
 
   public async ensureExecutable(filePath: string) {
     try {
+      if (process.platform === 'win32') return; // Chmod doesn't apply to Windows files this way
       await fs.promises.chmod(filePath, 0o755);
     } catch {
       console.warn(`[FileSystem] Failed to chmod +x ${filePath}`);

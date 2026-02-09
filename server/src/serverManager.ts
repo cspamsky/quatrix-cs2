@@ -173,6 +173,12 @@ class ServerManager {
   }
 
   private async ensureSteamSdk() {
+    if (process.platform !== 'linux') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[SYSTEM] Skipping Steam SDK check on non-linux platform.');
+      }
+      return;
+    }
     // CS2 on Linux requires steamclient.so in ~/.steam/sdk64/
     const homeDir = process.env.HOME || '/home/quatrix';
     const sdkDir = path.join(homeDir, '.steam', 'sdk64');
@@ -657,6 +663,15 @@ class ServerManager {
 
   public async ensureSteamCMD(taskId?: string) {
     if (await steamManager.ensureSteamCMD(this.steamCmdExe, taskId)) return true;
+
+    // Windows fallback: Don't try to download linux steamcmd on windows dev machine
+    if (process.platform !== 'linux' && process.env.NODE_ENV === 'development') {
+      console.warn(
+        '[SYSTEM] SteamCMD is missing, but skipping auto-download on Windows development environment.'
+      );
+      return false;
+    }
+
     try {
       await steamManager.downloadSteamCmd(this.steamCmdExe, taskId);
       return true;

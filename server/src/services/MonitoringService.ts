@@ -1,6 +1,7 @@
 import si from 'systeminformation';
 import { alertService } from './AlertService.js';
 import type { Server } from 'socket.io';
+import db from '../db.js';
 
 export interface SystemStats {
   cpu: string;
@@ -19,6 +20,8 @@ class MonitoringService {
   private statsHistory: SystemStats[] = [];
   private readonly MAX_HISTORY = 30;
   private interval: NodeJS.Timeout | null = null;
+  private saveInterval: NodeJS.Timeout | null = null;
+  private readonly SAVE_PERIOD = 5 * 60 * 1000; // 5 minutes
 
   private lastNetworkStats: si.Systeminformation.NetworkStatsData[] | null = null;
   private lastDiskStats: {
@@ -34,29 +37,70 @@ class MonitoringService {
   public start() {
     if (this.interval) return;
 
+    // Real-time interval (1s)
     this.interval = setInterval(async () => {
       try {
         const stats = await this.collectStats();
 
-        // Geçmişi sakla
+        // Keep in-memory history
         this.statsHistory.push(stats);
         if (this.statsHistory.length > this.MAX_HISTORY) {
           this.statsHistory.shift();
         }
 
-        // Socket.io ile yayınla
+        // Broadcast via Socket.io
         if (this.io) {
           this.io.emit('stats', stats);
         }
 
-        // Eşik değer kontrolü
+        // Check thresholds
         alertService.check(stats);
       } catch (error) {
         console.error('[MonitoringService] Stats collection error:', error);
       }
     }, 1000);
 
+    // Snapshot interval (5m)
+    this.saveInterval = setInterval(async () => {
+      try {
+        const stats = await this.collectStats();
+        this.saveSnapshot(stats);
+        this.cleanupOldStats();
+      } catch (error) {
+        console.error('[MonitoringService] Periodic save error:', error);
+      }
+    }, this.SAVE_PERIOD);
+
     console.log('\x1b[32m[SYSTEM]\x1b[0m Monitoring Service started.');
+  }
+
+  private saveSnapshot(stats: SystemStats) {
+    try {
+      db.prepare(
+        `INSERT INTO system_analytics (cpu, ram, net_in, net_out, disk_read, disk_write) 
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).run(
+        parseFloat(stats.cpu),
+        parseFloat(stats.ram),
+        parseFloat(stats.netIn),
+        parseFloat(stats.netOut),
+        parseFloat(stats.diskRead),
+        parseFloat(stats.diskWrite)
+      );
+    } catch (err) {
+      console.error('[MonitoringService] Failed to save snapshot:', err);
+    }
+  }
+
+  private cleanupOldStats() {
+    try {
+      // Keep only last 30 days
+      db.prepare(
+        `DELETE FROM system_analytics WHERE timestamp < datetime('now', '-30 days')`
+      ).run();
+    } catch (err) {
+      console.error('[MonitoringService] Failed to cleanup old stats:', err);
+    }
   }
 
   public getStatsHistory(): SystemStats[] {

@@ -28,6 +28,7 @@ interface SystemHealthTabProps {
   healthLoading: boolean;
   onRefresh: () => void;
   onRepair: () => void;
+  canEdit?: boolean;
 }
 
 const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
@@ -35,6 +36,7 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
   healthLoading,
   onRefresh,
   onRepair,
+  canEdit = true,
 }) => {
   const { t } = useTranslation();
   const [repairLoading, setRepairLoading] = useState(false);
@@ -68,7 +70,7 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {hasIssues && (
+          {hasIssues && canEdit && (
             <button
               onClick={handleRepair}
               disabled={repairLoading || healthLoading}

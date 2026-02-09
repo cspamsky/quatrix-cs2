@@ -42,6 +42,7 @@ interface ServerRowProps {
   onConsole: (id: number) => void;
   onSettings: (id: number) => void;
   onFiles: (id: number) => void;
+  userPermissions?: string[];
 }
 
 const ServerRow = memo(
@@ -63,8 +64,11 @@ const ServerRow = memo(
     onConsole,
     onSettings,
     onFiles,
+    userPermissions = [],
   }: ServerRowProps) => {
     const { t } = useTranslation();
+
+    const hasPerm = (p: string) => userPermissions.includes('*') || userPermissions.includes(p);
 
     return (
       <div
@@ -122,72 +126,85 @@ const ServerRow = memo(
 
         <div className="flex items-center gap-2 shrink-0">
           {!instance.isInstalled ? (
-            <button
-              onClick={() => onInstall(instance.id)}
-              disabled={installingId === instance.id || instance.status === 'INSTALLING'}
-              className="bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 p-2 rounded-lg transition-all disabled:opacity-50"
-              title={t('serverCard.install_server')}
-            >
-              <Download
-                size={16}
-                className={installingId === instance.id ? 'animate-bounce' : ''}
-              />
-            </button>
+            hasPerm('servers.create') && (
+              <button
+                onClick={() => onInstall(instance.id)}
+                disabled={installingId === instance.id || instance.status === 'INSTALLING'}
+                className="bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 p-2 rounded-lg transition-all disabled:opacity-50"
+                title={t('serverCard.install_server')}
+              >
+                <Download
+                  size={16}
+                  className={installingId === instance.id ? 'animate-bounce' : ''}
+                />
+              </button>
+            )
           ) : (
             <>
               {instance.status === 'OFFLINE' ? (
-                <button
-                  onClick={() => onStart(instance.id)}
-                  disabled={startingId === instance.id}
-                  className="bg-green-500/10 hover:bg-green-500/20 text-green-500 p-2 rounded-lg transition-all"
-                  title={t('serverCard.start')}
-                >
-                  <Play size={16} className={startingId === instance.id ? 'animate-pulse' : ''} />
-                </button>
+                hasPerm('servers.update') && (
+                  <button
+                    onClick={() => onStart(instance.id)}
+                    disabled={startingId === instance.id}
+                    className="bg-green-500/10 hover:bg-green-500/20 text-green-500 p-2 rounded-lg transition-all"
+                    title={t('serverCard.start')}
+                  >
+                    <Play size={16} className={startingId === instance.id ? 'animate-pulse' : ''} />
+                  </button>
+                )
               ) : (
                 <>
-                  <button
-                    onClick={() => onStop(instance.id)}
-                    disabled={stoppingId === instance.id}
-                    className="bg-red-500/10 hover:bg-red-500/20 text-red-500 p-2 rounded-lg transition-all"
-                    title={t('serverCard.stop')}
-                  >
-                    <Square
-                      size={16}
-                      className={stoppingId === instance.id ? 'animate-pulse' : 'fill-current'}
-                    />
-                  </button>
-                  <button
-                    onClick={() => onRestart(instance.id)}
-                    disabled={restartingId === instance.id}
-                    className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 p-2 rounded-lg transition-all"
-                    title={t('serverCard.restart')}
-                  >
-                    <RotateCcw
-                      size={16}
-                      className={restartingId === instance.id ? 'animate-spin' : ''}
-                    />
-                  </button>
+                  {hasPerm('servers.update') && (
+                    <>
+                      <button
+                        onClick={() => onStop(instance.id)}
+                        disabled={stoppingId === instance.id}
+                        className="bg-red-500/10 hover:bg-red-500/20 text-red-500 p-2 rounded-lg transition-all"
+                        title={t('serverCard.stop')}
+                      >
+                        <Square
+                          size={16}
+                          className={stoppingId === instance.id ? 'animate-pulse' : 'fill-current'}
+                        />
+                      </button>
+                      <button
+                        onClick={() => onRestart(instance.id)}
+                        disabled={restartingId === instance.id}
+                        className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 p-2 rounded-lg transition-all"
+                        title={t('serverCard.restart')}
+                      >
+                        <RotateCcw
+                          size={16}
+                          className={restartingId === instance.id ? 'animate-spin' : ''}
+                        />
+                      </button>
+                    </>
+                  )}
                 </>
               )}
-              <button
-                onClick={() => onConsole(instance.id)}
-                className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 p-2 rounded-lg transition-all"
-                title={t('serverCard.console')}
-              >
-                <Terminal size={16} />
-              </button>
+              {hasPerm('servers.console') && (
+                <button
+                  onClick={() => onConsole(instance.id)}
+                  className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 p-2 rounded-lg transition-all"
+                  title={t('serverCard.console')}
+                >
+                  <Terminal size={16} />
+                </button>
+              )}
             </>
           )}
           <div className="w-px h-6 bg-gray-800 mx-1" />
-          <button
-            onClick={() => onFiles(instance.id)}
-            disabled={!instance.isInstalled}
-            className="text-gray-500 hover:text-white p-2 rounded-lg transition-all disabled:opacity-20"
-            title={t('serverCard.file_manager')}
-          >
-            <FileText size={16} />
-          </button>
+          {hasPerm('servers.files') && (
+            <button
+              onClick={() => onFiles(instance.id)}
+              disabled={!instance.isInstalled}
+              className="text-gray-500 hover:text-white p-2 rounded-lg transition-all disabled:opacity-20"
+              title={t('serverCard.file_manager')}
+            >
+              <FileText size={16} />
+            </button>
+          )}
+
           <button
             onClick={() => onSettings(instance.id)}
             className="text-gray-500 hover:text-white p-2 rounded-lg transition-all"
@@ -195,14 +212,17 @@ const ServerRow = memo(
           >
             <Settings size={16} />
           </button>
-          <button
-            onClick={() => onDelete(instance.id)}
-            disabled={deletingId === instance.id}
-            className="text-gray-500 hover:text-red-500 p-2 rounded-lg transition-all"
-            title={t('serverCard.delete_server')}
-          >
-            <Trash2 size={16} />
-          </button>
+
+          {hasPerm('servers.delete') && (
+            <button
+              onClick={() => onDelete(instance.id)}
+              disabled={deletingId === instance.id}
+              className="text-gray-500 hover:text-red-500 p-2 rounded-lg transition-all"
+              title={t('serverCard.delete_server')}
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
         </div>
       </div>
     );

@@ -264,7 +264,7 @@ const Profile = () => {
             </div>
             <div className="pt-16 pb-6 px-6">
               <h3 className="text-xl font-bold text-white">{user?.username}</h3>
-              <p className="text-sm text-gray-500 font-medium">Standard User</p>
+              <p className="text-sm text-gray-500 font-medium">Managed User Profile</p>
 
               <div className="mt-8 space-y-4">
                 <div className="flex items-center gap-3 text-sm text-gray-400">

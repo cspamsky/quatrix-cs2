@@ -54,6 +54,16 @@ const Instances = () => {
   });
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [user] = useState(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : { permissions: [] };
+    } catch {
+      return { permissions: [] };
+    }
+  });
+
+  const hasPerm = (p: string) => user?.permissions?.includes('*') || user?.permissions?.includes(p);
 
   // System Info Query
   const { data: serverIp = window.location.hostname } = useQuery({
@@ -422,20 +432,22 @@ const Instances = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
               <input
                 aria-label={t('instances.filter_placeholder')}
-                className="w-64 pl-10 pr-4 py-2 bg-[#111827] border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
+                className="w-48 lg:w-64 pl-10 pr-4 py-2 bg-[#111827] border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
                 placeholder={t('instances.filter_placeholder')}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button
-              onClick={() => navigate('/instances/create')}
-              className="bg-primary hover:bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center transition-all shadow-lg shadow-blue-500/20 active:scale-95 whitespace-nowrap"
-            >
-              <Plus className="mr-2 w-4 h-4" />
-              {t('instances.create_new')}
-            </button>
+            {hasPerm('servers.create') && (
+              <button
+                onClick={() => navigate('/instances/create')}
+                className="bg-primary hover:bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center transition-all shadow-lg shadow-blue-500/20 active:scale-95 whitespace-nowrap"
+              >
+                <Plus className="mr-2 w-4 h-4" />
+                {t('instances.create_new')}
+              </button>
+            )}
           </div>
         </header>
 
@@ -457,35 +469,41 @@ const Instances = () => {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleBulkAction('start')}
-                  className="p-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-all border border-green-500/10"
-                  title={t('common.start')}
-                >
-                  <Play size={18} className="fill-current" />
-                </button>
-                <button
-                  onClick={() => handleBulkAction('stop')}
-                  className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all border border-red-500/10"
-                  title={t('common.stop')}
-                >
-                  <Square size={18} className="fill-current" />
-                </button>
-                <button
-                  onClick={() => handleBulkAction('restart')}
-                  className="p-2 bg-amber-500/10 text-amber-500 rounded-lg hover:bg-amber-500/20 transition-all border border-amber-500/10"
-                  title={t('common.restart')}
-                >
-                  <RefreshCw size={18} />
-                </button>
-                <div className="w-px h-6 bg-primary/20 mx-1" />
-                <button
-                  onClick={() => handleBulkAction('delete')}
-                  className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
-                  title={t('common.delete')}
-                >
-                  <Trash2 size={18} />
-                </button>
+                {hasPerm('servers.update') && (
+                  <>
+                    <button
+                      onClick={() => handleBulkAction('start')}
+                      className="p-2 bg-green-500/10 text-green-500 rounded-lg hover:bg-green-500/20 transition-all border border-green-500/10"
+                      title={t('common.start')}
+                    >
+                      <Play size={18} className="fill-current" />
+                    </button>
+                    <button
+                      onClick={() => handleBulkAction('stop')}
+                      className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-all border border-red-500/10"
+                      title={t('common.stop')}
+                    >
+                      <Square size={18} className="fill-current" />
+                    </button>
+                    <button
+                      onClick={() => handleBulkAction('restart')}
+                      className="p-2 bg-amber-500/10 text-amber-500 rounded-lg hover:bg-amber-500/20 transition-all border border-amber-500/10"
+                      title={t('common.restart')}
+                    >
+                      <RefreshCw size={18} />
+                    </button>
+                    <div className="w-px h-6 bg-primary/20 mx-1" />
+                  </>
+                )}
+                {hasPerm('servers.delete') && (
+                  <button
+                    onClick={() => handleBulkAction('delete')}
+                    className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                    title={t('common.delete')}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -536,6 +554,7 @@ const Instances = () => {
                   onFiles={handleFilesNavigate}
                   isSelected={selectedIds.has(instance.id)}
                   onSelect={handleSelect}
+                  userPermissions={user.permissions}
                 />
               ) : (
                 <ServerRow
@@ -557,6 +576,7 @@ const Instances = () => {
                   onConsole={handleConsoleNavigate}
                   onSettings={handleSettingsNavigate}
                   onFiles={handleFilesNavigate}
+                  userPermissions={user.permissions}
                 />
               )
             )}

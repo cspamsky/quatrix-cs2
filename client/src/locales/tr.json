@@ -61,6 +61,9 @@
     "no_messages": "Aramanızla eşleşen mesaj yok",
     "no_history": "Bu sunucu için sohbet geçmişi bulunamadı"
   },
+  "analytics": {
+    "subtitle": "Geçmiş sistem performansı ve kaynak kullanım verilerini inceleyin"
+  },
   "common": {
     "logout": "Çıkış Yap",
     "online": "Çevrimiçi",
@@ -378,9 +381,11 @@
     "plugins": "Eklentiler",
     "admins": "Admin Yönetimi",
     "database": "Veritabanı",
+    "analytics": "Analiz",
     "settings": "Ayarlar",
     "profile": "Profil",
-    "backups": "Yedekler"
+    "backups": "Yedekler",
+    "users": "Kullanıcı Yönetimi"
   },
   "players": {
     "title": "Oyuncu Yönetimi",

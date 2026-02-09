@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import db from '../db.js';
 import { serverManager } from '../serverManager.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { authorize } from '../middleware/authorize.js';
 import si from 'systeminformation';
 import type { AuthenticatedRequest, Settings } from '../types/index.js';
 
@@ -24,7 +25,7 @@ fetchPublicIp();
 router.use(authenticateToken);
 
 // GET /api/settings
-router.get('/settings', (req: Request, res: Response) => {
+router.get('/settings', authorize('users.manage'), (req: Request, res: Response) => {
   try {
     const settings = db.prepare('SELECT * FROM settings').all() as Array<{
       key: string;
@@ -69,7 +70,7 @@ router.get('/stats', (req: Request, res: Response) => {
 });
 
 // PUT /api/settings
-router.put('/settings', (req: Request, res: Response) => {
+router.put('/settings', authorize('users.manage'), (req: Request, res: Response) => {
   try {
     const updates = req.body;
     const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
@@ -94,7 +95,7 @@ router.put('/settings', (req: Request, res: Response) => {
 });
 
 // GET /api/system/health
-router.get('/system/health', async (req: Request, res: Response) => {
+router.get('/system/health', authorize('users.manage'), async (req: Request, res: Response) => {
   try {
     const health = await serverManager.getSystemHealth();
     res.json(health);
@@ -104,14 +105,18 @@ router.get('/system/health', async (req: Request, res: Response) => {
 });
 
 // POST /api/system/health/repair
-router.post('/system/health/repair', async (req: Request, res: Response) => {
-  try {
-    const result = await serverManager.repairSystemHealth();
-    res.json(result);
-  } catch {
-    res.status(500).json({ message: 'Failed to perform system repair' });
+router.post(
+  '/system/health/repair',
+  authorize('users.manage'),
+  async (req: Request, res: Response) => {
+    try {
+      const result = await serverManager.repairSystemHealth();
+      res.json(result);
+    } catch {
+      res.status(500).json({ message: 'Failed to perform system repair' });
+    }
   }
-});
+);
 
 // GET /api/system-info
 router.get('/system-info', async (req: Request, res: Response) => {
@@ -132,30 +137,34 @@ router.get('/system-info', async (req: Request, res: Response) => {
 });
 
 // POST /api/settings/steamcmd/download
-router.post('/settings/steamcmd/download', async (req: Request, res: Response) => {
-  try {
-    const { path: steamPath } = req.body;
-    if (!steamPath) return res.status(400).json({ message: 'Path is required' });
+router.post(
+  '/settings/steamcmd/download',
+  authorize('users.manage'),
+  async (req: Request, res: Response) => {
+    try {
+      const { path: steamPath } = req.body;
+      if (!steamPath) return res.status(400).json({ message: 'Path is required' });
 
-    // Update DB
-    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
-      'steamcmd_path',
-      steamPath
-    );
+      // Update DB
+      db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(
+        'steamcmd_path',
+        steamPath
+      );
 
-    // Refresh manager settings to pick up new path
-    serverManager.refreshSettings();
+      // Refresh manager settings to pick up new path
+      serverManager.refreshSettings();
 
-    // Simple validation or trigger download
-    const success = await serverManager.ensureSteamCMD();
-    if (success) {
-      res.json({ message: 'SteamCMD is ready' });
-    } else {
-      res.status(500).json({ message: 'SteamCMD download/verification failed' });
+      // Simple validation or trigger download
+      const success = await serverManager.ensureSteamCMD();
+      if (success) {
+        res.json({ message: 'SteamCMD is ready' });
+      } else {
+        res.status(500).json({ message: 'SteamCMD download/verification failed' });
+      }
+    } catch {
+      res.status(500).json({ message: 'Failed to process SteamCMD download' });
     }
-  } catch {
-    res.status(500).json({ message: 'Failed to process SteamCMD download' });
   }
-});
+);
 
 export default router;

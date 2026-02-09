@@ -66,7 +66,13 @@ export class DatabaseManager {
       console.log('[DB] MySQL Manager connected successfully.');
     } catch (error: unknown) {
       const err = error as Error;
-      console.error('[DB] MySQL Connection failed:', err.message);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(
+          `[DB] MySQL Manager: Optional service not connected (Host: ${this.config.host}:${this.config.port}). This is expected if you are only developing the panel with SQLite.`
+        );
+      } else {
+        console.error('[DB] MySQL Connection failed:', err.message);
+      }
       this.pool = null;
     }
   }

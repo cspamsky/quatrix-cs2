@@ -51,6 +51,7 @@ interface ServerCardProps {
   onFiles: (id: number) => void;
   isSelected?: boolean;
   onSelect?: (id: number) => void;
+  userPermissions?: string[];
 }
 
 const ServerCard = memo(
@@ -74,8 +75,11 @@ const ServerCard = memo(
     onFiles,
     isSelected = false,
     onSelect,
+    userPermissions = [],
   }: ServerCardProps) => {
     const { t } = useTranslation();
+
+    const hasPerm = (p: string) => userPermissions.includes('*') || userPermissions.includes(p);
     return (
       <div
         className={`bg-[#111827] rounded-xl border border-gray-800/50 overflow-hidden flex flex-col group hover:border-primary/50 transition-all duration-300 ${
@@ -184,70 +188,85 @@ const ServerCard = memo(
 
           <div className="mt-auto flex items-center gap-2 pt-4 border-t border-gray-800/60">
             {!instance.isInstalled ? (
-              <button
-                onClick={() => onInstall(instance.id)}
-                disabled={installingId === instance.id || instance.status === 'INSTALLING'}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-orange-500/10 disabled:opacity-50"
-              >
-                {installingId === instance.id || instance.status === 'INSTALLING' ? (
-                  <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
-                ) : (
-                  <Download className="w-3 h-3 mr-1.5" />
-                )}
-                {instance.status === 'INSTALLING'
-                  ? t('serverCard.installing')
-                  : t('serverCard.install_server')}
-              </button>
+              hasPerm('servers.create') && (
+                <button
+                  onClick={() => onInstall(instance.id)}
+                  disabled={installingId === instance.id || instance.status === 'INSTALLING'}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-orange-500/10 disabled:opacity-50"
+                >
+                  {installingId === instance.id || instance.status === 'INSTALLING' ? (
+                    <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
+                  ) : (
+                    <Download className="w-3 h-3 mr-1.5" />
+                  )}
+                  {instance.status === 'INSTALLING'
+                    ? t('serverCard.installing')
+                    : t('serverCard.install_server')}
+                </button>
+              )
             ) : (
               <>
                 {instance.status === 'OFFLINE' ? (
-                  <button
-                    onClick={() => onStart(instance.id)}
-                    disabled={startingId === instance.id}
-                    className="flex-1 bg-primary hover:bg-blue-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {startingId === instance.id ? (
-                      <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
-                    ) : (
-                      <Play className="w-3 h-3 mr-1.5" />
-                    )}
-                    {startingId === instance.id ? t('serverCard.starting') : t('serverCard.start')}
-                  </button>
-                ) : (
-                  <>
+                  hasPerm('servers.update') && (
                     <button
-                      onClick={() => onStop(instance.id)}
-                      disabled={stoppingId === instance.id}
-                      className="flex-1 bg-gray-800/40 hover:bg-red-500/10 hover:text-red-500 py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40 disabled:opacity-50"
+                      onClick={() => onStart(instance.id)}
+                      disabled={startingId === instance.id}
+                      className="flex-1 bg-primary hover:bg-blue-600 text-white py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center shadow-lg shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {stoppingId === instance.id ? (
+                      {startingId === instance.id ? (
                         <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
                       ) : (
-                        <Square className="w-3 h-3 mr-1.5 fill-current" />
+                        <Play className="w-3 h-3 mr-1.5" />
                       )}
-                      {stoppingId === instance.id ? t('serverCard.stopping') : t('serverCard.stop')}
+                      {startingId === instance.id
+                        ? t('serverCard.starting')
+                        : t('serverCard.start')}
                     </button>
-                    <button
-                      onClick={() => onRestart(instance.id)}
-                      disabled={restartingId === instance.id}
-                      className="p-2 bg-gray-800/40 hover:bg-amber-500/10 hover:text-amber-500 rounded transition-all border border-gray-800/40 disabled:opacity-50"
-                      title={t('serverCard.restart')}
-                      aria-label={t('serverCard.restart')}
-                    >
-                      <RotateCcw
-                        className={`w-3.5 h-3.5 ${restartingId === instance.id ? 'animate-spin' : ''}`}
-                      />
-                    </button>
+                  )
+                ) : (
+                  <>
+                    {hasPerm('servers.update') && (
+                      <>
+                        <button
+                          onClick={() => onStop(instance.id)}
+                          disabled={stoppingId === instance.id}
+                          className="flex-1 bg-gray-800/40 hover:bg-red-500/10 hover:text-red-500 py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40 disabled:opacity-50"
+                        >
+                          {stoppingId === instance.id ? (
+                            <RefreshCw className="w-3 h-3 mr-1.5 animate-spin" />
+                          ) : (
+                            <Square className="w-3 h-3 mr-1.5 fill-current" />
+                          )}
+                          {stoppingId === instance.id
+                            ? t('serverCard.stopping')
+                            : t('serverCard.stop')}
+                        </button>
+                        <button
+                          onClick={() => onRestart(instance.id)}
+                          disabled={restartingId === instance.id}
+                          className="p-2 bg-gray-800/40 hover:bg-amber-500/10 hover:text-amber-500 rounded transition-all border border-gray-800/40 disabled:opacity-50"
+                          title={t('serverCard.restart')}
+                          aria-label={t('serverCard.restart')}
+                        >
+                          <RotateCcw
+                            className={`w-3.5 h-3.5 ${restartingId === instance.id ? 'animate-spin' : ''}`}
+                          />
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
-                <button
-                  onClick={() => onConsole(instance.id)}
-                  className="flex-1 bg-gray-800/40 hover:bg-primary/10 hover:text-primary py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40"
-                >
-                  <Terminal className="w-3 h-3 mr-1.5" /> {t('serverCard.console')}
-                </button>
+                {hasPerm('servers.console') && (
+                  <button
+                    onClick={() => onConsole(instance.id)}
+                    className="flex-1 bg-gray-800/40 hover:bg-primary/10 hover:text-primary py-2 rounded text-[11px] font-semibold transition-all flex items-center justify-center border border-gray-800/40"
+                  >
+                    <Terminal className="w-3 h-3 mr-1.5" /> {t('serverCard.console')}
+                  </button>
+                )}
               </>
             )}
+
             <button
               aria-label={t('serverCard.settings')}
               onClick={() => onSettings(instance.id)}
@@ -255,26 +274,32 @@ const ServerCard = memo(
             >
               <Settings className="w-3.5 h-3.5" />
             </button>
-            <button
-              aria-label={t('serverCard.file_manager')}
-              onClick={() => onFiles(instance.id)}
-              disabled={!instance.isInstalled}
-              className="p-2 bg-gray-800/40 hover:bg-gray-700/40 rounded transition-all border border-gray-800/40 text-gray-400 hover:text-white disabled:opacity-30"
-            >
-              <FileText className="w-3.5 h-3.5" />
-            </button>
-            <button
-              aria-label={t('serverCard.delete_server')}
-              onClick={() => onDelete(instance.id)}
-              disabled={deletingId === instance.id}
-              className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded transition-all border border-red-500/20 text-red-500 flex items-center justify-center disabled:opacity-50"
-            >
-              {deletingId === instance.id ? (
-                <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <Trash2 className="w-3.5 h-3.5" />
-              )}
-            </button>
+
+            {hasPerm('servers.files') && (
+              <button
+                aria-label={t('serverCard.file_manager')}
+                onClick={() => onFiles(instance.id)}
+                disabled={!instance.isInstalled}
+                className="p-2 bg-gray-800/40 hover:bg-gray-700/40 rounded transition-all border border-gray-800/40 text-gray-400 hover:text-white disabled:opacity-30"
+              >
+                <FileText className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {hasPerm('servers.delete') && (
+              <button
+                aria-label={t('serverCard.delete_server')}
+                onClick={() => onDelete(instance.id)}
+                disabled={deletingId === instance.id}
+                className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded transition-all border border-red-500/20 text-red-500 flex items-center justify-center disabled:opacity-50"
+              >
+                {deletingId === instance.id ? (
+                  <div className="w-3.5 h-3.5 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>

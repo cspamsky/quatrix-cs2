@@ -20,6 +20,16 @@ const Settings = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('general');
   const [isConnected, setIsConnected] = useState(socket.connected);
+  const [user] = useState(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : { permissions: [] };
+    } catch {
+      return { permissions: [] };
+    }
+  });
+
+  const canManage = user?.permissions?.includes('*') || user?.permissions?.includes('users.manage');
 
   useEffect(() => {
     const onConnect = () => setIsConnected(true);
@@ -209,6 +219,7 @@ const Settings = () => {
               onSave={() => toast.success(t('settings.local_save_success'))}
               systemInfo={healthData}
               isLoading={healthLoading}
+              canEdit={canManage}
             />
           )}
 
@@ -222,6 +233,7 @@ const Settings = () => {
               engineMessage={engineMessage}
               onDownloadSteamCmd={handleDownloadSteamCmd}
               onSave={handleSaveEngineSettings}
+              canEdit={canManage}
             />
           )}
 
@@ -231,6 +243,7 @@ const Settings = () => {
               healthLoading={healthLoading || repairHealthMutation.isPending}
               onRefresh={() => refetchHealth()}
               onRepair={() => repairHealthMutation.mutate()}
+              canEdit={canManage}
             />
           )}
 

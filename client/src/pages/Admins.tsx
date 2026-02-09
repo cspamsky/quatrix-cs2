@@ -31,6 +31,17 @@ const Admins = () => {
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAdding, setIsAdding] = useState(false);
+  const [user] = useState(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : { permissions: [] };
+    } catch {
+      return { permissions: [] };
+    }
+  });
+
+  const canManage =
+    user?.permissions?.includes('*') || user?.permissions?.includes('servers.update');
 
   // New Admin Form State
   const [newAdmin, setNewAdmin] = useState({
@@ -184,13 +195,15 @@ const Admins = () => {
             <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
           </button>
 
-          <button
-            onClick={() => setIsAdding(true)}
-            className="bg-primary hover:bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center transition-all shadow-lg shadow-blue-500/20 active:scale-95"
-          >
-            <Plus className="mr-2 w-4 h-4" />
-            {t('admins.add_admin')}
-          </button>
+          {canManage && (
+            <button
+              onClick={() => setIsAdding(true)}
+              className="bg-primary hover:bg-blue-600 text-white px-5 py-2 rounded-xl font-bold text-sm flex items-center transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+            >
+              <Plus className="mr-2 w-4 h-4" />
+              {t('admins.add_admin')}
+            </button>
+          )}
         </div>
       </header>
 
@@ -260,12 +273,14 @@ const Admins = () => {
                       <span className="text-sm font-bold text-orange-400">{admin.immunity}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleDeleteAdmin(admin.Name)}
-                        className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {canManage && (
+                        <button
+                          onClick={() => handleDeleteAdmin(admin.Name)}
+                          className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
