@@ -305,6 +305,9 @@ export class PluginInstaller {
             const gdDest = path.join(cssBase, 'gamedata');
             await fs.mkdir(gdDest, { recursive: true });
             await fs.cp(src, gdDest, { recursive: true });
+          } else if (lowerName === pluginFolderName.toLowerCase()) {
+            // Flatten: if we find a folder named exactly like the plugin, copy its CONTENTS to the dest
+            await fs.cp(src, pluginDest, { recursive: true });
           } else {
             // Default to plugin folder
             await fs.cp(src, path.join(pluginDest, item.name), { recursive: true });
