@@ -43,191 +43,203 @@ export class PluginInstaller {
   ): Promise<void> {
     // SECURITY: Validate pluginId to prevent Path Traversal
     if (!/^[a-zA-Z0-9\-_]+$/.test(pluginId) && pluginId !== 'metamod' && pluginId !== 'cssharp') {
-      throw new Error(`Invalid plugin ID: ${pluginId}`);
+      throw new Error(`Invalid plugin ID format: ${pluginId}`);
     }
 
-    if (taskId) {
-      taskService.updateTask(taskId, {
-        status: 'running',
-        message: `Installing ${pluginId}...`,
-        progress: 10,
-      });
-    }
+    try {
+      if (taskId) {
+        taskService.updateTask(taskId, {
+          status: 'running',
+          message: `Installing ${pluginId}...`,
+          progress: 10,
+        });
+      }
 
-    const csgoDir = path.join(installDir, instanceId.toString(), 'game', 'csgo');
+      const csgoDir = path.join(installDir, instanceId.toString(), 'game', 'csgo');
 
-    // 1. Smart Dependency: If installing any CSS plugin, ensure MM and CSS are present
-    if (
-      pluginInfo.category === 'cssharp' &&
-      pluginId !== 'metamod' &&
-      pluginId !== 'cssharp' &&
-      pluginId !== 'cssharp-core'
-    ) {
-      const addonsDir = path.join(csgoDir, 'addons');
-      const cssBase = path.join(addonsDir, 'counterstrikesharp');
+      // 1. Smart Dependency: If installing any CSS plugin, ensure MM and CSS are present
+      if (
+        pluginInfo.category === 'cssharp' &&
+        pluginId !== 'metamod' &&
+        pluginId !== 'cssharp' &&
+        pluginId !== 'cssharp-core'
+      ) {
+        const addonsDir = path.join(csgoDir, 'addons');
+        const cssBase = path.join(addonsDir, 'counterstrikesharp');
 
-      const mmInstalled = await fs
-        .access(path.join(addonsDir, 'metamod.vdf'))
-        .then(() => true)
-        .catch(() =>
-          fs
-            .access(path.join(addonsDir, 'metamod_x64.vdf'))
-            .then(() => true)
-            .catch(() => false)
-        );
-      const cssInstalled = await fs
-        .access(cssBase)
-        .then(() => true)
-        .catch(() => false);
-
-      if (!mmInstalled || !cssInstalled) {
-        const { pluginRegistry } = await import('../../config/plugins.js');
-        if (!mmInstalled && pluginRegistry.metamod) {
-          console.log(`[PLUGIN] Auto-installing Metamod dependency for ${pluginId}...`);
-          await this.install(
-            installDir,
-            instanceId,
-            'metamod',
-            pluginRegistry.metamod as any,
-            taskId
+        const mmInstalled = await fs
+          .access(path.join(addonsDir, 'metamod.vdf'))
+          .then(() => true)
+          .catch(() =>
+            fs
+              .access(path.join(addonsDir, 'metamod_x64.vdf'))
+              .then(() => true)
+              .catch(() => false)
           );
-        }
-        if (!cssInstalled && pluginRegistry.cssharp) {
-          console.log(`[PLUGIN] Auto-installing CounterStrikeSharp dependency for ${pluginId}...`);
-          await this.install(
-            installDir,
-            instanceId,
-            'cssharp',
-            pluginRegistry.cssharp as any,
-            taskId
-          );
+        const cssInstalled = await fs
+          .access(cssBase)
+          .then(() => true)
+          .catch(() => false);
+
+        if (!mmInstalled || !cssInstalled) {
+          const { pluginRegistry } = await import('../../config/plugins.js');
+          if (!mmInstalled && pluginRegistry.metamod) {
+            console.log(`[PLUGIN] Auto-installing Metamod dependency for ${pluginId}...`);
+            await this.install(
+              installDir,
+              instanceId,
+              'metamod',
+              pluginRegistry.metamod as any,
+              taskId
+            );
+          }
+          if (!cssInstalled && pluginRegistry.cssharp) {
+            console.log(
+              `[PLUGIN] Auto-installing CounterStrikeSharp dependency for ${pluginId}...`
+            );
+            await this.install(
+              installDir,
+              instanceId,
+              'cssharp',
+              pluginRegistry.cssharp as any,
+              taskId
+            );
+          }
         }
       }
-    }
 
-    // 2. Find plugin in pool
-    const poolPath = await this.findInPool(pluginId, pluginInfo);
+      // 2. Find plugin in pool
+      const poolPath = await this.findInPool(pluginId, pluginInfo);
 
-    console.log(
-      '[PLUGIN] Syncing',
-      pluginInfo.name,
-      'from pool (' + path.basename(poolPath) + ') to instance...'
-    );
+      if (taskId) {
+        taskService.updateTask(taskId, {
+          progress: 20,
+          message: `Found ${pluginInfo.name} in pool`,
+        });
+      }
 
-    // 2. Detect structure and determine sync strategy
-    const hasGameDir = await fs
-      .access(path.join(poolPath, 'game'))
-      .then(() => true)
-      .catch(() => false);
-    const hasAddonsDir = await fs
-      .access(path.join(poolPath, 'addons'))
-      .then(() => true)
-      .catch(() => false);
-    const hasCSSDir = await fs
-      .access(path.join(poolPath, 'counterstrikesharp'))
-      .then(() => true)
-      .catch(() => false);
+      console.log(
+        '[PLUGIN] Syncing',
+        pluginInfo.name,
+        'from pool (' + path.basename(poolPath) + ') to instance...'
+      );
 
-    // Check for standard CS2 folders
-    const assetFolders = [
-      'cfg',
-      'materials',
-      'models',
-      'particles',
-      'sound',
-      'soundevents',
-      'translations',
-      'maps',
-      'scripts',
-    ];
-    const assetFound = (
-      await Promise.all(
-        assetFolders.map((f) =>
-          fs
-            .access(path.join(poolPath, f))
-            .then(() => true)
-            .catch(() => false)
+      // 3. Detect structure and determine sync strategy
+      const poolItems = await fs.readdir(poolPath);
+      const poolItemsLower = poolItems.map((i) => i.toLowerCase());
+
+      const hasGameDir = poolItemsLower.includes('game');
+      const hasAddonsDir = poolItemsLower.includes('addons');
+      const hasCSSDir = poolItemsLower.includes('counterstrikesharp');
+
+      // Check for standard CS2 folders
+      const assetFolders = [
+        'cfg',
+        'materials',
+        'models',
+        'particles',
+        'sound',
+        'soundevents',
+        'translations',
+        'maps',
+        'scripts',
+      ];
+      const assetFound = (
+        await Promise.all(
+          assetFolders.map((f) =>
+            fs
+              .access(path.join(poolPath, f))
+              .then(() => true)
+              .catch(() => false)
+          )
         )
-      )
-    ).some((x) => x);
+      ).some((x) => x);
 
-    // SECURITY: Sanitize pluginFolderName
-    const rawFolderName = pluginInfo.folderName || pluginId;
-    const baseName = path.basename(rawFolderName);
-    const pluginFolderName = baseName.replace(/[^a-zA-Z0-9\-_]/g, '');
+      // SECURITY: Sanitize pluginFolderName
+      const rawFolderName = pluginInfo.folderName || pluginId;
+      const baseName = path.basename(rawFolderName);
+      const pluginFolderName = baseName.replace(/[^a-zA-Z0-9\-_]/g, '');
 
-    if (!pluginFolderName) {
-      throw new Error(`Invalid plugin folder name: ${rawFolderName}`);
-    }
+      if (!pluginFolderName) {
+        throw new Error(`Invalid plugin folder name: ${rawFolderName}`);
+      }
 
-    // 3. Sync files based on structure
-    if (taskId) {
-      taskService.updateTask(taskId, { progress: 30, message: 'Syncing files...' });
-    }
+      // 3. Sync files based on structure
+      if (taskId) {
+        taskService.updateTask(taskId, { progress: 30, message: 'Syncing files...' });
+      }
 
-    if (hasGameDir) {
-      // Merge into instance root
-      await fs.cp(poolPath, path.dirname(path.dirname(csgoDir)), { recursive: true });
-    } else if (hasAddonsDir || assetFound) {
-      // Merge into game/csgo
-      await fs.cp(poolPath, csgoDir, { recursive: true });
-    } else if (hasCSSDir) {
-      // Merge into game/csgo/addons
-      await fs.cp(poolPath, path.join(csgoDir, 'addons'), { recursive: true });
-    } else {
-      // Smart Sync: Non-standard structure
-      await this.smartSync(poolPath, csgoDir, pluginInfo, pluginFolderName);
-    }
+      if (hasGameDir) {
+        // Merge into instance root
+        await fs.cp(poolPath, path.dirname(path.dirname(csgoDir)), { recursive: true });
+      } else if (hasAddonsDir || assetFound) {
+        // Merge into game/csgo
+        await fs.cp(poolPath, csgoDir, { recursive: true });
+      } else if (hasCSSDir) {
+        // Merge into game/csgo/addons
+        await fs.cp(poolPath, path.join(csgoDir, 'addons'), { recursive: true });
+      } else {
+        // Smart Sync: Non-standard structure
+        await this.smartSync(poolPath, csgoDir, pluginInfo, pluginFolderName);
+      }
 
-    if (taskId) {
-      taskService.updateTask(taskId, { progress: 60, message: 'Post-processing configs...' });
-    }
+      if (taskId) {
+        taskService.updateTask(taskId, { progress: 60, message: 'Post-processing configs...' });
+      }
 
-    // 4. Determine search directory for post-processing
-    const searchDir = hasGameDir
-      ? path.dirname(path.dirname(csgoDir))
-      : hasAddonsDir || assetFound
-        ? csgoDir
-        : hasCSSDir
-          ? path.join(csgoDir, 'addons')
-          : csgoDir;
+      // 4. Determine search directory for post-processing
+      const searchDir = hasGameDir
+        ? path.dirname(path.dirname(csgoDir))
+        : hasAddonsDir || assetFound
+          ? csgoDir
+          : hasCSSDir
+            ? path.join(csgoDir, 'addons')
+            : csgoDir;
 
-    // 5. Process example configs
-    await pluginConfigManager.processExampleConfigs(searchDir);
+      // 5. Process example configs
+      await pluginConfigManager.processExampleConfigs(searchDir);
 
-    // 6. Inject MySQL credentials
-    await pluginDatabaseInjector
-      .injectCredentials(instanceId, searchDir)
-      .catch((err) => console.error('[PLUGIN] MySQL Injection failed for:', pluginId, err));
+      // 6. Inject MySQL credentials
+      await pluginDatabaseInjector
+        .injectCredentials(instanceId, searchDir)
+        .catch((err) => console.error('[PLUGIN] MySQL Injection failed for:', pluginId, err));
 
-    if (taskId) {
-      taskService.updateTask(taskId, { progress: 80, message: 'Finalizing installation...' });
-    }
+      if (taskId) {
+        taskService.updateTask(taskId, { progress: 80, message: 'Finalizing installation...' });
+      }
 
-    // 7. Record in database
-    try {
-      this.db
-        .prepare(
-          `
+      // 7. Record in database
+      try {
+        this.db
+          .prepare(
+            `
         INSERT INTO server_plugins (server_id, plugin_id, version) 
         VALUES (?, ?, ?)
         ON CONFLICT(server_id, plugin_id) DO UPDATE SET version = EXCLUDED.version
       `
-        )
-        .run(instanceId, pluginId, pluginInfo.currentVersion);
-    } catch (err) {
-      console.error(`[DB] Failed to record plugin sync:`, err);
-    }
+          )
+          .run(instanceId, pluginId, pluginInfo.currentVersion);
+      } catch (err) {
+        console.error(`[DB] Failed to record plugin sync:`, err);
+      }
 
-    // 8. Special handling for metamod
-    if (pluginId === 'metamod') {
-      await this.configureMetamod(csgoDir, taskId);
-    }
+      // 8. Special handling for metamod
+      if (pluginId === 'metamod') {
+        await this.configureMetamod(csgoDir, taskId);
+      }
 
-    console.log('[PLUGIN]', pluginInfo.name, 'sync complete.');
+      console.log('[PLUGIN]', pluginInfo.name, 'sync complete.');
 
-    if (taskId) {
-      taskService.completeTask(taskId, `${pluginInfo.name} installed`);
+      if (taskId) {
+        taskService.completeTask(taskId, `${pluginInfo.name} installed successfully`);
+      }
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error(`[PLUGIN] Installation failed for ${pluginId}:`, error.message);
+      if (taskId) {
+        taskService.failTask(taskId, error.message);
+      }
+      throw error; // Rethrow for the route handler to catch and return 500 with message
     }
   }
 
@@ -289,6 +301,10 @@ export class PluginInstaller {
           } else if (lowerName === 'translations' || lowerName === 'lang') {
             await fs.mkdir(transDest, { recursive: true });
             await fs.cp(src, transDest, { recursive: true });
+          } else if (lowerName === 'gamedata') {
+            const gdDest = path.join(cssBase, 'gamedata');
+            await fs.mkdir(gdDest, { recursive: true });
+            await fs.cp(src, gdDest, { recursive: true });
           } else {
             // Default to plugin folder
             await fs.cp(src, path.join(pluginDest, item.name), { recursive: true });
