@@ -59,10 +59,8 @@ export class PluginInstaller {
 
       // 1. Smart Dependency: If installing any CSS plugin, ensure MM and CSS are present
       if (
-        pluginInfo.category === 'cssharp' &&
-        pluginId !== 'metamod' &&
-        pluginId !== 'cssharp' &&
-        pluginId !== 'cssharp-core'
+        (pluginInfo.category === 'cssharp' || pluginId === 'cssharp') &&
+        pluginId !== 'metamod'
       ) {
         const addonsDir = path.join(csgoDir, 'addons');
         const cssBase = path.join(addonsDir, 'counterstrikesharp');
@@ -223,8 +221,8 @@ export class PluginInstaller {
         console.error(`[DB] Failed to record plugin sync:`, err);
       }
 
-      // 8. Special handling for metamod
-      if (pluginId === 'metamod') {
+      // 8. Special handling for core plugins: Patch gameinfo ONLY during CS# install
+      if (pluginId === 'cssharp') {
         await this.configureMetamod(csgoDir, taskId);
       }
 
@@ -366,12 +364,24 @@ export class PluginInstaller {
       let content = await fs.readFile(gameinfo, 'utf8');
       if (!content.includes('csgo/addons/metamod')) {
         const lines = content.split('\n');
-        const searchIndex = lines.findIndex((l) => l.includes('Game_LowViolence'));
+        
+        // Try multiple anchor points for insertion
+        let searchIndex = lines.findIndex((l) => l.includes('Game_LowViolence'));
+        
+        // Fallback: search for SearchPaths start
+        if (searchIndex === -1) {
+          searchIndex = lines.findIndex((l) => l.includes('SearchPaths'));
+          if (searchIndex !== -1) searchIndex++; // Step inside the block
+        }
+
         if (searchIndex !== -1) {
-          lines.splice(searchIndex, 0, '\t\t\tGame\tcsgo/addons/metamod');
+          // Insert AFTER the found line
+          lines.splice(searchIndex + 1, 0, '\t\t\tGame\tcsgo/addons/metamod');
           content = lines.join('\n');
           await fs.writeFile(gameinfo, content);
           console.log('[PLUGIN] Patched gameinfo.gi for Metamod');
+        } else {
+          console.warn('[PLUGIN] Could not find a safe place to patch gameinfo.gi');
         }
       }
     } catch (err) {
