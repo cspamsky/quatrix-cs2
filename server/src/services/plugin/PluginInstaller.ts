@@ -438,6 +438,21 @@ export class PluginInstaller {
         }
         await fs.rm(target, { recursive: true, force: true });
       }
+
+      // EXTRA: Case-insensitive gamedata cleanup (Fix for Linux case-sensitivity)
+      try {
+        const gdPath = path.join(cssBase, 'gamedata');
+        const gdItems = await fs.readdir(gdPath).catch(() => []);
+        const targetLower = baseFolderName.toLowerCase();
+        for (const item of gdItems) {
+          const itemLower = item.toLowerCase();
+          if (itemLower === targetLower || itemLower === `${targetLower}.json`) {
+            await fs.rm(path.join(gdPath, item), { recursive: true, force: true });
+          }
+        }
+      } catch (err) {
+        console.warn(`[PLUGIN] Failed to perform deep gamedata cleanup:`, err);
+      }
     } else if (pluginInfo.category === 'metamod') {
       const target = path.resolve(addonsDir, baseFolderName);
 
