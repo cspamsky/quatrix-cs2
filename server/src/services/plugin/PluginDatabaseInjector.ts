@@ -64,20 +64,30 @@ export class PluginDatabaseInjector {
           await walk(fullPath);
         } else if (item.isFile()) {
           const ext = path.extname(item.name).toLowerCase();
+          if (ext !== '.json' && ext !== '.toml' && ext !== '.cfg' && ext !== '.ini') continue;
+
           const content = await fs.readFile(fullPath, 'utf8');
+          const contentLower = content.toLowerCase();
+
+          // Check if file potentially contains DB settings (case-insensitive)
+          if (
+            !contentLower.includes('database') &&
+            !contentLower.includes('mysql') &&
+            !contentLower.includes('host') &&
+            !contentLower.includes('connectionstring')
+          ) {
+            continue;
+          }
+
           const creds = await getCreds();
 
           // 1. JSON Injection
-          if (
-            ext === '.json' &&
-            (content.includes('"Database"') ||
-              content.includes('"Host"') ||
-              content.includes('"MySQL"'))
-          ) {
+          if (ext === '.json') {
             try {
               const config = JSON.parse(content);
               let changed = false;
 
+              // Comprehensive mapping (CamelCase, PascalCase, snake_case)
               const keysMapping: Record<string, string | number> = {
                 DatabaseHost: creds.host,
                 DatabasePort: creds.port,
@@ -85,33 +95,49 @@ export class PluginDatabaseInjector {
                 DatabasePassword: creds.password,
                 DatabaseName: creds.database,
                 Host: creds.host,
+                host: creds.host,
                 Port: creds.port,
+                port: creds.port,
                 User: creds.user,
+                user: creds.user,
                 Password: creds.password,
+                password: creds.password,
                 Database: creds.database,
+                database: creds.database,
+                DBHost: creds.host,
+                DBPort: creds.port,
+                DBUser: creds.user,
+                DBPass: creds.password,
+                DBName: creds.database,
               };
 
-              // Check top level keys
-              for (const [key, val] of Object.entries(keysMapping)) {
-                if (
-                  Object.prototype.hasOwnProperty.call(config, key) &&
-                  typeof config[key] !== 'object'
-                ) {
-                  config[key] = val;
-                  changed = true;
-                }
-              }
+              // Injector Helper
+              const injectInto = (obj: any): boolean => {
+                let localChanged = false;
+                if (!obj || typeof obj !== 'object') return false;
 
-              // Check nested "Database" or "MySQL" objects
-              const subObjects = ['Database', 'MySQL', 'mysql', 'database'];
-              for (const subKey of subObjects) {
-                if (config[subKey] && typeof config[subKey] === 'object') {
-                  for (const [k, v] of Object.entries(keysMapping)) {
-                    if (Object.prototype.hasOwnProperty.call(config[subKey], k)) {
-                      config[subKey][k] = v;
-                      changed = true;
+                for (const [key, val] of Object.entries(keysMapping)) {
+                  if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                    // Only overwrite if it's a string/number or empty
+                    if (typeof obj[key] !== 'object' || obj[key] === null) {
+                      if (obj[key] !== val) {
+                        obj[key] = val;
+                        localChanged = true;
+                      }
                     }
                   }
+                }
+                return localChanged;
+              };
+
+              // Try injecting into root
+              if (injectInto(config)) changed = true;
+
+              // Try injecting into common sub-objects
+              const subObjects = ['Database', 'MySQL', 'mysql', 'database', 'Connection', 'db'];
+              for (const subKey of subObjects) {
+                if (config[subKey] && typeof config[subKey] === 'object') {
+                  if (injectInto(config[subKey])) changed = true;
                 }
               }
 
@@ -123,25 +149,23 @@ export class PluginDatabaseInjector {
               // Skip non-valid or non-standard JSON
             }
           }
-          // 2. TOML / CFG Injection (Regex based for common formats)
-          else if (
-            (ext === '.toml' || ext === '.cfg') &&
-            (content.includes('Database') || content.includes('MySQL') || content.includes('Host'))
-          ) {
+          // 2. TOML / CFG / INI Injection (Regex based)
+          else {
             let newContent = content;
             let changed = false;
 
             const patterns = [
-              { regex: /(DatabaseHost\s*=\s*")([^"]*)(")/gi, val: creds.host },
-              { regex: /(DatabaseUser\s*=\s*")([^"]*)(")/gi, val: creds.user },
-              { regex: /(DatabasePassword\s*=\s*")([^"]*)(")/gi, val: creds.password },
-              { regex: /(DatabaseName\s*=\s*")([^"]*)(")/gi, val: creds.database },
-              { regex: /(DatabasePort\s*=\s*)(\d+)/gi, val: creds.port },
-              // CFG style (no equals)
-              { regex: /(DatabaseHost\s+")([^"]*)(")/gi, val: creds.host },
-              { regex: /(DatabaseUser\s+")([^"]*)(")/gi, val: creds.user },
-              { regex: /(DatabasePassword\s+")([^"]*)(")/gi, val: creds.password },
-              { regex: /(DatabaseName\s+")([^"]*)(")/gi, val: creds.database },
+              // Key = "Value"
+              { regex: /((?:Database)?Host\s*=\s*")([^"]*)(")/gi, val: creds.host },
+              { regex: /((?:Database)?User\s*=\s*")([^"]*)(")/gi, val: creds.user },
+              { regex: /((?:Database)?Password\s*=\s*")([^"]*)(")/gi, val: creds.password },
+              { regex: /((?:Database|Name)?Name\s*=\s*")([^"]*)(")/gi, val: creds.database },
+              { regex: /((?:Database)?Port\s*=\s*)(\d+)/gi, val: creds.port },
+              // CFG style (no equals) e.g. DatabaseHost "127.0.0.1"
+              { regex: /((?:Database)?Host\s+")([^"]*)(")/gi, val: creds.host },
+              { regex: /((?:Database)?User\s+")([^"]*)(")/gi, val: creds.user },
+              { regex: /((?:Database)?Password\s+")([^"]*)(")/gi, val: creds.password },
+              { regex: /((?:Database)?Name\s+")([^"]*)(")/gi, val: creds.database },
             ];
 
             for (const p of patterns) {
