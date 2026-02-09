@@ -63,7 +63,7 @@ export class PluginDatabaseInjector {
         if (item.isDirectory()) {
           await walk(fullPath);
         } else if (item.isFile()) {
-          const ext = path.extname(item.name).toLowerCase();
+           const ext = path.extname(item.name).toLowerCase();
           if (ext !== '.json' && ext !== '.toml' && ext !== '.cfg' && ext !== '.ini') continue;
 
           const content = await fs.readFile(fullPath, 'utf8');
@@ -80,14 +80,17 @@ export class PluginDatabaseInjector {
           }
 
           const creds = await getCreds();
+          let changed = false;
+          let newContent = content;
 
-          // 1. JSON Injection
+          // 1. JSON Injection (with Comment Stripping)
           if (ext === '.json') {
             try {
-              const config = JSON.parse(content);
-              let changed = false;
+              // Strip C-style comments (// and /* */) for JSON.parse
+              const stripped = content.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, '');
+              const config = JSON.parse(stripped);
 
-              // Comprehensive mapping (CamelCase, PascalCase, snake_case)
+              // Comprehensive mapping
               const keysMapping: Record<string, string | number> = {
                 DatabaseHost: creds.host,
                 DatabasePort: creds.port,
@@ -118,7 +121,6 @@ export class PluginDatabaseInjector {
 
                 for (const [key, val] of Object.entries(keysMapping)) {
                   if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                    // Only overwrite if it's a string/number or empty
                     if (typeof obj[key] !== 'object' || obj[key] === null) {
                       if (obj[key] !== val) {
                         obj[key] = val;
@@ -130,10 +132,8 @@ export class PluginDatabaseInjector {
                 return localChanged;
               };
 
-              // Try injecting into root
               if (injectInto(config)) changed = true;
 
-              // Try injecting into common sub-objects
               const subObjects = ['Database', 'MySQL', 'mysql', 'database', 'Connection', 'db'];
               for (const subKey of subObjects) {
                 if (config[subKey] && typeof config[subKey] === 'object') {
@@ -143,25 +143,28 @@ export class PluginDatabaseInjector {
 
               if (changed) {
                 console.log('[DB] Injected credentials into JSON:', fullPath);
-                await fs.writeFile(fullPath, JSON.stringify(config, null, 2));
+                newContent = JSON.stringify(config, null, 2);
               }
             } catch {
-              // Skip non-valid or non-standard JSON
+              // If JSON.parse fails, proceed to Regex fallback
             }
           }
-          // 2. TOML / CFG / INI Injection (Regex based)
-          else {
-            let newContent = content;
-            let changed = false;
 
+          // 2. Regex Fallback (Works for JSON, TOML, CFG, INI)
+          if (!changed) {
             const patterns = [
-              // Key = "Value"
-              { regex: /((?:Database)?Host\s*=\s*")([^"]*)(")/gi, val: creds.host },
-              { regex: /((?:Database)?User\s*=\s*")([^"]*)(")/gi, val: creds.user },
-              { regex: /((?:Database)?Password\s*=\s*")([^"]*)(")/gi, val: creds.password },
-              { regex: /((?:Database|Name)?Name\s*=\s*")([^"]*)(")/gi, val: creds.database },
-              { regex: /((?:Database)?Port\s*=\s*)(\d+)/gi, val: creds.port },
-              // CFG style (no equals) e.g. DatabaseHost "127.0.0.1"
+              { regex: /("(?:Database)?Host"\s*[:=]\s*")([^"]*)(")/gi, val: creds.host },
+              { regex: /("(?:Database)?User"\s*[:=]\s*")([^"]*)(")/gi, val: creds.user },
+              { regex: /("(?:Database)?Password"\s*[:=]\s*")([^"]*)(")/gi, val: creds.password },
+              { regex: /("(?:Database|Name)?Name"\s*[:=]\s*")([^"]*)(")/gi, val: creds.database },
+              { regex: /("(?:Database)?Port"\s*[:=]\s*)(\d+)/gi, val: creds.port },
+              
+              { regex: /((?:Database)?Host\s*[:=]\s*")([^"]*)(")/gi, val: creds.host },
+              { regex: /((?:Database)?User\s*[:=]\s*")([^"]*)(")/gi, val: creds.user },
+              { regex: /((?:Database)?Password\s*[:=]\s*")([^"]*)(")/gi, val: creds.password },
+              { regex: /((?:Database)?Name\s*[:=]\s*")([^"]*)(")/gi, val: creds.database },
+              { regex: /((?:Database)?Port\s*[:=]\s*)(\d+)/gi, val: creds.port },
+
               { regex: /((?:Database)?Host\s+")([^"]*)(")/gi, val: creds.host },
               { regex: /((?:Database)?User\s+")([^"]*)(")/gi, val: creds.user },
               { regex: /((?:Database)?Password\s+")([^"]*)(")/gi, val: creds.password },
@@ -176,9 +179,12 @@ export class PluginDatabaseInjector {
             }
 
             if (changed) {
-              console.log('[DB] Injected credentials into', ext.toUpperCase(), ':', fullPath);
-              await fs.writeFile(fullPath, newContent);
+              console.log('[DB] Injected credentials via Regex:', fullPath);
             }
+          }
+
+          if (changed) {
+            await fs.writeFile(fullPath, newContent);
           }
         }
       }
