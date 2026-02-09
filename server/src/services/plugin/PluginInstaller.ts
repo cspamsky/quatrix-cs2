@@ -91,7 +91,7 @@ export class PluginInstaller {
               taskId
             );
           }
-          if (!cssInstalled && pluginRegistry.cssharp) {
+          if (pluginId !== 'cssharp' && !cssInstalled && pluginRegistry.cssharp) {
             console.log(
               `[PLUGIN] Auto-installing CounterStrikeSharp dependency for ${pluginId}...`
             );
