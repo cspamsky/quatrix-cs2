@@ -90,7 +90,14 @@ router.get('/:id/plugins/:plugin/configs', async (req: Request, res: Response) =
       id as string,
       plugin as any as PluginId
     );
-    res.json(configs);
+
+    // Transform string array to objects for the frontend
+    const configObjects = configs.map((fullPath) => ({
+      name: path.basename(fullPath),
+      path: fullPath,
+    }));
+
+    res.json(configObjects);
   } catch (error: unknown) {
     const err = error as Error;
     res.status(500).json({ message: err.message });
