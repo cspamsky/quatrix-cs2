@@ -2,44 +2,21 @@ import path from 'path';
 import fs from 'fs/promises';
 import { databaseManager } from '../DatabaseManager.js';
 
-/**
- * PluginDatabaseInjector Service
- * Responsible for:
- * - Injecting MySQL credentials into plugin configuration files
- * - Supporting JSON, TOML, and CFG formats
- * - Auto-provisioning databases when needed
- */
 export class PluginDatabaseInjector {
-  /**
-   * Scans configuration files and injects MySQL credentials
-   * @param instanceId Server instance ID
-   * @param targetDir Directory to scan for config files
-   */
+  private readonly EXCLUDED_FOLDERS = ['bin', 'dotnet', 'api', 'core', 'logs', 'metamod', '.git', 'node_modules'];
+  
   async injectCredentials(instanceId: string | number, targetDir: string): Promise<void> {
     if (!(await databaseManager.isAvailable())) return;
 
-    // Load credentials and check for autoSync setting
     const allCreds = await databaseManager.loadAllCredentials();
     const serverSettings = allCreds[instanceId.toString()];
 
-    // If autoSync is explicitly disabled, skip injection
-    if (serverSettings && serverSettings.autoSync === false) {
-      console.log('[DB] Auto-sync disabled for server', instanceId, ', skipping injection.');
-      return;
-    }
+    if (serverSettings && serverSettings.autoSync === false) return;
 
-    let credentials: {
-      host: string;
-      port: number;
-      user: string;
-      password: string;
-      database: string;
-    } | null = null;
-
+    let credentials: { host: string; port: number; user: string; password: string; database: string; } | null = null;
     const getCreds = async () => {
       if (!credentials) {
         const raw = await databaseManager.provisionDatabase(instanceId);
-        // Deep clean: trim all string values to avoid JSON breakage
         credentials = {
           host: raw.host.trim(),
           port: Number(raw.port),
@@ -52,154 +29,72 @@ export class PluginDatabaseInjector {
     };
 
     const walk = async (dir: string) => {
-      try {
-        await fs.access(dir);
-      } catch {
-        return;
-      }
-      const items = await fs.readdir(dir, { withFileTypes: true });
+      const items = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
       for (const item of items) {
         const fullPath = path.join(dir, item.name);
+        const lowerName = item.name.toLowerCase();
+
         if (item.isDirectory()) {
+          if (this.EXCLUDED_FOLDERS.includes(lowerName)) continue;
           await walk(fullPath);
         } else if (item.isFile()) {
           const ext = path.extname(item.name).toLowerCase();
-          if (ext !== '.json' && ext !== '.toml' && ext !== '.cfg' && ext !== '.ini') continue;
+          if (!['.json', '.toml', '.cfg', '.ini'].includes(ext)) continue;
 
-          // SECURITY: Skip critical .NET runtime/dependency files that are also JSON
-          if (
-            item.name.endsWith('.deps.json') ||
-            item.name.endsWith('.runtimeconfig.json') ||
-            item.name.toLowerCase() === 'package.json' ||
-            item.name.toLowerCase() === 'package-lock.json'
-          ) {
-            continue;
-          }
-
+          // CRITICAL: Skip any file that is part of the CSS API or runtime
+          if (lowerName.includes('api') || lowerName.includes('deps') || lowerName.includes('runtimeconfig')) continue;
+          
           const stats = await fs.stat(fullPath).catch(() => null);
-          if (stats && stats.size > 1024 * 1024) {
-            // Skip files larger than 1MB (configs are rarely this big, deps.json often is)
-            continue;
-          }
+          if (stats && stats.size > 256 * 1024) continue; // Skip large files
 
           const content = await fs.readFile(fullPath, 'utf8');
-          const contentLower = content.toLowerCase();
-
-          // Check if file potentially contains DB settings (case-insensitive)
-          if (
-            !contentLower.includes('database') &&
-            !contentLower.includes('mysql') &&
-            !contentLower.includes('host') &&
-            !contentLower.includes('connectionstring')
-          ) {
-            continue;
-          }
-
           const creds = await getCreds();
-          let changed = false;
           let newContent = content;
+          let changed = false;
 
-          // 1. JSON Injection (with Comment Stripping)
-          if (ext === '.json') {
-            try {
-              // Strip C-style comments (// and /* */) for JSON.parse
-              const stripped = content.replace(/\/\/.*|\/\*[\s\S]*?\*\//g, '');
-              const config = JSON.parse(stripped);
+          // SAFE Replacement mapping
+          const targets = [
+            // JSON/TOML with quotes
+            { key: 'Host', val: creds.host, type: 'quote' },
+            { key: 'DatabaseHost', val: creds.host, type: 'quote' },
+            { key: 'User', val: creds.user, type: 'quote' },
+            { key: 'DatabaseUser', val: creds.user, type: 'quote' },
+            { key: 'Password', val: creds.password, type: 'quote' },
+            { key: 'DatabasePassword', val: creds.password, type: 'quote' },
+            { key: 'Database', val: creds.database, type: 'quote' },
+            { key: 'DatabaseName', val: creds.database, type: 'quote' },
+            { key: 'DBName', val: creds.database, type: 'quote' },
+            // Port (Number)
+            { key: 'Port', val: creds.port, type: 'num' },
+            { key: 'DatabasePort', val: creds.port, type: 'num' },
+          ];
 
-              // Comprehensive mapping
-              const keysMapping: Record<string, string | number> = {
-                DatabaseHost: creds.host,
-                DatabasePort: creds.port,
-                DatabaseUser: creds.user,
-                DatabasePassword: creds.password,
-                DatabaseName: creds.database,
-                Host: creds.host,
-                host: creds.host,
-                Port: creds.port,
-                port: creds.port,
-                User: creds.user,
-                user: creds.user,
-                Password: creds.password,
-                password: creds.password,
-                Database: creds.database,
-                database: creds.database,
-                DBHost: creds.host,
-                DBPort: creds.port,
-                DBUser: creds.user,
-                DBPass: creds.password,
-                DBName: creds.database,
-              };
-
-              // Injector Helper
-              const injectInto = (obj: any): boolean => {
-                let localChanged = false;
-                if (!obj || typeof obj !== 'object') return false;
-
-                for (const [key, val] of Object.entries(keysMapping)) {
-                  if (Object.prototype.hasOwnProperty.call(obj, key)) {
-                    if (typeof obj[key] !== 'object' || obj[key] === null) {
-                      if (obj[key] !== val) {
-                        obj[key] = val;
-                        localChanged = true;
-                      }
-                    }
-                  }
-                }
-                return localChanged;
-              };
-
-              if (injectInto(config)) changed = true;
-
-              const subObjects = ['Database', 'MySQL', 'mysql', 'database', 'Connection', 'db'];
-              for (const subKey of subObjects) {
-                if (config[subKey] && typeof config[subKey] === 'object') {
-                  if (injectInto(config[subKey])) changed = true;
-                }
-              }
-
-              if (changed) {
-                console.log('[DB] Injected credentials into JSON:', fullPath);
-                newContent = JSON.stringify(config, null, 2);
-              }
-            } catch {
-              // If JSON.parse fails, proceed to Regex fallback
-            }
-          }
-
-          // 2. Regex Fallback (Works for JSON, TOML, CFG, INI)
-          if (!changed) {
-            const patterns = [
-              { regex: /("(?:Database)?Host"\s*[:=]\s*")([^"]*)(")/gi, val: creds.host },
-              { regex: /("(?:Database)?User"\s*[:=]\s*")([^"]*)(")/gi, val: creds.user },
-              { regex: /("(?:Database)?Password"\s*[:=]\s*")([^"]*)(")/gi, val: creds.password },
-              { regex: /("(?:Database|Name)?Name"\s*[:=]\s*")([^"]*)(")/gi, val: creds.database },
-              { regex: /("(?:Database)?Port"\s*[:=]\s*)(\d+)/gi, val: creds.port },
-              
-              { regex: /((?:Database)?Host\s*[:=]\s*")([^"]*)(")/gi, val: creds.host },
-              { regex: /((?:Database)?User\s*[:=]\s*")([^"]*)(")/gi, val: creds.user },
-              { regex: /((?:Database)?Password\s*[:=]\s*")([^"]*)(")/gi, val: creds.password },
-              { regex: /((?:Database)?Name\s*[:=]\s*")([^"]*)(")/gi, val: creds.database },
-              { regex: /((?:Database)?Port\s*[:=]\s*)(\d+)/gi, val: creds.port },
-
-              { regex: /((?:Database)?Host\s+")([^"]*)(")/gi, val: creds.host },
-              { regex: /((?:Database)?User\s+")([^"]*)(")/gi, val: creds.user },
-              { regex: /((?:Database)?Password\s+")([^"]*)(")/gi, val: creds.password },
-              { regex: /((?:Database)?Name\s+")([^"]*)(")/gi, val: creds.database },
-            ];
-
-            for (const p of patterns) {
-              if (p.regex.test(newContent)) {
-                newContent = newContent.replace(p.regex, `$1${p.val}$3`);
-                changed = true;
-              }
+          for (const target of targets) {
+            let regex: RegExp;
+            if (target.type === 'quote') {
+              // Matches "Key": "Value" or Key = "Value" or Key "Value"
+              regex = new RegExp(`("${target.key}"\\s*[:=]\\s*")([^"]*)(")|(\\b${target.key}\\s*[:=]\\s*")([^"]*)(")|(\\b${target.key}\\s+")([^"]*)(")`, 'gi');
+            } else {
+              // Matches "Key": 123 or Key = 123
+              regex = new RegExp(`("${target.key}"\\s*[:=]\\s*)(\\d+)|(\\b${target.key}\\s*[:=]\\s*)(\\d+)`, 'gi');
             }
 
-            if (changed) {
-              console.log('[DB] Injected credentials via Regex:', fullPath);
+            const updated = newContent.replace(regex, (match, p1, p2, p3, p4, p5, p6, p7, p8, p9) => {
+              // Return prefix + value + suffix based on which group matched
+              if (p1 !== undefined) return p1 + target.val + p3;
+              if (p4 !== undefined) return p4 + target.val + p6;
+              if (p7 !== undefined) return p7 + target.val + p9;
+              return match;
+            });
+
+            if (updated !== newContent) {
+              newContent = updated;
+              changed = true;
             }
           }
 
           if (changed) {
+            console.log('[DB] Safely injected credentials into:', fullPath);
             await fs.writeFile(fullPath, newContent);
           }
         }
@@ -207,7 +102,7 @@ export class PluginDatabaseInjector {
     };
 
     await walk(targetDir).catch((err) => {
-      console.error('[DB] Credential injection failed:', err);
+      console.error('[DB] SAFE Credential injection failed:', err);
     });
   }
 }

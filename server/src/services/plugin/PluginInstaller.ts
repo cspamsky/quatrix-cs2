@@ -185,22 +185,39 @@ export class PluginInstaller {
         taskService.updateTask(taskId, { progress: 60, message: 'Post-processing configs...' });
       }
 
-      // 4. Determine search directory for post-processing
-      const searchDir = hasGameDir
-        ? path.dirname(path.dirname(csgoDir))
-        : hasAddonsDir || assetFound
-          ? csgoDir
-          : hasCSSDir
-            ? path.join(csgoDir, 'addons')
-            : csgoDir;
+      // 4. Skip DB injection for core components
+      const isCore = pluginId === 'metamod' || pluginId === 'cssharp' || pluginInfo.category === 'core';
+      
+      if (!isCore) {
+        if (taskId) {
+           taskService.updateTask(taskId, { progress: 60, message: 'Post-processing configs...' });
+        }
 
-      // 5. Process example configs
-      await pluginConfigManager.processExampleConfigs(searchDir);
+        const cssBase = path.join(csgoDir, 'addons', 'counterstrikesharp');
+        const searchDirs: string[] = [];
+        
+        if (pluginInfo.category === 'cssharp') {
+          // Only scan the specific plugin and config folders we just created
+          const pluginDest = path.resolve(cssBase, 'plugins', pluginFolderName);
+          const configDest = path.resolve(cssBase, 'configs', 'plugins', pluginFolderName);
+          searchDirs.push(pluginDest, configDest);
+        } else {
+          // Fallback for other categories
+          searchDirs.push(csgoDir);
+        }
 
-      // 6. Inject MySQL credentials
-      await pluginDatabaseInjector
-        .injectCredentials(instanceId, searchDir)
-        .catch((err) => console.error('[PLUGIN] MySQL Injection failed for:', pluginId, err));
+        // 5. Process example configs
+        for (const dir of searchDirs) {
+          await pluginConfigManager.processExampleConfigs(dir).catch(() => {});
+        }
+
+        // 6. Inject MySQL credentials
+        for (const dir of searchDirs) {
+          await pluginDatabaseInjector
+            .injectCredentials(instanceId, dir)
+            .catch((err) => console.error('[PLUGIN] MySQL Injection failed for dir:', dir, err));
+        }
+      }
 
       if (taskId) {
         taskService.updateTask(taskId, { progress: 80, message: 'Finalizing installation...' });
