@@ -48,13 +48,14 @@ router.get('/:id/bans', async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Server database not found' });
     }
 
-    // Connect to the server's MariaDB database
     const connection = await mysql.createConnection({
       host: creds.host,
       port: creds.port,
       user: creds.user,
       password: creds.password || '',
       database: creds.database,
+      supportBigNumbers: true,
+      bigNumberStrings: true,
     });
 
     try {
@@ -124,13 +125,15 @@ router.post('/:id/bans/:banId/unban', async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Server database not found' });
     }
 
-    // Connect to the server's MariaDB database
+    // Connect to the server's MariaDB database (Unban Route)
     const connection = await mysql.createConnection({
       host: creds.host,
       port: creds.port,
       user: creds.user,
       password: creds.password || '',
       database: creds.database,
+      supportBigNumbers: true,
+      bigNumberStrings: true,
     });
 
     try {
