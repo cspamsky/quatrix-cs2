@@ -17,7 +17,6 @@ interface ServerWithDB {
   name: string;
   db: DatabaseInfo | null;
   stats?: { size: number; tables: number };
-  autoSync?: boolean;
 }
 
 const DatabasePage = () => {
@@ -65,7 +64,6 @@ const DatabasePage = () => {
               name: srv.name,
               db: dbData?.credentials || null,
               stats: dbData?.stats || { size: 0, tables: 0 },
-              autoSync: dbData?.credentials?.autoSync !== false, // default to true
             };
           })
         );
@@ -144,27 +142,6 @@ const DatabasePage = () => {
       }
     } catch {
       toast.error(t('database.server_connect_failed'));
-    }
-  };
-
-  const toggleAutoSync = async (id: number, current: boolean) => {
-    try {
-      const response = await apiFetch(`/api/servers/${id}/database/settings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ autoSync: !current }),
-      });
-
-      if (response.ok) {
-        toast.success(
-          t('database.autosync_toggled', {
-            status: !current ? t('common.enabled') : t('common.disabled'),
-          })
-        );
-        fetchData();
-      }
-    } catch {
-      toast.error(t('database.settings_update_failed'));
     }
   };
 
@@ -460,26 +437,8 @@ const DatabasePage = () => {
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]"></div>
                   <span className="text-[11px] font-black text-primary uppercase tracking-[0.2em]">
-                    {t('database.synchronized')}
+                    {t('database.active')}
                   </span>
-                </div>
-                <div className="text-[10px] text-gray-500 font-medium italic">
-                  {server.autoSync
-                    ? t('database.injecting_credentials')
-                    : t('database.autosync_disabled')}
-                </div>
-                <div className="flex items-center gap-3">
-                  <label className="text-[10px] font-bold text-gray-600 uppercase">
-                    {t('database.autosync')}
-                  </label>
-                  <button
-                    onClick={() => toggleAutoSync(server.id, !!server.autoSync)}
-                    className={`w-10 h-5 rounded-full transition-all relative ${server.autoSync ? 'bg-primary' : 'bg-gray-800'}`}
-                  >
-                    <div
-                      className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${server.autoSync ? 'right-1' : 'left-1'}`}
-                    ></div>
-                  </button>
                 </div>
               </div>
             )}
