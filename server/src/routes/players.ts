@@ -59,48 +59,23 @@ router.post('/:id/players/:userId/ban', async (req: Request, res: Response) => {
     try {
       console.log(`[BAN DEBUG] EXECUTING MASTER BAN for ${playerName}`);
 
-      // 1. Core Ban Commands
-      // We send multiple formats to ensure SimpleAdmin catches it regardless of MultiServerMode
+      // 1. Core Ban Command (SimpleAdmin)
+      // css_ban will handle both the ban enforcement and MySQL database recording
       await serverManager.sendCommand(
         id as string,
         `css_ban #${userId} ${durationMinutes} "${banReason}"`
       );
-      await serverManager.sendCommand(
-        id as string,
-        `css_addban ${steamId} ${durationMinutes} "${banReason}"`
-      );
 
-      // 2. Engine Level (Native)
+      // 2. Engine Level Backup (Native)
+      // This ensures the player is banned even if the plugin has issues
       await serverManager.sendCommand(id as string, `banid ${durationMinutes} ${steamId}`);
       await serverManager.sendCommand(id as string, `writeid`);
 
-      // 3. Force Immediate Enforcement
+      // 3. Force Immediate Kick (Safety fallback)
       await serverManager.sendCommand(id as string, `kickid ${userId} "${banReason}"`);
     } catch (rconError) {
       console.error('[BAN ERROR] RCON failure:', rconError);
     }
-
-    // 2. Record in our web panel database for History page
-    const expiresAt =
-      durationMinutes > 0 ? new Date(Date.now() + durationMinutes * 60 * 1000).toISOString() : null;
-
-    db.prepare(
-      `
-            INSERT INTO ban_history (
-                server_id, player_name, steam_id, ip_address, reason, 
-                duration, banned_by, expires_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `
-    ).run(
-      id as string,
-      playerName || `User #${userId}`,
-      steamId || null,
-      ipAddress || null,
-      banReason,
-      durationMinutes,
-      authReq.user.username || 'Admin',
-      expiresAt
-    );
 
     res.json({ success: true, message: `Player banned via SimpleAdmin` });
   } catch (error: unknown) {
