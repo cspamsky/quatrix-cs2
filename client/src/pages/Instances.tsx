@@ -388,9 +388,9 @@ const Instances = () => {
 
   const filteredInstances = localInstances.filter(
     (instance) =>
-      instance.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      instance.map.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      instance.id.toString().includes(searchQuery)
+      (instance.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (instance.map?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      instance.id?.toString().includes(searchQuery)
   );
 
   return (

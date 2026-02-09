@@ -268,7 +268,9 @@ const Maps = () => {
 
   const filteredMaps = useMemo(() => {
     return maps.filter((m) => {
-      const matchesSearch = m.displayName.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = (m.displayName?.toLowerCase() || '').includes(
+        searchQuery.toLowerCase()
+      );
       const matchesCat = activeCategory === 'all' || m.type === activeCategory;
       return matchesSearch && matchesCat;
     });

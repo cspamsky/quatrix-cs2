@@ -153,8 +153,8 @@ const Backups: React.FC = () => {
 
   const filteredBackups = backups.filter(
     (b) =>
-      b.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (b.comment && b.comment.toLowerCase().includes(searchQuery.toLowerCase()))
+      (b.filename?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (b.comment?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
   const formatSize = (bytes: number) => {

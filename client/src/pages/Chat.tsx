@@ -121,9 +121,9 @@ const Chat = () => {
 
   const filteredLogs = chatLogs.filter(
     (log) =>
-      log.player_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.steam_id.toLowerCase().includes(searchTerm.toLowerCase())
+      (log.player_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (log.message?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (log.steam_id?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
 
   // Auto-scroll to bottom when logs change
