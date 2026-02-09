@@ -193,7 +193,12 @@ export class PluginManager {
 
       let hasConfigs = false;
       if (installed) {
-        const configs = await this.getPluginConfigFiles(installDir, instanceId, pid);
+        const configs = await this.getPluginConfigFiles(
+          installDir,
+          instanceId,
+          pid,
+          info.folderName
+        );
         hasConfigs = configs.length > 0;
       }
 
@@ -262,9 +267,20 @@ export class PluginManager {
   async getPluginConfigFiles(
     installDir: string,
     instanceId: string | number,
-    pluginId: string
+    pluginId: string,
+    folderName?: string
   ): Promise<string[]> {
-    return await pluginConfigManager.discoverConfigs(installDir, instanceId, pluginId);
+    let finalFolderName = folderName;
+    if (!finalFolderName) {
+      const registry = await this.getRegistry(instanceId);
+      finalFolderName = registry[pluginId]?.folderName;
+    }
+    return await pluginConfigManager.discoverConfigs(
+      installDir,
+      instanceId,
+      pluginId,
+      finalFolderName
+    );
   }
 
   /**

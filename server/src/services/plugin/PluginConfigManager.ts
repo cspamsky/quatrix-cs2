@@ -20,7 +20,8 @@ export class PluginConfigManager {
   async discoverConfigs(
     installDir: string,
     instanceId: string | number,
-    pluginId: string
+    pluginId: string,
+    folderName?: string
   ): Promise<string[]> {
     // SECURITY: Validate pluginId
     if (!/^[a-zA-Z0-9\-_]+$/.test(pluginId)) {
@@ -38,6 +39,18 @@ export class PluginConfigManager {
       path.resolve(cssBase, 'plugins', pluginId),
       path.resolve(cssBase, 'plugins', pluginId, 'configs'),
     ];
+
+    if (folderName && folderName !== pluginId) {
+      // SECURITY: Sanitize folderName
+      const sanitizedFolder = path.basename(folderName).replace(/[^a-zA-Z0-9\-_]/g, '');
+      if (sanitizedFolder) {
+        searchPaths.push(
+          path.resolve(cssBase, 'configs', 'plugins', sanitizedFolder),
+          path.resolve(cssBase, 'plugins', sanitizedFolder),
+          path.resolve(cssBase, 'plugins', sanitizedFolder, 'configs')
+        );
+      }
+    }
 
     const configFiles: string[] = [];
     const validExtensions = ['.json', '.cfg', '.toml', '.ini', '.txt'];
