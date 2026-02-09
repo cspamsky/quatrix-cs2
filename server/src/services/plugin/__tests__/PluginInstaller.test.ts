@@ -15,12 +15,6 @@ const mockConfigManager = {
   },
 };
 
-const mockDbInjector = {
-  pluginDatabaseInjector: {
-    injectCredentials: jest.fn(() => Promise.resolve() as any),
-  },
-};
-
 const mockFs = {
   readdir: jest.fn() as jest.Mock<any>,
   access: jest.fn() as jest.Mock<any>,
@@ -34,7 +28,6 @@ const mockFs = {
 // ESM Mocking
 jest.unstable_mockModule('../../TaskService.js', () => mockTaskService);
 jest.unstable_mockModule('../PluginConfigManager.js', () => mockConfigManager);
-jest.unstable_mockModule('../PluginDatabaseInjector.js', () => mockDbInjector);
 jest.unstable_mockModule('fs/promises', () => ({
   __esModule: true,
   default: mockFs,

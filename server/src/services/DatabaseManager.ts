@@ -129,7 +129,6 @@ export class DatabaseManager {
         database: dbName,
         user: dbUser,
         password: dbPass,
-        autoSync: true, // default new provisioned ones to autoSync
       };
 
       await this.saveCredentials(id, creds);

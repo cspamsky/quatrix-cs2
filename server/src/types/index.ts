@@ -29,7 +29,6 @@ export interface DatabaseCredentials {
   database: string;
   user: string;
   password?: string;
-  autoSync?: boolean;
 }
 
 export interface Server {

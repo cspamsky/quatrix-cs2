@@ -565,30 +565,4 @@ router.post('/:id/database/query', authenticateToken, async (req: Request, res: 
   }
 });
 
-// POST /api/servers/:id/database/settings (Toggle Auto-Sync)
-router.post('/:id/database/settings', authenticateToken, async (req: Request, res: Response) => {
-  try {
-    const { autoSync } = req.body as { autoSync: boolean };
-    const all = await databaseManager.loadAllCredentials();
-    const id = req.params.id as string;
-    if (id === '__proto__' || id === 'constructor' || id === 'prototype') {
-      return res.status(400).json({ message: 'Invalid server ID' });
-    }
-
-    if (!all[id]) {
-      // @ts-expect-error - Partial initialization for config save
-      all[id] = {};
-    }
-    // @ts-expect-error - Partial update
-    all[id].autoSync = autoSync;
-
-    const credsFile = path.join(process.cwd(), 'data', 'databases.json');
-    await fs.promises.writeFile(credsFile, JSON.stringify(all, null, 2));
-
-    res.json({ message: 'Database settings updated', autoSync });
-  } catch {
-    res.status(500).json({ message: 'Failed to update database settings' });
-  }
-});
-
 export default router;

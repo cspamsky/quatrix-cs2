@@ -6,7 +6,6 @@ import { fileURLToPath } from 'url';
 import type { PluginMetadata } from '../PluginManager.js';
 import { pluginDiscovery } from './PluginDiscovery.js';
 import { pluginConfigManager } from './PluginConfigManager.js';
-import { pluginDatabaseInjector } from './PluginDatabaseInjector.js';
 import db from '../../db.js';
 import { taskService } from '../TaskService.js';
 
@@ -58,10 +57,7 @@ export class PluginInstaller {
       const csgoDir = path.join(installDir, instanceId.toString(), 'game', 'csgo');
 
       // 1. Smart Dependency: If installing any CSS plugin, ensure MM and CSS are present
-      if (
-        (pluginInfo.category === 'cssharp' || pluginId === 'cssharp') &&
-        pluginId !== 'metamod'
-      ) {
+      if ((pluginInfo.category === 'cssharp' || pluginId === 'cssharp') && pluginId !== 'metamod') {
         const addonsDir = path.join(csgoDir, 'addons');
         const cssBase = path.join(addonsDir, 'counterstrikesharp');
 
@@ -186,16 +182,17 @@ export class PluginInstaller {
       }
 
       // 4. Skip DB injection for core components
-      const isCore = pluginId === 'metamod' || pluginId === 'cssharp' || pluginInfo.category === 'core';
-      
+      const isCore =
+        pluginId === 'metamod' || pluginId === 'cssharp' || pluginInfo.category === 'core';
+
       if (!isCore) {
         if (taskId) {
-           taskService.updateTask(taskId, { progress: 60, message: 'Post-processing configs...' });
+          taskService.updateTask(taskId, { progress: 60, message: 'Post-processing configs...' });
         }
 
         const cssBase = path.join(csgoDir, 'addons', 'counterstrikesharp');
         const searchDirs: string[] = [];
-        
+
         if (pluginInfo.category === 'cssharp') {
           // Only scan the specific plugin and config folders we just created
           const pluginDest = path.resolve(cssBase, 'plugins', pluginFolderName);
@@ -209,13 +206,6 @@ export class PluginInstaller {
         // 5. Process example configs
         for (const dir of searchDirs) {
           await pluginConfigManager.processExampleConfigs(dir).catch(() => {});
-        }
-
-        // 6. Inject MySQL credentials
-        for (const dir of searchDirs) {
-          await pluginDatabaseInjector
-            .injectCredentials(instanceId, dir)
-            .catch((err) => console.error('[PLUGIN] MySQL Injection failed for dir:', dir, err));
         }
       }
 
@@ -381,10 +371,10 @@ export class PluginInstaller {
       let content = await fs.readFile(gameinfo, 'utf8');
       if (!content.includes('csgo/addons/metamod')) {
         const lines = content.split('\n');
-        
+
         // Try multiple anchor points for insertion
         let searchIndex = lines.findIndex((l) => l.includes('Game_LowViolence'));
-        
+
         // Fallback: search for SearchPaths start
         if (searchIndex === -1) {
           searchIndex = lines.findIndex((l) => l.includes('SearchPaths'));
