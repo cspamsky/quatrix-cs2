@@ -108,7 +108,7 @@ router.get('/:id/plugins/:plugin/configs', async (req: Request, res: Response) =
 router.post('/:id/plugins/:plugin/configs', async (req: Request, res: Response) => {
   const id = req.params.id as string;
   const plugin = req.params.plugin as string;
-  const { filePath, content } = req.body as { filePath: string; content: string };
+  const { filePath, content } = (req.body || {}) as { filePath: string; content: string };
   const authReq = req as AuthenticatedRequest;
 
   // SECURITY: Validate plugin/pluginId format
@@ -144,15 +144,14 @@ router.post('/:id/plugins/:plugin/:action', async (req: Request, res: Response) 
   const id = req.params.id as string;
   const plugin = req.params.plugin as string;
   const action = req.params.action as string;
-  const { taskId: providedTaskId } = req.body as { taskId?: string };
-  const authReq = req as AuthenticatedRequest;
-
   // SECURITY: Validate plugin format
   if (!plugin || !/^[a-zA-Z0-9\-_]+$/.test(plugin)) {
     return res.status(400).json({ message: 'Invalid plugin ID format' });
   }
 
   try {
+    const { taskId: providedTaskId } = (req.body || {}) as { taskId?: string };
+    const authReq = req as AuthenticatedRequest;
     console.log(`[PLUGIN DEBUG] Requested ${action} for ${plugin} on server ${id}`);
     console.log(`[PLUGIN DEBUG] User from token:`, authReq.user?.id);
 
@@ -219,7 +218,7 @@ router.post(
     });
   },
   async (req: Request, res: Response) => {
-    const { pluginId } = req.body as { pluginId?: string };
+    const { pluginId } = (req.body || {}) as { pluginId?: string };
 
     if (!req.file) {
       return res.status(400).json({ message: 'No ZIP file uploaded' });
