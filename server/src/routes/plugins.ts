@@ -153,15 +153,23 @@ router.post('/:id/plugins/:plugin/:action', async (req: Request, res: Response) 
   }
 
   try {
+    console.log(`[PLUGIN DEBUG] Requested ${action} for ${plugin} on server ${id}`);
+    console.log(`[PLUGIN DEBUG] User from token:`, authReq.user?.id);
+
     const server = db
       .prepare('SELECT id FROM servers WHERE id = ? AND user_id = ?')
       .get(id, authReq.user.id);
-    if (!server) return res.status(404).json({ message: 'Server not found' });
+
+    if (!server) {
+      console.warn(`[PLUGIN DEBUG] Server ${id} not found or not owned by user ${authReq.user.id}`);
+      return res.status(404).json({ message: 'Server not found' });
+    }
 
     const registry = await serverManager.getPluginRegistry();
     const pluginId = plugin as any as PluginId;
 
     if (!registry[pluginId]) {
+      console.warn(`[PLUGIN DEBUG] Plugin ${pluginId} not found in registry`);
       return res.status(400).json({ message: 'Invalid plugin' });
     }
 
