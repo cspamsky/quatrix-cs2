@@ -55,7 +55,7 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
 
   // Fetch Avatars
   const uniqueSteamIds = Array.from(
-    new Set(Array.isArray(bans) ? bans.map((b: BanRecord) => b.steam_id) : [])
+    new Set(Array.isArray(bans) ? bans.map((b: BanRecord) => b && b.steam_id).filter(Boolean) : [])
   );
   const { data: avatars = {} } = useSteamAvatars(uniqueSteamIds as string[]);
 
@@ -180,7 +180,7 @@ const BanHistoryTab = ({ selectedServerId }: BanHistoryTabProps) => {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            ban.player_name[0].toUpperCase()
+                            ban.player_name?.[0]?.toUpperCase() || '?'
                           )}
                         </div>
                         <div>

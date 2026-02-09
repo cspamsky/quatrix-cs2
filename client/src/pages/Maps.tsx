@@ -55,7 +55,7 @@ const Maps = () => {
   });
 
   useEffect(() => {
-    if (servers.length > 0 && !selectedServerId) {
+    if (servers && servers.length > 0 && !selectedServerId) {
       setSelectedServerId(servers.find((s) => s.status === 'ONLINE')?.id || servers[0].id);
     }
   }, [servers, selectedServerId]);

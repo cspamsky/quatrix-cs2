@@ -37,11 +37,14 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
 
   // Fetch Avatars
   const uniqueSteamIds = Array.from(
-    new Set(playerData.players?.map((p: LivePlayer) => p.steamId) || [])
+    new Set(playerData?.players?.map((p: LivePlayer) => p && p.steamId).filter(Boolean) || [])
   );
   const { data: avatars = {} } = useSteamAvatars(uniqueSteamIds as string[]);
 
-  const players = useMemo(() => playerData.players || [], [playerData]);
+  const players = useMemo(
+    () => (Array.isArray(playerData?.players) ? playerData.players : []),
+    [playerData]
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -134,7 +137,7 @@ const LivePlayersTab = ({ selectedServerId }: LivePlayersTabProps) => {
               <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest">
                 {t('players.active_players')}
               </p>
-              <p className="text-xl font-bold text-white tracking-tight">{players.length}</p>
+              <p className="text-xl font-bold text-white tracking-tight">{players?.length || 0}</p>
             </div>
           </div>
         </div>

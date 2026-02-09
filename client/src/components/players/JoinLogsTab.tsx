@@ -35,7 +35,9 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
   });
 
   // Fetch Avatars
-  const uniqueSteamIds = Array.from(new Set(logs.map((l: JoinLog) => l.steam_id)));
+  const uniqueSteamIds = Array.from(
+    new Set(Array.isArray(logs) ? logs.map((l: JoinLog) => l && l.steam_id).filter(Boolean) : [])
+  );
   const { data: avatars = {} } = useSteamAvatars(uniqueSteamIds);
 
   // Helper for date formatting
@@ -57,11 +59,13 @@ const JoinLogsTab = ({ selectedServerId }: JoinLogsTabProps) => {
     toast.success(t('players.logs_updated'));
   };
 
-  const filteredLogs = logs.filter(
-    (log: JoinLog) =>
-      (log.player_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (log.steam_id?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-  );
+  const filteredLogs = Array.isArray(logs)
+    ? logs.filter(
+        (log: JoinLog) =>
+          (log.player_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+          (log.steam_id?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+      )
+    : [];
 
   return (
     <div className="space-y-6">

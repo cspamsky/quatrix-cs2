@@ -38,24 +38,22 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const chartData = Array.isArray(data)
-    ? data.map((item) => ({
-        ...item,
-        cpu: parseFloat(item.cpu || '0'),
-        ram: parseFloat(item.ram || '0'),
-        netIn: parseFloat(item.netIn || '0'),
-        netOut: parseFloat(item.netOut || '0'),
-        diskRead: parseFloat(item.diskRead || '0'),
-        diskWrite: parseFloat(item.diskWrite || '0'),
-        time: item.timestamp
-          ? new Date(item.timestamp).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            })
-          : '--:--:--',
-      }))
-    : [];
+  const chartData = (Array.isArray(data) ? data : []).filter(Boolean).map((item) => ({
+    ...item,
+    cpu: parseFloat(item.cpu || '0'),
+    ram: parseFloat(item.ram || '0'),
+    netIn: parseFloat(item.netIn || '0'),
+    netOut: parseFloat(item.netOut || '0'),
+    diskRead: parseFloat(item.diskRead || '0'),
+    diskWrite: parseFloat(item.diskWrite || '0'),
+    time: item.timestamp
+      ? new Date(item.timestamp).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      : '--:--:--',
+  }));
 
   const CustomTooltip = ({
     active,

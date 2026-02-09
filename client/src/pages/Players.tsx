@@ -31,7 +31,7 @@ const Players = () => {
 
   // Auto-select first server
   useEffect(() => {
-    if (servers.length > 0 && !selectedServerId) {
+    if (servers && servers.length > 0 && !selectedServerId) {
       setSelectedServerId(servers[0].id);
     }
   }, [servers, selectedServerId]);

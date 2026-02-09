@@ -52,7 +52,7 @@ const Backups: React.FC = () => {
       const serverArray = Array.isArray(data) ? data : [];
       setServers(serverArray);
 
-      if (serverArray.length > 0) {
+      if (serverArray && serverArray.length > 0) {
         setSelectedServerId(serverArray[0].id);
       } else {
         setLoading(false);

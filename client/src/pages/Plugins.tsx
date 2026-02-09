@@ -91,7 +91,7 @@ const Plugins = () => {
 
   // Set default selected server
   useEffect(() => {
-    if (instances.length > 0 && !selectedServer) {
+    if (instances && instances.length > 0 && !selectedServer) {
       setSelectedServer(instances[0].id.toString());
     }
   }, [instances, selectedServer]);
