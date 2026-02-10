@@ -31,7 +31,7 @@ Quatrix addresses common pain points in CS2 server management:
 
 - **Dashboard**: Real-time CPU, RAM, and network usage monitoring
 - **RCON Console**: Interactive command execution with color-coded output and command history
-- **Player Management**: Live player list with Steam profiles, connection times, and kick/ban controls
+- **Player Management**: Live player list with Steam profiles, connection times, and kick/ban controls _(Requires [SimpleAdmin](https://github.com/daffyyyy/CS2-SimpleAdmin) for admin management)_
 - **Chat Monitor**: Real-time in-game chat with player avatars and filtering
 - **File Manager**: Web-based config editor (supports `.cfg`, `.json`, `.txt`, `.toml`)
 - **Analytics Dashboard**: Historical system performance metrics with customizable time ranges (24h, 7d, 30d)
@@ -49,7 +49,7 @@ Quatrix addresses common pain points in CS2 server management:
 - **ACL Permission System**: Granular access control with permissions like `servers.create`, `servers.update`, `users.manage`
 - **Transparent Observer Mode**: All users can view all pages, but actions are restricted based on permissions
 - **User authentication**: JWT-based sessions with optional 2FA (TOTP)
-- **Admin system**: Integrated with CounterStrikeSharp's admin framework
+- **Admin system**: Integrated with CounterStrikeSharp's ecosystem _(compatible with [SimpleAdmin](https://github.com/daffyyyy/CS2-SimpleAdmin) for user management)_
 - **Multi-language**: English and Turkish localization (i18next)
 
 ---
