@@ -5,7 +5,7 @@
 [![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org/)
 
-<div style="position: relative; padding-bottom: 56.25%; height: 0;"><iframe id="js_video_iframe" src="https://jumpshare.com/embed/s0otuB6yIhqSnBjSYTNG" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
+[![Quatrix Demo Video](https://cdn.jumpshare.com/desktop/images/screenshot-video.png)](https://jumpshare.com/v/s0otuB6yIhqSnBjSYTNG)
 
 A web-based management panel for Counter-Strike 2 dedicated servers. Quatrix provides real-time monitoring, RCON console, player management, and multi-instance support through a modern web interface.
 
