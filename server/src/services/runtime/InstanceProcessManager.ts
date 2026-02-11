@@ -113,7 +113,7 @@ export class InstanceProcessManager {
       
       const libPath = `${binDir}:${path.join(binDir, 'linux64')}:${steamSdk64}`;
       
-      args.push('--set-env', `LD_LIBRARY_PATH=${libPath}`, '--', cs2BinLocal);
+      args.push('--env', `LD_LIBRARY_PATH=${libPath}`, '--', cs2BinLocal);
     }
 
     args.push('-dedicated', '-console', '-usercon');
