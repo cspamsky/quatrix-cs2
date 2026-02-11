@@ -16,22 +16,9 @@ export class InstanceProcessManager {
   ): Promise<ChildProcess> {
     const { executable, args, env } = await this.prepareLaunchConfig(id, instancePath, options);
 
-    // Prepare Environment Variables (Crucial for host-launch without wrapper)
-    const homeDir = process.env.HOME || '/home/quatrix';
-    const steamSdk64 = path.join(homeDir, '.steam', 'sdk64');
-    const binDir = path.join(instancePath, 'game', 'bin', 'linuxsteamrt64');
-    const gameBinDir = path.join(instancePath, 'game', 'csgo', 'bin', 'linuxsteamrt64');
-
-    const spawnEnv = {
-      ...env,
-      LD_LIBRARY_PATH: `${binDir}:${gameBinDir}:${steamSdk64}:${env.LD_LIBRARY_PATH || ''}`,
-      HOME: homeDir,
-      DOTNET_ROOT: '/usr/share/dotnet', // Standard path, can be adjusted
-    };
-
     const proc = spawn(executable, args, {
       cwd: instancePath,
-      env: spawnEnv,
+      env,
       detached: true,
       shell: false,
       stdio: ['ignore', logFd, logFd],
@@ -89,6 +76,8 @@ export class InstanceProcessManager {
     const relativeBinPath = path.join('game', 'bin', 'linuxsteamrt64', 'cs2');
     const cs2BinLocal = path.join(instancePath, relativeBinPath);
 
+    const runtimeWrapper = fileSystemService.getSteamRuntimePath('run');
+    const useRuntime = fs.existsSync(runtimeWrapper);
 
     let cpuPriority = options.cpu_priority !== undefined ? Number(options.cpu_priority) : 0;
     if (isNaN(cpuPriority) || !isFinite(cpuPriority)) cpuPriority = 0;
@@ -96,7 +85,7 @@ export class InstanceProcessManager {
     let ramLimitMb = options.ram_limit !== undefined ? Number(options.ram_limit) : 0;
     if (isNaN(ramLimitMb) || !isFinite(ramLimitMb)) ramLimitMb = 0;
 
-    let executable = cs2BinLocal;
+    let executable = useRuntime ? runtimeWrapper : cs2BinLocal;
 
     if (!fileSystemService.isPathSafe(executable) && executable !== 'nice') {
       throw new Error(
@@ -114,8 +103,14 @@ export class InstanceProcessManager {
     const isWorkshopID = (m: string) => /^\d+$/.test(m);
 
     const args: string[] = [];
-    // Direct host launch - No binary path in args
+    if (useRuntime && executable !== 'nice') {
+      args.unshift(cs2BinLocal);
+    } else if (useRuntime && executable === 'nice') {
+      args.unshift(cs2BinLocal);
+    }
+
     args.push('-dedicated', '-console', '-usercon');
+    args.push('--graphics-provider', '""');
 
     if (options.auto_update) args.push('-autoupdate');
     if (options.steam_api_key) args.push('-authkey', options.steam_api_key);

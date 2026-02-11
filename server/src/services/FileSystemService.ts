@@ -56,6 +56,9 @@ class FileSystemService {
     return path.join(this.instancesDir, id.toString(), subPath);
   }
 
+  public getSteamRuntimePath(subPath: string = ''): string {
+    return path.join(this.baseDir, 'steamrt', subPath);
+  }
 
   public isPathSafe(targetPath: string): boolean {
     const resolvedPath = path.resolve(targetPath);
@@ -87,6 +90,9 @@ class FileSystemService {
 
     // 1. Create Base Structure
     const dirsToCreate = [
+      'cfg', // Top level cfg (custom)
+      'logs',
+      'data',
       'game/csgo', // We need to manually create this path to place granular links inside
     ];
 
@@ -263,17 +269,6 @@ class FileSystemService {
       await fs.promises.mkdir(destPath, { recursive: true });
     }
 
-    // Community Script Fix: Remove conflicting libgcc_s.so.1 found in some Ubuntu versions
-    const conflictingLib = path.join(instancePath, 'bin', 'libgcc_s.so.1');
-    if (fs.existsSync(conflictingLib)) {
-      try {
-        await fs.promises.unlink(conflictingLib);
-        console.log(`[FileSystem] Removed conflicting libgcc_s.so.1 for instance ${id}`);
-      } catch {
-        /* ignore */
-      }
-    }
-
     try {
       const files = await fs.promises.readdir(sourcePath);
       for (const file of files) {
@@ -292,7 +287,6 @@ class FileSystemService {
           }
 
           if (shouldCopy) {
-            // Use PHYSICAL COPY, not symlink, to ensure visibility inside Sniper container
             await fs.promises.copyFile(srcFile, dstFile);
           }
         }

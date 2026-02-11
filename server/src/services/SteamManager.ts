@@ -133,6 +133,82 @@ export class SteamManager {
       });
     });
   }
+
+  async installSteamRuntime(
+    runtimePath: string,
+    steamCmdExe: string,
+    onLog?: (data: string) => void,
+    taskId?: string
+  ): Promise<void> {
+    try {
+      await fs.promises.mkdir(runtimePath, { recursive: true });
+    } catch (error: unknown) {
+      const err = error as { code?: string };
+      if (err.code !== 'EEXIST') throw error;
+    }
+
+    return new Promise((resolve, reject) => {
+      const steamCmdParams = [
+        '+@sSteamCmdForcePlatformType',
+        'linux',
+        '+@sSteamCmdForcePlatformBitness',
+        '64',
+        '+force_install_dir',
+        runtimePath,
+        '+login',
+        'anonymous',
+        '+app_update',
+        '1628350',
+        'validate',
+        '+quit',
+      ];
+
+      const steamCmdProcess = spawn(steamCmdExe, steamCmdParams);
+
+      let stdoutBuffer = '';
+      steamCmdProcess.stdout.on('data', (data) => {
+        stdoutBuffer += data.toString();
+        const lines = stdoutBuffer.split(/\r?\n|\r/);
+        stdoutBuffer = lines.pop() || '';
+        lines.forEach((line) => {
+          if (line.trim()) {
+            const message = line.trim();
+            console.log(`[STEAMCMD:RUNTIME] ${message}`);
+            if (onLog) onLog(message);
+
+            if (taskId) {
+              const progressMatch = message.match(/progress: ([\d.]+)/);
+              const currentTaskId = taskId;
+              if (progressMatch && progressMatch[1] && typeof currentTaskId === 'string') {
+                const progress = parseFloat(progressMatch[1]);
+                taskService.updateTask(currentTaskId, {
+                  progress,
+                  status: 'running',
+                  message: `Installing Steam Runtime (${progress}%)`,
+                });
+              }
+            }
+          }
+        });
+      });
+
+      steamCmdProcess.on('close', (code) => {
+        const finalTaskId = taskId;
+        if (code === 0) {
+          if (typeof finalTaskId === 'string') {
+            taskService.completeTask(finalTaskId, 'Steam Runtime installed');
+          }
+          resolve();
+        } else {
+          const error = `Steam Runtime installation failed with code ${code}`;
+          if (typeof finalTaskId === 'string') {
+            taskService.failTask(finalTaskId, error);
+          }
+          reject(new Error(error));
+        }
+      });
+    });
+  }
 }
 
 export const steamManager = new SteamManager();
