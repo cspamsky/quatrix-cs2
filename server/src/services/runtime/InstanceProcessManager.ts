@@ -23,9 +23,10 @@ export class InstanceProcessManager {
     const gameBinDir = path.join(instancePath, 'game', 'csgo', 'bin', 'linuxsteamrt64');
 
     const spawnEnv = {
-      ...env, // Start with env from prepareLaunchConfig
+      ...env,
       LD_LIBRARY_PATH: `${binDir}:${gameBinDir}:${steamSdk64}:${env.LD_LIBRARY_PATH || ''}`,
       HOME: homeDir,
+      DOTNET_ROOT: '/usr/share/dotnet', // Standard path, can be adjusted
     };
 
     const proc = spawn(executable, args, {
@@ -115,8 +116,7 @@ export class InstanceProcessManager {
     const isWorkshopID = (m: string) => /^\d+$/.test(m);
 
     const args: string[] = [];
-    // We are no longer using the Steam Runtime wrapper.
-    // Launching directly using host libraries.
+    // Direct host launch - No binary path in args
     args.push('-dedicated', '-console', '-usercon');
 
     if (options.auto_update) args.push('-autoupdate');
