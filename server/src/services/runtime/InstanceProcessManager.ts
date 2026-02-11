@@ -103,10 +103,9 @@ export class InstanceProcessManager {
     const isWorkshopID = (m: string) => /^\d+$/.test(m);
 
     const args: string[] = [];
-    if (useRuntime && executable !== 'nice') {
-      args.unshift(cs2BinLocal);
-    } else if (useRuntime && executable === 'nice') {
-      args.unshift(cs2BinLocal);
+    if (useRuntime) {
+      // Use '--' to separate runtime wrapper options from the actual command
+      args.unshift('--', cs2BinLocal);
     }
 
     args.push('-dedicated', '-console', '-usercon');
