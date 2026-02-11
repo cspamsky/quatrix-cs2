@@ -90,6 +90,21 @@ fi
 info "Installing 32-bit libraries and .NET 8 Runtime..."
 dpkg --add-architecture i386 || true
 apt-get update
+
+# Add Microsoft repository if dotnet-runtime-8.0 is not in the current sources
+if ! apt-cache show dotnet-runtime-8.0 > /dev/null 2>&1; then
+    info "dotnet-runtime-8.0 not found in default repos. Adding Microsoft package repository..."
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        if [[ "$ID" == "ubuntu" || "$ID" == "debian" ]]; then
+            curl -sSL "https://packages.microsoft.com/config/$ID/$VERSION_ID/packages-microsoft-prod.deb" -o packages-microsoft-prod.deb
+            dpkg -i packages-microsoft-prod.deb
+            rm packages-microsoft-prod.deb
+            apt-get update
+        fi
+    fi
+fi
+
 apt-get install -y lib32gcc-s1 lib32stdc++6 libc6-i386 lib32z1 libicu-dev libkrb5-3 zlib1g libssl-dev dotnet-runtime-8.0
 
 # MariaDB Service & Security
