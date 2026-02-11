@@ -5,6 +5,18 @@ All notable changes to Quatrix CS2 Server Manager will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1-Beta] - 2026-02-11
+
+### Added
+
+- **Automation**: `ServerManager` now automatically creates/repairs the Steam SDK (`steamclient.so`) symlink in `~/.steam/sdk64/` before server startup.
+- **Environment**: Added missing database configuration variables (`MYSQL_ROOT_USER`, `MYSQL_ROOT_PASSWORD`, etc.) to `.env.example`.
+
+### Fixed
+
+- **Proxy**: Resolved phpMyAdmin HTTPS mismatch error by implementing dynamic protocol detection in the backend proxy middleware.
+- **Install Script**: `install.sh` now automatically detects and adds the Microsoft package repository for `dotnet-runtime-8.0` on supported Linux distributions.
+
 ## [1.0.0-Beta] - 2026-02-10
 
 ### Added
