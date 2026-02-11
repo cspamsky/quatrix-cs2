@@ -105,15 +105,9 @@ export class InstanceProcessManager {
 
     const args: string[] = [];
     if (useRuntime) {
-      // Script lesson: graphics-provider causes 'must be absolute path' errors in wrapper, better to remove for dedicated.
-      // We pass crucial environment variables into the container via --set-env
-      const homeDir = process.env.HOME || '/home/quatrix';
-      const steamSdk64 = path.join(homeDir, '.steam', 'sdk64');
-      const binDir = path.join(instancePath, 'game', 'bin', 'linuxsteamrt64');
-      
-      const libPath = `${binDir}:${path.join(binDir, 'linux64')}:${steamSdk64}`;
-      
-      args.push('--env', `LD_LIBRARY_PATH=${libPath}`, '--', cs2BinLocal);
+      // Script lesson: Don't use --env or --set-env flags. The wrapper inherits from process.env.
+      // Order: [cs2_bin] [--graphics-provider] [""] [--] [dedicated_args]
+      args.push(cs2BinLocal, '--graphics-provider', '', '--');
     }
 
     args.push('-dedicated', '-console', '-usercon');
