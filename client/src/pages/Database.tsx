@@ -146,10 +146,33 @@ const DatabasePage = () => {
   };
 
   const copyToClipboard = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
-    toast.success(t('database.copied'));
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          setCopiedKey(key);
+          toast.success(t('database.copied'));
+          setTimeout(() => setCopiedKey(null), 2000);
+        })
+        .catch(() => {
+          toast.error(t('instances.copy_error'));
+        });
+    } else {
+      // Fallback
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setCopiedKey(key);
+        toast.success(t('database.copied'));
+        setTimeout(() => setCopiedKey(null), 2000);
+      } catch {
+        toast.error(t('instances.copy_unsupported'));
+      }
+    }
   };
 
   const openManualEntry = (server: ServerWithDB) => {
@@ -388,13 +411,17 @@ const DatabasePage = () => {
                       </div>
                       <div
                         onClick={() => copyToClipboard(field.value, field.key)}
-                        className="flex items-center justify-between px-4 py-3 bg-black/30 border border-gray-800/40 rounded-2xl group-hover:border-primary/40 group-hover:bg-primary/[0.02] transition-all cursor-pointer overflow-hidden"
+                        className={`flex items-center justify-between px-4 py-3 border rounded-2xl transition-all cursor-pointer overflow-hidden ${
+                          copiedKey === field.key
+                            ? 'border-green-500 bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.2)]'
+                            : 'bg-black/30 border-gray-800/40 hover:border-primary/40 hover:bg-primary/[0.02]'
+                        }`}
                       >
                         <span className="text-xs text-gray-300 font-mono truncate mr-2">
                           {field.value}
                         </span>
                         {copiedKey === field.key ? (
-                          <Check className="w-4 h-4 text-green-500 shrink-0" />
+                          <Check className="w-4 h-4 text-green-500 shrink-0 scale-110 transition-transform" />
                         ) : (
                           <Copy className="w-4 h-4 text-gray-600 group-hover:text-primary transition-colors shrink-0" />
                         )}

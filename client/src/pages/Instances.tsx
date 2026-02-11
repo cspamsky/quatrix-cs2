@@ -576,6 +576,8 @@ const Instances = () => {
                   onConsole={handleConsoleNavigate}
                   onSettings={handleSettingsNavigate}
                   onFiles={handleFilesNavigate}
+                  onCopy={copyToClipboard}
+                  copiedId={copiedId}
                   userPermissions={user.permissions}
                 />
               )

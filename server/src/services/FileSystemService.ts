@@ -90,9 +90,6 @@ class FileSystemService {
 
     // 1. Create Base Structure
     const dirsToCreate = [
-      'cfg', // Top level cfg (custom)
-      'logs',
-      'data',
       'game/csgo', // We need to manually create this path to place granular links inside
     ];
 

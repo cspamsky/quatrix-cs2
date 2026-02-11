@@ -9,6 +9,8 @@ import {
   Download,
   RotateCcw,
   FileText,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -42,6 +44,8 @@ interface ServerRowProps {
   onConsole: (id: number) => void;
   onSettings: (id: number) => void;
   onFiles: (id: number) => void;
+  onCopy: (text: string, id: string) => void;
+  copiedId: string | null;
   userPermissions?: string[];
 }
 
@@ -64,6 +68,8 @@ const ServerRow = memo(
     onConsole,
     onSettings,
     onFiles,
+    onCopy,
+    copiedId,
     userPermissions = [],
   }: ServerRowProps) => {
     const { t } = useTranslation();
@@ -104,9 +110,23 @@ const ServerRow = memo(
               {instance.workshop_map_name || instance.map}
             </p>
             <span className="text-[10px] text-gray-700">|</span>
-            <span className="text-[10px] text-gray-500 font-mono">
-              {serverIp}:{instance.port}
-            </span>
+            <button
+              type="button"
+              onClick={() => onCopy(`${serverIp}:${instance.port}`, instance.id.toString())}
+              className="group/ip flex items-center gap-1.5 transition-colors focus:outline-none"
+            >
+              <span className="text-[10px] text-gray-500 font-mono group-hover/ip:text-primary transition-colors">
+                {serverIp}:{instance.port}
+              </span>
+              {copiedId === instance.id.toString() ? (
+                <Check size={10} className="text-primary transition-all scale-110" />
+              ) : (
+                <Copy
+                  size={10}
+                  className="text-gray-600 opacity-0 group-hover/ip:opacity-100 transition-all"
+                />
+              )}
+            </button>
           </div>
         </div>
 

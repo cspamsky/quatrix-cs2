@@ -240,7 +240,8 @@ const Maps = () => {
         body: JSON.stringify({ workshop_id: workshopId, map_file: mapFile }),
       }).then((res) => res.json()),
     onSuccess: () => {
-      toast.success(t('maps.workshop_added'));
+      // Redundant toast removed: tracked by taskService in bottom-right
+      // toast.success(t('maps.workshop_added'));
       setNewWorkshopId('');
       setNewMapFile('');
       setIsModalOpen(false);

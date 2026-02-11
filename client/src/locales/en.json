@@ -258,7 +258,7 @@
     "title": "Server Instances",
     "subtitle": "Manage and monitor your dedicated CS2 server instances in real-time.",
     "filter_placeholder": "Filter instances...",
-    "create_new": "Create New Instance",
+    "create_new": "Create New",
     "create_btn": "Create Server",
     "no_servers": "No servers found. Create your first server to get started!",
     "loading": "Loading servers...",
@@ -383,7 +383,7 @@
     "backups": "Backups",
     "settings": "Settings",
     "profile": "Profile",
-    "users": "User Management"
+    "users": "Users"
   },
   "players": {
     "title": "Player Management",

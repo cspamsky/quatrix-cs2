@@ -81,22 +81,19 @@ const Backups: React.FC = () => {
   const handleCreateBackup = async () => {
     if (!selectedServerId) return;
 
-    toast.promise(
-      (async () => {
-        const response = await apiFetch(`/api/backups/${selectedServerId}/create`, {
-          method: 'POST',
-          body: JSON.stringify({ comment: 'Manual Backup', type: 'manual' }),
-        });
+    try {
+      const response = await apiFetch(`/api/backups/${selectedServerId}/create`, {
+        method: 'POST',
+        body: JSON.stringify({ comment: 'Manual Backup', type: 'manual' }),
+      });
+      if (!response.ok) {
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Failed to start backup');
-        return data;
-      })(),
-      {
-        loading: t('backups.creating_backup_loading'),
-        success: t('backups.creating_backup_started'),
-        error: (err) => err.message,
+        throw new Error(data.error || 'Failed to start backup');
       }
-    );
+      // Success is handled by GlobalTaskOverlay
+    } catch (err: any) {
+      toast.error(err.message);
+    }
   };
 
   const handleRestore = async (backup: Backup) => {
@@ -109,21 +106,18 @@ const Backups: React.FC = () => {
     });
 
     if (confirmed) {
-      toast.promise(
-        (async () => {
-          const response = await apiFetch(`/api/backups/${backup.id}/restore`, {
-            method: 'POST',
-          });
+      try {
+        const response = await apiFetch(`/api/backups/${backup.id}/restore`, {
+          method: 'POST',
+        });
+        if (!response.ok) {
           const data = await response.json();
-          if (!response.ok) throw new Error(data.error || 'Failed to start restore');
-          return data;
-        })(),
-        {
-          loading: t('backups.restoring_loading'),
-          success: t('backups.restoring_started'),
-          error: (err) => err.message,
+          throw new Error(data.error || 'Failed to start restore');
         }
-      );
+        // Success is handled by GlobalTaskOverlay
+      } catch (err: any) {
+        toast.error(err.message);
+      }
     }
   };
 

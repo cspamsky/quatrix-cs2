@@ -69,15 +69,8 @@ taskService.setSocketIO(io);
 const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Initialize Services
-(async () => {
-  await databaseManager.init();
-})();
-
-app.use(cors());
-app.use(express.json());
-
 // --- phpMyAdmin Proxy (Must be at the top) ---
+// We place this BEFORE any body parsers or CORS to avoid stream consumption issues
 app.use(
   '/phpmyadmin',
   (req, res, next) => {
@@ -91,7 +84,15 @@ app.use(
     changeOrigin: true,
     xfwd: true,
     pathRewrite: { '^/phpmyadmin/': '/' },
+    cookiePathRewrite: { '/': '/phpmyadmin/' },
     on: {
+      proxyRes: (proxyRes: IncomingMessage) => {
+        // Fix redirects: if backend (8080) redirects to /something,
+        // rewrite it to /phpmyadmin/something so the browser stays within the proxy path.
+        if (proxyRes.headers.location && proxyRes.headers.location.startsWith('/')) {
+          proxyRes.headers.location = '/phpmyadmin' + proxyRes.headers.location;
+        }
+      },
       proxyReq: (proxyReq: ClientRequest, req: IncomingMessage) => {
         const protocol =
           req.headers['x-forwarded-proto'] || ((req.socket as any).encrypted ? 'https' : 'http');
@@ -102,11 +103,18 @@ app.use(
         if (!response.headersSent)
           response
             .writeHead(502)
-            .end('phpMyAdmin is not reachable. Check Docker (sudo docker ps).');
+            .end('phpMyAdmin is not reachable. Check if Nginx or PHP-FPM is running on port 8080.');
       },
     },
   }) as express.RequestHandler
 );
+
+(async () => {
+  await databaseManager.init();
+})();
+
+app.use(cors());
+app.use(express.json());
 
 // Simple Request Logger
 app.use((req, res, next) => {

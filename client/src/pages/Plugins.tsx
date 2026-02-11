@@ -156,7 +156,9 @@ const Plugins = () => {
       const data = await response.json();
 
       if (response.ok) {
-        toast.success(`${pluginName} ${t('plugins.action_success')}`);
+        // Redundant toast removed: taskService handles visual feedback in bottom-right overlay
+        // toast.success(`${pluginName} ${t('plugins.action_success')}`);
+
         // Invalidate queries to refresh UI
         queryClient.invalidateQueries({ queryKey: ['plugin-status', selectedServer] });
         queryClient.invalidateQueries({ queryKey: ['plugin-updates', selectedServer] });
