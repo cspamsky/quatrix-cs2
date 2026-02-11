@@ -232,6 +232,7 @@ class ServerManager {
   ) {
     const id = instanceId.toString();
     console.log('[SERVER] Request to start instance', id);
+    await this.ensureSteamSdk();
 
     const server = this.getServerStmt.get(id) as Server | undefined;
     if (!server) throw new Error(`Server instance ${id} not found.`);
@@ -674,6 +675,7 @@ class ServerManager {
 
     try {
       await steamManager.downloadSteamCmd(this.steamCmdExe, taskId);
+      await this.ensureSteamSdk();
       return true;
     } catch {
       return false;
