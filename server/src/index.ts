@@ -92,7 +92,10 @@ app.use(
     xfwd: true,
     pathRewrite: { '^/phpmyadmin/': '/' },
     on: {
-      proxyReq: (proxyReq: ClientRequest) => proxyReq.setHeader('X-Forwarded-Proto', 'https'),
+      proxyReq: (proxyReq: ClientRequest, req: IncomingMessage) => {
+        const protocol = req.headers['x-forwarded-proto'] || ((req.socket as any).encrypted ? 'https' : 'http');
+        proxyReq.setHeader('X-Forwarded-Proto', protocol);
+      },
       error: (err: Error, _req: IncomingMessage, res: ServerResponse | unknown) => {
         const response = res as ServerResponse;
         if (!response.headersSent)
