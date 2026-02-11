@@ -16,9 +16,21 @@ export class InstanceProcessManager {
   ): Promise<ChildProcess> {
     const { executable, args, env } = await this.prepareLaunchConfig(id, instancePath, options);
 
+    // Prepare Environment Variables (Crucial for host-launch without wrapper)
+    const homeDir = process.env.HOME || '/home/quatrix';
+    const steamSdk64 = path.join(homeDir, '.steam', 'sdk64');
+    const binDir = path.join(instancePath, 'game', 'bin', 'linuxsteamrt64');
+    const gameBinDir = path.join(instancePath, 'game', 'csgo', 'bin', 'linuxsteamrt64');
+
+    const spawnEnv = {
+      ...env, // Start with env from prepareLaunchConfig
+      LD_LIBRARY_PATH: `${binDir}:${gameBinDir}:${steamSdk64}:${env.LD_LIBRARY_PATH || ''}`,
+      HOME: homeDir,
+    };
+
     const proc = spawn(executable, args, {
       cwd: instancePath,
-      env,
+      env: spawnEnv,
       detached: true,
       shell: false,
       stdio: ['ignore', logFd, logFd],
@@ -77,7 +89,7 @@ export class InstanceProcessManager {
     const cs2BinLocal = path.join(instancePath, relativeBinPath);
 
     const runtimeWrapper = fileSystemService.getSteamRuntimePath('run');
-    const useRuntime = false; // Forced false - Wrapper support removed
+    const useRuntime = false; // Permanently disabled as requested
 
     let cpuPriority = options.cpu_priority !== undefined ? Number(options.cpu_priority) : 0;
     if (isNaN(cpuPriority) || !isFinite(cpuPriority)) cpuPriority = 0;
@@ -103,10 +115,9 @@ export class InstanceProcessManager {
     const isWorkshopID = (m: string) => /^\d+$/.test(m);
 
     const args: string[] = [];
-    // Wrapper support removed to ensure plugin compatibility
-
+    // We are no longer using the Steam Runtime wrapper.
+    // Launching directly using host libraries.
     args.push('-dedicated', '-console', '-usercon');
-    args.push('--graphics-provider', '""');
 
     if (options.auto_update) args.push('-autoupdate');
     if (options.steam_api_key) args.push('-authkey', options.steam_api_key);
