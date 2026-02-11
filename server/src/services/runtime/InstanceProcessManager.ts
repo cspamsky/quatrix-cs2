@@ -77,7 +77,7 @@ export class InstanceProcessManager {
     const cs2BinLocal = path.join(instancePath, relativeBinPath);
 
     const runtimeWrapper = fileSystemService.getSteamRuntimePath('run');
-    const useRuntime = fs.existsSync(runtimeWrapper);
+    const useRuntime = fs.existsSync(runtimeWrapper) && process.env.DISABLE_STEAM_RUNTIME !== 'true';
 
     let cpuPriority = options.cpu_priority !== undefined ? Number(options.cpu_priority) : 0;
     if (isNaN(cpuPriority) || !isFinite(cpuPriority)) cpuPriority = 0;
@@ -104,12 +104,13 @@ export class InstanceProcessManager {
 
     const args: string[] = [];
     if (useRuntime) {
-      // Use '--' to separate runtime wrapper options from the actual command
-      args.unshift('--', cs2BinLocal);
+      // Script lesson: graphics-provider MUST be before the separator '--' for host driver access
+      // and target binary MUST be after it.
+      args.push('--graphics-provider', '""', '--', cs2BinLocal);
     }
 
     args.push('-dedicated', '-console', '-usercon');
-    args.push('--graphics-provider', '""');
+    // args.push('--graphics-provider', '""'); // Moved above for Runtime compatibility
 
     if (options.auto_update) args.push('-autoupdate');
     if (options.steam_api_key) args.push('-authkey', options.steam_api_key);
