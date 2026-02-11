@@ -1,5 +1,7 @@
 # <img src=".github/assets/logo.png" width="38" height="38" /> Quatrix CS2 Server Manager
 
+**NOTE:** Quatrix panel is still under development.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D20.6.0-brightgreen.svg)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
