@@ -105,9 +105,9 @@ export class InstanceProcessManager {
 
     const args: string[] = [];
     if (useRuntime) {
-      // Script lesson: Don't use --env or --set-env flags. The wrapper inherits from process.env.
-      // Order: [cs2_bin] [--graphics-provider] [""] [--] [dedicated_args]
-      args.push(cs2BinLocal, '--graphics-provider', '', '--');
+      // Script lesson: Use relative path for the binary when using the wrapper
+      // Order: [run] [relative_cs2_bin] [--graphics-provider] [""] [--] [dedicated_args]
+      args.push(`./${relativeBinPath}`, '--graphics-provider', '', '--');
     }
 
     args.push('-dedicated', '-console', '-usercon');

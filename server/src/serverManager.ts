@@ -111,6 +111,14 @@ class ServerManager {
     await fileSystemService.init();
     await this.refreshSettings();
 
+    // 4. Ensure Unprivileged Namespaces
+    console.log('[HEALTH] Checking unprivileged namespaces...');
+    try {
+      await execAsync('sudo sysctl -w kernel.unprivileged_userns_clone=1');
+      console.log('[HEALTH] Unprivileged namespaces enabled.');
+    } catch {
+      console.warn('[HEALTH] Failed to set unprivileged namespaces. Runtime might be restricted.');
+    }
     // Linux Pre-Flight Checks
     console.log('[SYSTEM] Running Linux Pre-flight checks...');
     await this.ensureSteamSdk();
@@ -892,6 +900,14 @@ class ServerManager {
         } catch (err) {
           console.warn(`[HEALTH] Failed to repair instance ${server.id}:`, err);
         }
+      }
+
+      // 5. Ensure Unprivileged Namespaces
+      try {
+        await execAsync('sudo sysctl -w kernel.unprivileged_userns_clone=1');
+        console.log('[HEALTH] Unprivileged namespaces repaired.');
+      } catch {
+        /* ignore */
       }
 
       return {
