@@ -89,8 +89,6 @@ export class InstanceProcessManager {
     const relativeBinPath = path.join('game', 'bin', 'linuxsteamrt64', 'cs2');
     const cs2BinLocal = path.join(instancePath, relativeBinPath);
 
-    const runtimeWrapper = fileSystemService.getSteamRuntimePath('run');
-    const useRuntime = false; // Permanently disabled as requested
 
     let cpuPriority = options.cpu_priority !== undefined ? Number(options.cpu_priority) : 0;
     if (isNaN(cpuPriority) || !isFinite(cpuPriority)) cpuPriority = 0;
@@ -98,7 +96,7 @@ export class InstanceProcessManager {
     let ramLimitMb = options.ram_limit !== undefined ? Number(options.ram_limit) : 0;
     if (isNaN(ramLimitMb) || !isFinite(ramLimitMb)) ramLimitMb = 0;
 
-    let executable = useRuntime ? runtimeWrapper : cs2BinLocal;
+    let executable = cs2BinLocal;
 
     if (!fileSystemService.isPathSafe(executable) && executable !== 'nice') {
       throw new Error(
