@@ -36,10 +36,10 @@ export interface SystemHealth {
     status: string;
     garbage: { count: number; size: number };
   };
-    runtimes: {
-      dotnet: { status: string; versions: string[] };
-      steam_sdk: { status: string };
-    };
+  runtimes: {
+    dotnet: { status: string; versions: string[] };
+    steam_sdk: { status: string };
+  };
   runtime: { node: string; panel: string; os: string };
 }
 
@@ -767,7 +767,6 @@ class ServerManager {
       const sdkPath = path.join(homeDir, '.steam', 'sdk64', 'steamclient.so');
       const steamSdkStatus = fs.existsSync(sdkPath) ? 'good' : 'missing';
 
-
       // 6. Garbage Check (Core dumps)
       let garbageCount = 0;
       let garbageSize = 0;
@@ -828,7 +827,6 @@ class ServerManager {
       // 1. Ensure Steam SDK
       await this.ensureSteamSdk();
 
-
       // 3. Clean Garbage (Core Dumps) - Scoped to ./data
       try {
         await execAsync("find ./data -name 'core.*' -type f -delete");
@@ -861,8 +859,7 @@ class ServerManager {
 
       return {
         success: true,
-        message:
-          'System repaired successfully. Steam SDK linked and instances synchronized.',
+        message: 'System repaired successfully. Steam SDK linked and instances synchronized.',
       };
     } catch (error: unknown) {
       const err = error as Error;

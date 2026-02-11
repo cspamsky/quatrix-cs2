@@ -16,9 +16,22 @@ export class InstanceProcessManager {
   ): Promise<ChildProcess> {
     const { executable, args, env } = await this.prepareLaunchConfig(id, instancePath, options);
 
+    // Prepare Environment Variables (Crucial for host-launch without wrapper)
+    const homeDir = process.env.HOME || '/home/quatrix';
+    const steamSdk64 = path.join(homeDir, '.steam', 'sdk64');
+    const binDir = path.join(instancePath, 'game', 'bin', 'linuxsteamrt64');
+    const gameBinDir = path.join(instancePath, 'game', 'csgo', 'bin', 'linuxsteamrt64');
+
+    const spawnEnv = {
+      ...env,
+      LD_LIBRARY_PATH: `${binDir}:${gameBinDir}:${steamSdk64}:${env.LD_LIBRARY_PATH || ''}`,
+      HOME: homeDir,
+      DOTNET_ROOT: '/usr/share/dotnet', // Standard path, can be adjusted
+    };
+
     const proc = spawn(executable, args, {
       cwd: instancePath,
-      env,
+      env: spawnEnv,
       detached: true,
       shell: false,
       stdio: ['ignore', logFd, logFd],
@@ -76,16 +89,13 @@ export class InstanceProcessManager {
     const relativeBinPath = path.join('game', 'bin', 'linuxsteamrt64', 'cs2');
     const cs2BinLocal = path.join(instancePath, relativeBinPath);
 
-    const runtimeWrapper = fileSystemService.getSteamRuntimePath('run');
-    const useRuntime = fs.existsSync(runtimeWrapper);
-
     let cpuPriority = options.cpu_priority !== undefined ? Number(options.cpu_priority) : 0;
     if (isNaN(cpuPriority) || !isFinite(cpuPriority)) cpuPriority = 0;
 
     let ramLimitMb = options.ram_limit !== undefined ? Number(options.ram_limit) : 0;
     if (isNaN(ramLimitMb) || !isFinite(ramLimitMb)) ramLimitMb = 0;
 
-    let executable = useRuntime ? runtimeWrapper : cs2BinLocal;
+    let executable = cs2BinLocal;
 
     if (!fileSystemService.isPathSafe(executable) && executable !== 'nice') {
       throw new Error(
@@ -103,11 +113,6 @@ export class InstanceProcessManager {
     const isWorkshopID = (m: string) => /^\d+$/.test(m);
 
     const args: string[] = [];
-    if (useRuntime && executable !== 'nice') {
-      args.unshift(cs2BinLocal);
-    } else if (useRuntime && executable === 'nice') {
-      args.unshift(cs2BinLocal);
-    }
 
     args.push('-dedicated', '-console', '-usercon');
     args.push('--graphics-provider', '""');
@@ -162,21 +167,7 @@ export class InstanceProcessManager {
       ];
     }
 
-    const env: NodeJS.ProcessEnv = { ...process.env };
-    const binDir = path.dirname(cs2BinLocal);
-    const homeDir = process.env.HOME || '/home/quatrix';
-    const steamSdk64 = path.join(homeDir, '.steam', 'sdk64');
-
-    const libraryPaths = [
-      binDir,
-      path.join(binDir, 'linux64'),
-      steamSdk64,
-      process.env.LD_LIBRARY_PATH || '',
-    ].filter(Boolean);
-
-    env.LD_LIBRARY_PATH = libraryPaths.join(':');
-
-    return { executable, args: combinedArgs, env };
+    return { executable, args: combinedArgs, env: process.env };
   }
 
   /**

@@ -56,10 +56,6 @@ class FileSystemService {
     return path.join(this.instancesDir, id.toString(), subPath);
   }
 
-  public getSteamRuntimePath(subPath: string = ''): string {
-    return path.join(this.baseDir, 'steamrt', subPath);
-  }
-
   public isPathSafe(targetPath: string): boolean {
     const resolvedPath = path.resolve(targetPath);
     return (

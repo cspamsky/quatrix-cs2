@@ -265,7 +265,6 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
                 </div>
               </div>
 
-
               {/* Garbage Cleanup Card */}
               <div
                 className={`p-4 rounded-xl border ${healthData?.disk?.garbage?.count === 0 ? 'bg-green-500/5 border-green-500/20' : 'bg-orange-500/5 border-orange-500/20'}`}
