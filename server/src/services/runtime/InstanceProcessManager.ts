@@ -105,13 +105,19 @@ export class InstanceProcessManager {
 
     const args: string[] = [];
     if (useRuntime) {
-      // Script lesson: graphics-provider MUST be before the separator '--' for host driver access
-      // and target binary MUST be after it.
-      args.push('--graphics-provider', '', '--', cs2BinLocal);
+      // Script lesson: graphics-provider causes 'must be absolute path' errors in wrapper, better to remove for dedicated.
+      // We pass crucial environment variables into the container via --set-env
+      const homeDir = process.env.HOME || '/home/quatrix';
+      const steamSdk64 = path.join(homeDir, '.steam', 'sdk64');
+      const binDir = path.join(instancePath, 'game', 'bin', 'linuxsteamrt64');
+      
+      const libPath = `${binDir}:${path.join(binDir, 'linux64')}:${steamSdk64}`;
+      
+      args.push('--set-env', `LD_LIBRARY_PATH=${libPath}`, '--', cs2BinLocal);
     }
 
     args.push('-dedicated', '-console', '-usercon');
-    // args.push('--graphics-provider', '""'); // Moved above for Runtime compatibility
+    // args.push('--graphics-provider', '""'); // Removed to avoid wrapper errors
 
     if (options.auto_update) args.push('-autoupdate');
     if (options.steam_api_key) args.push('-authkey', options.steam_api_key);
