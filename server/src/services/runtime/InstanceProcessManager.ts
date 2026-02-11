@@ -77,8 +77,7 @@ export class InstanceProcessManager {
     const cs2BinLocal = path.join(instancePath, relativeBinPath);
 
     const runtimeWrapper = fileSystemService.getSteamRuntimePath('run');
-    const useRuntime =
-      fs.existsSync(runtimeWrapper) && process.env.DISABLE_STEAM_RUNTIME !== 'true';
+    const useRuntime = false; // Forced false - Wrapper support removed
 
     let cpuPriority = options.cpu_priority !== undefined ? Number(options.cpu_priority) : 0;
     if (isNaN(cpuPriority) || !isFinite(cpuPriority)) cpuPriority = 0;
@@ -104,14 +103,10 @@ export class InstanceProcessManager {
     const isWorkshopID = (m: string) => /^\d+$/.test(m);
 
     const args: string[] = [];
-    if (useRuntime) {
-      // Script lesson: Use relative path for the binary when using the wrapper
-      // Order: [run] [relative_cs2_bin] [--graphics-provider] [""] [--] [dedicated_args]
-      args.push(`./${relativeBinPath}`, '--graphics-provider', '', '--');
-    }
+    // Wrapper support removed to ensure plugin compatibility
 
     args.push('-dedicated', '-console', '-usercon');
-    // args.push('--graphics-provider', '""'); // Removed to avoid wrapper errors
+    args.push('--graphics-provider', '""');
 
     if (options.auto_update) args.push('-autoupdate');
     if (options.steam_api_key) args.push('-authkey', options.steam_api_key);

@@ -703,9 +703,6 @@
     "refresh": "Yenile",
     "refreshing": "Yenileniyor...",
     "repair_success": "Sistem başarıyla onarıldı.",
-    "so_files": ".so Dosya Senkronizasyonu",
-    "steam_runtime": "Steam Runtime 3.0",
-    "system_health": "Sistem Sağlığı",
-    "unprivileged_namespaces": "Yetkisiz İsim Alanları"
+    "so_files": ".so Dosya Senkronizasyonu"
   }
 }

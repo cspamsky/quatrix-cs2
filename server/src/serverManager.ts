@@ -36,12 +36,10 @@ export interface SystemHealth {
     status: string;
     garbage: { count: number; size: number };
   };
-  runtimes: {
-    dotnet: { status: string; versions: string[] };
-    steam_sdk: { status: string };
-    steam_runtime: { status: string };
-    namespaces: { status: string; message: string };
-  };
+    runtimes: {
+      dotnet: { status: string; versions: string[] };
+      steam_sdk: { status: string };
+    };
   runtime: { node: string; panel: string; os: string };
 }
 
@@ -111,14 +109,6 @@ class ServerManager {
     await fileSystemService.init();
     await this.refreshSettings();
 
-    // 4. Ensure Unprivileged Namespaces
-    console.log('[HEALTH] Checking unprivileged namespaces...');
-    try {
-      await execAsync('sudo sysctl -w kernel.unprivileged_userns_clone=1');
-      console.log('[HEALTH] Unprivileged namespaces enabled.');
-    } catch {
-      console.warn('[HEALTH] Failed to set unprivileged namespaces. Runtime might be restricted.');
-    }
     // Linux Pre-Flight Checks
     console.log('[SYSTEM] Running Linux Pre-flight checks...');
     await this.ensureSteamSdk();
@@ -777,26 +767,6 @@ class ServerManager {
       const sdkPath = path.join(homeDir, '.steam', 'sdk64', 'steamclient.so');
       const steamSdkStatus = fs.existsSync(sdkPath) ? 'good' : 'missing';
 
-      // 4. Check for Steam Runtime 3.0
-      const runtimePath = fileSystemService.getSteamRuntimePath();
-      const runtimeStatus = fs.existsSync(path.join(runtimePath, 'run')) ? 'good' : 'missing';
-
-      // 5. Check for Unprivileged User Namespaces
-      let namespacesStatus = 'unknown';
-      let namespacesMessage = '';
-      try {
-        const { stdout } = await execAsync('sysctl kernel.unprivileged_userns_clone');
-        if (stdout.includes('= 1')) {
-          namespacesStatus = 'good';
-          namespacesMessage = 'Enabled';
-        } else {
-          namespacesStatus = 'warning';
-          namespacesMessage = 'Disabled';
-        }
-      } catch {
-        namespacesStatus = 'info';
-        namespacesMessage = 'Not available on this kernel';
-      }
 
       // 6. Garbage Check (Core dumps)
       let garbageCount = 0;
@@ -840,13 +810,6 @@ class ServerManager {
           steam_sdk: {
             status: steamSdkStatus,
           },
-          steam_runtime: {
-            status: runtimeStatus,
-          },
-          namespaces: {
-            status: namespacesStatus,
-            message: namespacesMessage,
-          },
         },
         runtime: {
           node: process.version,
@@ -865,12 +828,6 @@ class ServerManager {
       // 1. Ensure Steam SDK
       await this.ensureSteamSdk();
 
-      // 2. Ensure Steam Runtime
-      const runtimePath = fileSystemService.getSteamRuntimePath();
-      if (!fs.existsSync(path.join(runtimePath, 'run'))) {
-        console.log('[HEALTH] Steam Runtime missing or incomplete. Starting installation...');
-        await steamManager.installSteamRuntime(runtimePath, this.steamCmdExe);
-      }
 
       // 3. Clean Garbage (Core Dumps) - Scoped to ./data
       try {
@@ -902,18 +859,10 @@ class ServerManager {
         }
       }
 
-      // 5. Ensure Unprivileged Namespaces
-      try {
-        await execAsync('sudo sysctl -w kernel.unprivileged_userns_clone=1');
-        console.log('[HEALTH] Unprivileged namespaces repaired.');
-      } catch {
-        /* ignore */
-      }
-
       return {
         success: true,
         message:
-          'System repaired successfully. Steam SDK linked, Steam Runtime installed, and instances synchronized.',
+          'System repaired successfully. Steam SDK linked and instances synchronized.',
       };
     } catch (error: unknown) {
       const err = error as Error;
