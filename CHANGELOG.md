@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.0.2-Beta] - 2026-02-12
+
+### Fixed
+
+- **CRITICAL**: Fixed a bug in `repairSystemHealth` where the CounterStrikeSharp `core.json` configuration file was being deleted during garbage collection.
+- **UI**: Resolved false "Needs Cleanup" warnings in the dashboard by excluding `core.json` from garbage count.
+- **Plugins**: Fixed the infinite "Update" button loop by correcting the metadata field mapping (`version` vs `currentVersion`) in the database record logic.
+- **Metadata**: Fixed `PluginDiscovery` service to properly include the `version` column in the SQLite cache and ensure consistent manifest generation.
+
+### Changed
+
+- **Performance**: Completely removed the Steam Runtime (Sniper) dependency in favor of direct host execution, significantly improving server startup speed and reducing system overhead.
+- **Environment**: Enhanced CounterStrikeSharp support with robust `DOTNET_ROOT` and `LD_LIBRARY_PATH` injection for direct execution.
+- **Registry**: Updated core plugin registry with the latest versions:
+  - Metamod: 2.0-git1384
+  - CS2Fixes: 1.17.1
+  - ServerListPlayersFix: 1.0.6
+  - MovementUnlocker: 1.10
+
 ## [1.0.1-Beta] - 2026-02-11
 
 **NOTE:** Quatrix panel is still under development.
