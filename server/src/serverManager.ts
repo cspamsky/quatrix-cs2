@@ -827,10 +827,10 @@ class ServerManager {
       // 1. Ensure Steam SDK
       await this.ensureSteamSdk();
 
-      // 3. Clean Garbage (Core Dumps) - Scoped to ./data
+      // 3. Clean Garbage (Core Dumps) - Scoped to ./data, excluding vital core.json files
       try {
-        await execAsync("find ./data -name 'core.*' -type f -delete");
-        console.log('[HEALTH] Cleaned core dumps in ./data.');
+        await execAsync("find ./data -name 'core.*' ! -name 'core.json' -type f -delete");
+        console.log('[HEALTH] Cleaned core dumps in ./data (preserved core.json).');
       } catch {
         // ignore
       }

@@ -185,17 +185,10 @@ export class PluginInstaller {
       const isCore =
         pluginId === 'metamod' || pluginId === 'cssharp' || pluginInfo.category === 'core';
 
+      const cssBase = path.join(csgoDir, 'addons', 'counterstrikesharp');
+      const searchDirs: string[] = [];
+
       if (!isCore) {
-        if (taskId) {
-          taskService.updateTask(taskId, {
-            progress: 60,
-            message: 'tasks.messages.post_processing',
-          });
-        }
-
-        const cssBase = path.join(csgoDir, 'addons', 'counterstrikesharp');
-        const searchDirs: string[] = [];
-
         if (pluginInfo.category === 'cssharp') {
           // Only scan the specific plugin and config folders we just created
           const pluginDest = path.resolve(cssBase, 'plugins', pluginFolderName);
@@ -205,11 +198,14 @@ export class PluginInstaller {
           // Fallback for other categories
           searchDirs.push(csgoDir);
         }
+      } else if (pluginId === 'cssharp') {
+        // For CS# itself, process its core config folder
+        searchDirs.push(path.join(cssBase, 'configs'));
+      }
 
-        // 5. Process example configs
-        for (const dir of searchDirs) {
-          await pluginConfigManager.processExampleConfigs(dir).catch(() => {});
-        }
+      // 5. Process example configs
+      for (const dir of searchDirs) {
+        await pluginConfigManager.processExampleConfigs(dir).catch(() => {});
       }
 
       if (taskId) {
