@@ -59,7 +59,14 @@ const GlobalTaskOverlay: React.FC = () => {
           </div>
 
           {/* Message */}
-          <p className="text-xs text-gray-400 mb-3 line-clamp-2">{task.message}</p>
+          <p className="text-xs text-gray-400 mb-3 line-clamp-2">
+            {String(
+              t(task.message, {
+                defaultValue: task.message,
+                plugin: (task.metadata as any)?.pluginName || 'Plugin',
+              })
+            )}
+          </p>
 
           {/* Progress Bar */}
           <div className="relative h-1.5 bg-white/5 rounded-full overflow-hidden">

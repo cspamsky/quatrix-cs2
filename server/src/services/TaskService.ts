@@ -57,7 +57,10 @@ export class TaskService extends EventEmitter {
     this.broadcast('task_completed', task);
 
     // Optional: Auto-remove completed tasks after some time
-    setTimeout(() => this.tasks.delete(id), 10000);
+    setTimeout(() => {
+      this.tasks.delete(id);
+      this.broadcast('task_deleted', { id });
+    }, 10000);
   }
 
   failTask(id: string, error: string) {
@@ -71,10 +74,21 @@ export class TaskService extends EventEmitter {
     this.broadcast('task_failed', task);
 
     // Keep failed tasks around longer for user to see
-    setTimeout(() => this.tasks.delete(id), 30000);
+    setTimeout(() => {
+      this.tasks.delete(id);
+      this.broadcast('task_deleted', { id });
+    }, 30000);
   }
 
   getTasks(): Task[] {
+    // Only return tasks that are actually running or pending for initial sync
+    // to avoid finished tasks "re-appearing" on reconnect
+    return Array.from(this.tasks.values()).filter(
+      (t) => t.status === 'running' || t.status === 'pending'
+    );
+  }
+
+  getAllTasks(): Task[] {
     return Array.from(this.tasks.values());
   }
 

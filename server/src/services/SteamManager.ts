@@ -101,9 +101,9 @@ export class SteamManager {
               const currentTaskId = taskId;
               if (progressMatch && progressMatch[1] && typeof currentTaskId === 'string') {
                 const progress = parseFloat(progressMatch[1]);
-                let statusMsg = 'Downloading...';
-                if (message.includes('verifying')) statusMsg = 'Verifying...';
-                if (message.includes('preallocating')) statusMsg = 'Preallocating...';
+                let statusMsg = 'tasks.messages.downloading';
+                if (message.includes('verifying')) statusMsg = 'tasks.messages.verifying';
+                if (message.includes('preallocating')) statusMsg = 'tasks.messages.preallocating';
 
                 taskService.updateTask(currentTaskId, {
                   progress,
@@ -120,13 +120,13 @@ export class SteamManager {
         const finalTaskId = taskId;
         if (code === 0) {
           if (typeof finalTaskId === 'string') {
-            taskService.completeTask(finalTaskId, 'Installation successful');
+            taskService.completeTask(finalTaskId, 'tasks.messages.install_success');
           }
           resolve();
         } else {
           const error = `SteamCMD failed with code ${code}`;
           if (typeof finalTaskId === 'string') {
-            taskService.failTask(finalTaskId, error);
+            taskService.failTask(finalTaskId, 'tasks.messages.install_failed');
           }
           reject(new Error(error));
         }

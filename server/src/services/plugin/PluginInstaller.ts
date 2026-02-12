@@ -49,7 +49,7 @@ export class PluginInstaller {
       if (taskId) {
         taskService.updateTask(taskId, {
           status: 'running',
-          message: `Installing ${pluginId}...`,
+          message: 'tasks.messages.installing',
           progress: 10,
         });
       }
@@ -108,7 +108,7 @@ export class PluginInstaller {
       if (taskId) {
         taskService.updateTask(taskId, {
           progress: 20,
-          message: `Found ${pluginInfo.name} in pool`,
+          message: 'tasks.messages.found_in_pool',
         });
       }
 
@@ -160,7 +160,7 @@ export class PluginInstaller {
 
       // 3. Sync files based on structure
       if (taskId) {
-        taskService.updateTask(taskId, { progress: 30, message: 'Syncing files...' });
+        taskService.updateTask(taskId, { progress: 30, message: 'tasks.messages.syncing' });
       }
 
       if (hasGameDir) {
@@ -178,7 +178,7 @@ export class PluginInstaller {
       }
 
       if (taskId) {
-        taskService.updateTask(taskId, { progress: 60, message: 'Post-processing configs...' });
+        taskService.updateTask(taskId, { progress: 60, message: 'tasks.messages.post_processing' });
       }
 
       // 4. Skip DB injection for core components
@@ -187,7 +187,10 @@ export class PluginInstaller {
 
       if (!isCore) {
         if (taskId) {
-          taskService.updateTask(taskId, { progress: 60, message: 'Post-processing configs...' });
+          taskService.updateTask(taskId, {
+            progress: 60,
+            message: 'tasks.messages.post_processing',
+          });
         }
 
         const cssBase = path.join(csgoDir, 'addons', 'counterstrikesharp');
@@ -210,7 +213,7 @@ export class PluginInstaller {
       }
 
       if (taskId) {
-        taskService.updateTask(taskId, { progress: 80, message: 'Finalizing installation...' });
+        taskService.updateTask(taskId, { progress: 80, message: 'tasks.messages.finalizing' });
       }
 
       // 7. Record in database
@@ -223,7 +226,7 @@ export class PluginInstaller {
         ON CONFLICT(server_id, plugin_id) DO UPDATE SET version = EXCLUDED.version
       `
           )
-          .run(instanceId, pluginId, pluginInfo.currentVersion);
+          .run(instanceId, pluginId, pluginInfo.version);
       } catch (err) {
         console.error(`[DB] Failed to record plugin sync:`, err);
       }
@@ -236,7 +239,7 @@ export class PluginInstaller {
       console.log('[PLUGIN]', pluginInfo.name, 'sync complete.');
 
       if (taskId) {
-        taskService.completeTask(taskId, `${pluginInfo.name} installed successfully`);
+        taskService.completeTask(taskId, 'tasks.messages.install_success');
       }
     } catch (err: unknown) {
       const error = err as Error;
@@ -363,7 +366,7 @@ export class PluginInstaller {
    */
   private async configureMetamod(csgoDir: string, taskId?: string): Promise<void> {
     if (taskId) {
-      taskService.updateTask(taskId, { message: 'Configuring Metamod (patching gameinfo)...' });
+      taskService.updateTask(taskId, { message: 'tasks.messages.patching_gameinfo' });
     }
     const gameinfo = path.join(csgoDir, 'gameinfo.gi');
     try {
@@ -414,7 +417,7 @@ export class PluginInstaller {
     if (taskId) {
       taskService.updateTask(taskId, {
         status: 'running',
-        message: `Uninstalling ${pluginId}...`,
+        message: 'tasks.messages.uninstalling',
         progress: 20,
       });
     }
@@ -493,7 +496,7 @@ export class PluginInstaller {
     }
 
     if (taskId) {
-      taskService.completeTask(taskId, `${pluginInfo.name} uninstalled`);
+      taskService.completeTask(taskId, 'tasks.messages.uninstall_success');
     }
     console.log('[PLUGIN]', pluginInfo.name, 'uninstalled');
   }

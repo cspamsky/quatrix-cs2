@@ -218,6 +218,32 @@
       "plugin_install": "Plugin Installation",
       "backup_create": "Creating Backup",
       "backup_restore": "Restoring Backup"
+    },
+    "messages": {
+      "installing": "Installing plugin {{plugin}}...",
+      "uninstalling": "Uninstalling plugin {{plugin}}...",
+      "found_in_pool": "Plugin found in pool, syncing...",
+      "syncing": "Syncing files to server...",
+      "post_processing": "Post-processing configuration files...",
+      "finalizing": "Finalizing installation...",
+      "patching_gameinfo": "Updating Metamod configuration (gameinfo.gi)...",
+      "install_success": "{{plugin}} installed successfully",
+      "install_failed": "Installation failed",
+      "uninstall_success": "{{plugin}} uninstalled successfully",
+      "backup_starting": "Backup starting...",
+      "packaging_files": "Packaging server files...",
+      "creating_archive": "Creating zip archive...",
+      "backup_success": "Backup completed successfully",
+      "backup_failed": "Backup failed",
+      "opening_backup": "Opening backup file...",
+      "restoring_files": "Restoring files...",
+      "restore_success": "Backup restored successfully",
+      "restore_failed": "Restore failed",
+      "downloading": "Downloading...",
+      "verifying": "Verifying...",
+      "preallocating": "Preallocating...",
+      "validation_success": "File validation completed successfully",
+      "validation_failed": "File validation failed"
     }
   },
   "database": {

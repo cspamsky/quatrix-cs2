@@ -189,15 +189,21 @@ router.post('/:id/plugins/:plugin/:action', async (req: Request, res: Response) 
       });
     }
 
-    if (action === 'install') {
-      await serverManager.installPlugin(id, pluginId, taskId);
-    } else if (action === 'uninstall') {
-      await serverManager.uninstallPlugin(id, pluginId, taskId);
-    } else if (action === 'update') {
-      await serverManager.updatePlugin(id, pluginId, taskId);
+    try {
+      if (action === 'install') {
+        await serverManager.installPlugin(id, pluginId, taskId);
+      } else if (action === 'uninstall') {
+        await serverManager.uninstallPlugin(id, pluginId, taskId);
+      } else if (action === 'update') {
+        await serverManager.updatePlugin(id, pluginId, taskId);
+      }
+      res.json({ message: `Plugin ${action} started`, taskId });
+    } catch (pluginError: unknown) {
+      const pErr = pluginError as Error;
+      taskService.failTask(taskId, pErr.message);
+      // We don't rethrow here because we want to send the error response
+      res.status(500).json({ message: pErr.message });
     }
-
-    res.json({ message: `Plugin ${action} started`, taskId });
   } catch (error: unknown) {
     const err = error as Error;
     console.error('Plugin action failed:', action, err.message);

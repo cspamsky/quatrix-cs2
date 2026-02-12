@@ -496,12 +496,12 @@ class ServerManager {
 
       p.on('close', (code: number) => {
         if (code === 0) {
-          if (taskId) taskService.completeTask(taskId, 'Validation successful');
+          if (taskId) taskService.completeTask(taskId, 'tasks.messages.validation_success');
           resolve();
         } else {
-          const error = `SteamCMD validation exited with code ${code}`;
+          const error = 'tasks.messages.validation_failed';
           if (taskId) taskService.failTask(taskId, error);
-          reject(new Error(error));
+          reject(new Error(`SteamCMD validation exited with code ${code}`));
         }
       });
     });

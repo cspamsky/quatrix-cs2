@@ -1,7 +1,7 @@
 export const pluginRegistry = {
   metamod: {
     name: 'Metamod:Source',
-    currentVersion: '2.0-git1383',
+    currentVersion: '2.0-git1384',
     folderName: 'metamod',
     category: 'core' as const,
     tags: ['core', 'framework'],
@@ -18,7 +18,7 @@ export const pluginRegistry = {
   // MetaMod Plugins
   cs2fixes: {
     name: 'CS2Fixes',
-    currentVersion: '1.17',
+    currentVersion: '1.17.1',
     category: 'metamod' as const,
     tags: ['fix', 'utility', 'performance'],
     description: 'Essential fixes and performance improvements',
@@ -26,7 +26,7 @@ export const pluginRegistry = {
   },
   playerfix: {
     name: 'ServerListPlayersFix',
-    currentVersion: '1.0.5',
+    currentVersion: '1.0.6',
     category: 'metamod' as const,
     tags: ['fix', 'utility'],
     description: 'Fixes players count in server browser',
@@ -34,7 +34,7 @@ export const pluginRegistry = {
   },
   movelock: {
     name: 'MovementUnlocker',
-    currentVersion: '1.9',
+    currentVersion: '1.10',
     category: 'metamod' as const,
     tags: ['movement', 'surf', 'bhop'],
     description: 'Removes max speed limitation (BHOP/Surf)',
@@ -50,7 +50,7 @@ export const pluginRegistry = {
   },
   accelerator: {
     name: 'AcceleratorCS2',
-    currentVersion: '2.0.4',
+    currentVersion: '2.0.5',
     category: 'metamod' as const,
     tags: ['fix', 'utility', 'debug'],
     description: 'Generate crash dumps on server crash',

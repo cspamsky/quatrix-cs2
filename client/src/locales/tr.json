@@ -221,6 +221,32 @@
       "plugin_install": "Eklenti Kurulumu",
       "backup_create": "Yedek Oluşturma",
       "backup_restore": "Yedek Geri Yükleme"
+    },
+    "messages": {
+      "installing": "Eklenti {{plugin}} yükleniyor...",
+      "uninstalling": "Eklenti {{plugin}} kaldırılıyor...",
+      "found_in_pool": "Eklenti havuzda bulundu, senkronize ediliyor...",
+      "syncing": "Dosyalar sunucuya senkronize ediliyor...",
+      "post_processing": "Yapılandırma dosyaları işleniyor...",
+      "finalizing": "Kurulum tamamlanıyor...",
+      "patching_gameinfo": "Metamod yapılandırması güncelleniyor (gameinfo.gi)...",
+      "install_success": "{{plugin}} başarıyla yüklendi",
+      "install_failed": "Kurulum başarısız oldu",
+      "uninstall_success": "{{plugin}} başarıyla kaldırıldı",
+      "backup_starting": "Yedekleme başlatılıyor...",
+      "packaging_files": "Sunucu dosyaları paketleniyor...",
+      "creating_archive": "Zip arşivi oluşturuluyor...",
+      "backup_success": "Yedekleme başarıyla tamamlandı",
+      "backup_failed": "Yedekleme başarısız oldu",
+      "opening_backup": "Yedek dosyası açılıyor...",
+      "restoring_files": "Dosyalar geri yükleniyor...",
+      "restore_success": "Yedek başarıyla geri yüklendi",
+      "restore_failed": "Geri yükleme başarısız oldu",
+      "downloading": "İndiriliyor...",
+      "verifying": "Doğrulanıyor...",
+      "preallocating": "Ön ayırma yapılıyor...",
+      "validation_success": "Dosya doğrulaması başarıyla tamamlandı",
+      "validation_failed": "Dosya doğrulaması başarısız oldu"
     }
   },
   "database": {

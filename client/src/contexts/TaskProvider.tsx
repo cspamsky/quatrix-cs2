@@ -37,12 +37,17 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }, 15000);
     });
 
+    socket.on('task_deleted', ({ id }: { id: string }) => {
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+    });
+
     return () => {
       socket.off('active_tasks');
       socket.off('task_started');
       socket.off('task_progress');
       socket.off('task_completed');
       socket.off('task_failed');
+      socket.off('task_deleted');
     };
   }, []);
 

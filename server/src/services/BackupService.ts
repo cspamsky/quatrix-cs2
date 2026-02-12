@@ -64,7 +64,7 @@ class BackupService {
     }
 
     if (taskId) {
-      taskService.updateTask(taskId, { progress: 5, message: 'Yedekleme başlatılıyor...' });
+      taskService.updateTask(taskId, { progress: 5, message: 'tasks.messages.backup_starting' });
     }
 
     try {
@@ -80,7 +80,7 @@ class BackupService {
       if (taskId)
         taskService.updateTask(taskId, {
           progress: 20,
-          message: 'Sunucu dosyaları paketleniyor...',
+          message: 'tasks.messages.packaging_files',
         });
 
       const csgoCfgPath = path.join(instancePath, 'game', 'csgo', 'cfg');
@@ -99,7 +99,10 @@ class BackupService {
       // Şimdilik sadece instance dosyalarını alıyoruz.
 
       if (taskId)
-        taskService.updateTask(taskId, { progress: 80, message: 'Arşiv oluşturuluyor...' });
+        taskService.updateTask(taskId, {
+          progress: 80,
+          message: 'tasks.messages.creating_archive',
+        });
 
       await zip.writeZipPromise(targetPath);
 
@@ -114,7 +117,7 @@ class BackupService {
       ).run(id, serverId, filename, stats.size, type, comment || '');
 
       if (taskId) {
-        taskService.completeTask(taskId, 'Yedekleme başarıyla tamamlandı.');
+        taskService.completeTask(taskId, 'tasks.messages.backup_success');
       }
 
       return id;
@@ -122,7 +125,7 @@ class BackupService {
       const err = error as Error;
       console.error('[BackupService] Yedekleme hatası:', err);
       if (taskId) {
-        taskService.failTask(taskId, `Yedekleme başarısız: ${err.message}`);
+        taskService.failTask(taskId, `tasks.messages.backup_failed`);
       }
       throw err;
     }
@@ -182,26 +185,26 @@ class BackupService {
     if (!fs.existsSync(filePath)) throw new Error('Yedek dosyası fiziksel olarak bulunamadı.');
 
     if (taskId) {
-      taskService.updateTask(taskId, { progress: 10, message: 'Yedek dosyası açılıyor...' });
+      taskService.updateTask(taskId, { progress: 10, message: 'tasks.messages.opening_backup' });
     }
 
     try {
       const zip = new AdmZip(filePath);
 
       if (taskId)
-        taskService.updateTask(taskId, { progress: 40, message: 'Dosyalar geri yükleniyor...' });
+        taskService.updateTask(taskId, { progress: 40, message: 'tasks.messages.restoring_files' });
 
       // Geri yükleme sırasında mevcut dosyaların üzerine yazar.
       zip.extractAllTo(instancePath, true);
 
       if (taskId) {
-        taskService.completeTask(taskId, 'Yedek başarıyla geri yüklendi.');
+        taskService.completeTask(taskId, 'tasks.messages.restore_success');
       }
     } catch (error: unknown) {
       const err = error as Error;
       console.error('[BackupService] Geri yükleme hatası:', err);
       if (taskId) {
-        taskService.failTask(taskId, `Geri yükleme başarısız: ${err.message}`);
+        taskService.failTask(taskId, `tasks.messages.restore_failed`);
       }
       throw err;
     }

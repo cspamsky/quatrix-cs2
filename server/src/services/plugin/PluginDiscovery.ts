@@ -46,6 +46,7 @@ export class PluginDiscovery {
       manifest[id] = {
         name: info.name,
         version: info.currentVersion || 'latest',
+        currentVersion: info.currentVersion,
         downloadUrl: info.downloadUrl || '',
         category: info.category,
         description: info.description || '',
@@ -99,8 +100,8 @@ export class PluginDiscovery {
           // Update cache
           try {
             db.prepare(
-              'INSERT OR REPLACE INTO plugin_metadata_cache (plugin_id, name, category, folder_name, is_custom) VALUES (?, ?, ?, ?, ?)'
-            ).run(item, item, category, item, 1);
+              'INSERT OR REPLACE INTO plugin_metadata_cache (plugin_id, name, category, folder_name, is_custom, version) VALUES (?, ?, ?, ?, ?, ?)'
+            ).run(item, item, category, item, 1, 'latest');
           } catch (err) {
             console.error('[Discovery] Failed to update cache for', item, err);
           }
