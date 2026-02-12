@@ -814,7 +814,7 @@ class ServerManager {
         },
         runtime: {
           node: process.version,
-          panel: '1.0.0-Beta',
+          panel: '1.0.2-Beta',
           os: `${osInfo.distro} ${osInfo.release}`,
         },
       };
