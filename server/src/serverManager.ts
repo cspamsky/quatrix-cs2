@@ -771,8 +771,10 @@ class ServerManager {
       let garbageCount = 0;
       let garbageSize = 0;
       try {
-        // Only scan the data directory for core dumps to avoid heavy node_modules scanning
-        const { stdout } = await execAsync("find ./data -name 'core.*' -type f -exec du -b {} +");
+        // Only scan the data directory for core dumps to avoid heavy node_modules scanning, excluding core.json
+        const { stdout } = await execAsync(
+          "find ./data -name 'core.*' ! -name 'core.json' -type f -exec du -b {} +"
+        );
         const lines = stdout.split('\n').filter((l) => l.trim());
         garbageCount = lines.length;
         garbageSize = lines.reduce((acc, line) => acc + parseInt(line.split('\t')[0] || '0'), 0);
