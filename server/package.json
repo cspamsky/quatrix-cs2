@@ -40,7 +40,7 @@
     "rcon-client": "^4.2.5",
     "socket.io": "^4.8.3",
     "srcds-rcon": "^2.2.1",
-    "systeminformation": "^5.30.2",
+    "systeminformation": "^5.30.8",
     "tar": "^7.5.7",
     "zod": "^4.3.5"
   },
