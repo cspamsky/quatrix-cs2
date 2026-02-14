@@ -181,7 +181,7 @@ const ServerSettings = () => {
                       { value: 'de_anubis', label: 'de_anubis' },
                     ]}
                     value={server.map}
-                    onChange={(val) => setServer({ ...server, map: val })}
+                    onChange={(val) => setServer({ ...server, map: val as string })}
                     disabled={!canEdit}
                     icon={<MapPin className="w-4 h-4" />}
                   />
@@ -241,7 +241,7 @@ const ServerSettings = () => {
                       { value: 'custom', label: t('createInstance.game_alias_custom') },
                     ]}
                     value={server.game_alias || ''}
-                    onChange={(val) => setServer({ ...server, game_alias: val })}
+                    onChange={(val) => setServer({ ...server, game_alias: val as string })}
                     disabled={!canEdit}
                   />
                 </div>
@@ -271,7 +271,7 @@ const ServerSettings = () => {
                       label: t(`regions.${r.code}`),
                     }))}
                     value={server.region || 3}
-                    onChange={(val) => setServer({ ...server, region: val })}
+                    onChange={(val) => setServer({ ...server, region: Number(val) })}
                     disabled={!canEdit}
                     icon={<Globe className="w-4 h-4" />}
                   />
@@ -309,7 +309,7 @@ const ServerSettings = () => {
                           { value: 19, label: t('serverSettings.cpu_idle') },
                         ]}
                         value={server.cpu_priority || 0}
-                        onChange={(val) => setServer({ ...server, cpu_priority: val })}
+                        onChange={(val) => setServer({ ...server, cpu_priority: Number(val) })}
                         disabled={!canEdit}
                         className="text-xs"
                       />
@@ -326,7 +326,7 @@ const ServerSettings = () => {
                           { value: 16384, label: '16 GB' },
                         ]}
                         value={server.ram_limit || 0}
-                        onChange={(val) => setServer({ ...server, ram_limit: val })}
+                        onChange={(val) => setServer({ ...server, ram_limit: Number(val) })}
                         disabled={!canEdit}
                         className="text-xs"
                       />

@@ -166,7 +166,7 @@ const Admins = () => {
               label: s.name,
             }))}
             value={selectedServerId || ''}
-            onChange={(val) => setSelectedServerId(val)}
+            onChange={(val) => setSelectedServerId(val as number | null)}
             placeholder={t('admins.select_server')}
             icon={<Server className="w-4 h-4" />}
             className="w-64"
@@ -341,7 +341,7 @@ const Admins = () => {
                       { value: '@css/chat', label: t('admins.flag_chat') },
                     ]}
                     value={newAdmin.flags}
-                    onChange={(val) => setNewAdmin({ ...newAdmin, flags: val })}
+                    onChange={(val) => setNewAdmin({ ...newAdmin, flags: val as string })}
                   />
                 </div>
                 <div>
