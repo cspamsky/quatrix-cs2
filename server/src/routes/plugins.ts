@@ -86,10 +86,7 @@ router.get('/:id/plugins/:plugin/configs', async (req: Request, res: Response) =
       .get(id as string, authReq.user.id);
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
-    const configs = await serverManager.getPluginConfigFiles(
-      id as string,
-      plugin as any as PluginId
-    );
+    const configs = await serverManager.getPluginConfigFiles(id as string, plugin as PluginId);
 
     // Transform string array to objects for the frontend
     const configObjects = configs.map((fullPath) => ({
@@ -126,12 +123,7 @@ router.post('/:id/plugins/:plugin/configs', async (req: Request, res: Response) 
       .get(id as string, authReq.user.id);
     if (!server) return res.status(404).json({ message: 'Server not found' });
 
-    await serverManager.savePluginConfigFile(
-      id as string,
-      plugin as any as PluginId,
-      filePath,
-      content
-    );
+    await serverManager.savePluginConfigFile(id as string, plugin as PluginId, filePath, content);
     res.json({ message: 'Configuration saved successfully' });
   } catch (error: unknown) {
     const err = error as Error;
@@ -165,7 +157,7 @@ router.post('/:id/plugins/:plugin/:action', async (req: Request, res: Response) 
     }
 
     const registry = await serverManager.getPluginRegistry();
-    const pluginId = plugin as any as PluginId;
+    const pluginId = plugin as PluginId;
 
     if (!registry[pluginId]) {
       console.warn(`[PLUGIN DEBUG] Plugin ${pluginId} not found in registry`);

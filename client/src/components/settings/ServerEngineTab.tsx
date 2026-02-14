@@ -7,7 +7,6 @@ import {
   Download,
   Terminal,
   FolderOpen,
-  Save,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -19,7 +18,6 @@ interface ServerEngineTabProps {
   engineLoading: boolean;
   engineMessage: { type: string; text: string };
   onDownloadSteamCmd: () => void;
-  onSave: () => void;
   canEdit?: boolean;
 }
 
@@ -31,7 +29,6 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
   engineLoading,
   engineMessage,
   onDownloadSteamCmd,
-  onSave,
   canEdit = true,
 }) => {
   const { t } = useTranslation();
@@ -121,21 +118,7 @@ const ServerEngineTab: React.FC<ServerEngineTabProps> = ({
               </p>
             </div>
 
-            {canEdit && (
-              <button
-                type="button"
-                onClick={onSave}
-                disabled={engineLoading}
-                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/20 active:scale-[0.98] disabled:opacity-50"
-              >
-                {engineLoading ? (
-                  <RefreshCw size={18} className="animate-spin" />
-                ) : (
-                  <Save size={18} />
-                )}
-                {t('settingsEngine.update_engine')}
-              </button>
-            )}
+            {/* Save Button Removed - Moved to Settings.tsx */}
           </div>
         </div>
 

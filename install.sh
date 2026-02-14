@@ -235,6 +235,12 @@ ufw allow 27015:27050/tcp # CS2 RCON/TV
 ufw --force enable
 success "Firewall optimized for CS2 and phpMyAdmin."
 
+# 10. Sudoers Permissions for Panel Commands
+info "Configuring sudoers permissions for system commands..."
+echo "quatrix ALL=(ALL) NOPASSWD: /usr/bin/timedatectl" > /etc/sudoers.d/quatrix-panel
+chmod 440 /etc/sudoers.d/quatrix-panel
+success "Sudoers permissions configured for 'quatrix' user."
+
 # Final Output
 echo -e "\n${GREEN}${BRIGHT}============================================================${NC}"
 success "INSTALLATION COMPLETE!"

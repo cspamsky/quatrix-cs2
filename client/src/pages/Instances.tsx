@@ -150,7 +150,7 @@ const Instances = () => {
         }
       } catch (error) {
         console.error('Delete server error:', error);
-        toast.error('Connection Error: Unable to reach the server');
+        toast.error(t('instances.connection_error_server'));
       } finally {
         setDeletingId(null);
       }
@@ -173,7 +173,7 @@ const Instances = () => {
         }
       } catch (error) {
         console.error('Install error:', error);
-        toast.error('Connection error');
+        toast.error(t('instances.connection_error'));
       } finally {
         setInstallingId(null);
       }
@@ -511,7 +511,7 @@ const Instances = () => {
 
         {loading && filteredInstances.length === 0 ? (
           <div className="flex items-center justify-center py-20">
-            <div className="text-gray-400">Loading servers...</div>
+            <div className="text-gray-400">{t('instances.loading')}</div>
           </div>
         ) : filteredInstances.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">

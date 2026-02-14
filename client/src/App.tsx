@@ -164,7 +164,7 @@ const App = () => {
                   <Route
                     path="/users"
                     element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requiredPermission="users.manage">
                         <Users />
                       </ProtectedRoute>
                     }

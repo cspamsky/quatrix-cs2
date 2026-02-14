@@ -6,8 +6,8 @@ const socket = io({
   reconnectionDelay: 1000,
   autoConnect: true,
   transports: ['polling', 'websocket'],
-  secure: true, // SSL üzerinden (wss) zorla
-  rejectUnauthorized: false, // Sertifika sorunları varsa bağlantıyı kesme
+  secure: true, // Force over SSL (wss)
+  rejectUnauthorized: false, // Don't disconnect if there are certificate issues
 });
 
 export default socket;

@@ -95,7 +95,7 @@ const Profile = () => {
         body: JSON.stringify({ avatarUrl: url }),
       }).then((res) => res.json()),
     onSuccess: () => {
-      toast.success('Avatar updated');
+      toast.success(t('profile.avatar_success'));
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       // Update local storage user object if needed
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -109,7 +109,7 @@ const Profile = () => {
     mutationFn: (tokenId: string) =>
       apiFetch(`/api/profile/sessions/${tokenId}`, { method: 'DELETE' }).then((res) => res.json()),
     onSuccess: () => {
-      toast.success('Session terminated');
+      toast.success(t('profile.session_terminated'));
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
   });
@@ -127,7 +127,7 @@ const Profile = () => {
       }).then((res) => res.json());
     },
     onSuccess: (data) => {
-      toast.success('Avatar uploaded successfully');
+      toast.success(t('profile.avatar_success'));
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
       localStorage.setItem('user', JSON.stringify({ ...storedUser, avatar_url: data.avatarUrl }));
@@ -141,7 +141,7 @@ const Profile = () => {
     mutationFn: () =>
       apiFetch('/api/profile/sessions', { method: 'DELETE' }).then((res) => res.json()),
     onSuccess: () => {
-      toast.success('All other sessions terminated');
+      toast.success(t('profile.all_sessions_terminated'));
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
   });
@@ -168,7 +168,7 @@ const Profile = () => {
         return data;
       }),
     onSuccess: () => {
-      toast.success('2FA enabled successfully');
+      toast.success(t('profile.2fa.enabled_success', '2FA enabled successfully'));
       setShow2FAModal(false);
       setTwoFactorCode('');
       queryClient.invalidateQueries({ queryKey: ['profile'] });
@@ -188,7 +188,7 @@ const Profile = () => {
         return data;
       }),
     onSuccess: () => {
-      toast.success('2FA disabled');
+      toast.success(t('profile.2fa.disabled_success', '2FA disabled'));
       setShowDisable2FA(false);
       setDisablePassword('');
       queryClient.invalidateQueries({ queryKey: ['profile'] });
@@ -199,7 +199,7 @@ const Profile = () => {
   const handleChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      return toast.error('Passwords do not match');
+      return toast.error(t('profile.password_mismatch'));
     }
     updatePasswordMutation.mutate({ currentPassword, newPassword });
   };
@@ -238,7 +238,7 @@ const Profile = () => {
             <div className="h-32 bg-gradient-to-r from-blue-600 to-indigo-700 relative">
               <label
                 className="absolute -bottom-12 left-6 ring-4 ring-[#111827] rounded-full overflow-hidden w-24 h-24 bg-gray-900 flex items-center justify-center group cursor-pointer"
-                title="Click to upload new avatar"
+                title={t('profile.avatar_click')}
               >
                 <input
                   type="file"
@@ -284,7 +284,7 @@ const Profile = () => {
 
               <div className="mt-8">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
-                  Avatar URL
+                  {t('profile.avatar_url')}
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -313,15 +313,15 @@ const Profile = () => {
             </div>
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Smartphone className="text-orange-500" size={20} />
-              2-Factor Authentication
+              {t('profile.2fa.title')}
             </h3>
             <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4 mb-6">
               <div className="flex gap-3">
                 <AlertCircle className="text-orange-500 shrink-0" size={20} />
                 <p className="text-xs text-orange-200/80 leading-relaxed">
                   {user?.two_factor_enabled
-                    ? 'Your account is protected with 2FA. We recommend keeping it enabled.'
-                    : 'Protect your account with an extra layer of security. We recommend enabling 2FA.'}
+                    ? t('profile.2fa.enabled_desc')
+                    : t('profile.2fa.disabled_desc')}
                 </p>
               </div>
             </div>
@@ -332,7 +332,7 @@ const Profile = () => {
                 className="w-full py-3 bg-red-400/10 text-red-500 rounded-xl font-bold text-sm border border-red-400/20 hover:bg-red-400/20 transition-all flex items-center justify-center gap-2"
               >
                 <ShieldOff size={16} />
-                Disable 2FA
+                {t('profile.2fa.disable')}
               </button>
             ) : (
               <button
@@ -341,7 +341,9 @@ const Profile = () => {
                 className="w-full py-3 bg-primary/10 text-primary rounded-xl font-bold text-sm border border-primary/20 hover:bg-primary/20 transition-all flex items-center justify-center gap-2"
               >
                 <Shield size={16} />
-                {setup2FAMutation.isPending ? 'Generating...' : 'Enable 2FA'}
+                {setup2FAMutation.isPending
+                  ? t('profile.2fa.generating', 'Generating...')
+                  : t('profile.2fa.enable')}
               </button>
             )}
           </div>
@@ -353,13 +355,13 @@ const Profile = () => {
           <div className="bg-[#111827] border border-gray-800 rounded-2xl p-8 shadow-xl">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <Lock className="text-blue-500" size={20} />
-              Security Settings
+              {t('profile.security_settings')}
             </h3>
             <form onSubmit={handleChangePassword} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
-                    Current Password
+                    {t('profile.current_password')}
                   </label>
                   <input
                     type="password"
@@ -371,7 +373,7 @@ const Profile = () => {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
-                    New Password
+                    {t('profile.new_password')}
                   </label>
                   <input
                     type="password"
@@ -383,7 +385,7 @@ const Profile = () => {
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
-                    Confirm Password
+                    {t('profile.confirm_password')}
                   </label>
                   <input
                     type="password"
@@ -400,7 +402,7 @@ const Profile = () => {
                   disabled={updatePasswordMutation.isPending}
                   className="bg-primary hover:bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-500/20 active:scale-95 disabled:opacity-50"
                 >
-                  Update Password
+                  {t('profile.update_password')}
                 </button>
               </div>
             </form>
@@ -411,16 +413,18 @@ const Profile = () => {
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <Clock className="text-green-500" size={20} />
-                Active Sessions
+                {t('profile.active_sessions')}
               </h3>
               <span className="text-xs text-gray-500 bg-gray-800/50 px-3 py-1 rounded-full">
-                {sessions.length} Devices
+                {sessions.length} {t('profile.devices')}
               </span>
             </div>
 
             <div className="space-y-4">
               {sessions.length === 0 ? (
-                <p className="text-center py-8 text-gray-500 text-sm">No active sessions found.</p>
+                <p className="text-center py-8 text-gray-500 text-sm">
+                  {t('profile.no_sessions', 'No active sessions found.')}
+                </p>
               ) : (
                 sessions.map((session) => (
                   <div
@@ -438,19 +442,20 @@ const Profile = () => {
                         </span>
                         <span className="text-xs text-gray-500">•</span>
                         <span className="text-xs text-gray-500">
-                          Last active: {new Date(session.last_active).toLocaleString()}
+                          {t('profile.last_active')}{' '}
+                          {new Date(session.last_active).toLocaleString()}
                         </span>
                       </div>
                     </div>
                     {user?.currentJti === session.token_id && (
                       <span className="text-[10px] font-bold bg-green-500/10 text-green-500 px-2 py-1 rounded-md border border-green-500/20 uppercase tracking-wider">
-                        Current Device
+                        {t('profile.current_device')}
                       </span>
                     )}
                     <button
                       onClick={() => terminateSessionMutation.mutate(session.token_id)}
                       className="p-2 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                      title="Terminate Session"
+                      title={t('profile.terminate')}
                     >
                       <Trash2 size={20} />
                     </button>
@@ -462,21 +467,19 @@ const Profile = () => {
             <div className="mt-8 flex items-center gap-3 p-4 bg-red-400/5 border border-red-400/10 rounded-xl">
               <LogOut className="text-red-400" size={20} />
               <div className="flex-1">
-                <p className="text-sm font-bold text-red-400/80">Force Logout Everywhere</p>
-                <p className="text-xs text-gray-500">
-                  This will terminate all sessions except your current one.
-                </p>
+                <p className="text-sm font-bold text-red-400/80">{t('profile.force_logout')}</p>
+                <p className="text-xs text-gray-500">{t('profile.force_logout_desc')}</p>
               </div>
               <button
                 onClick={() => {
-                  if (confirm('Are you sure you want to log out from all other devices?')) {
+                  if (confirm(t('profile.terminate_confirm'))) {
                     terminateAllSessionsMutation.mutate();
                   }
                 }}
                 className="text-xs font-bold text-red-400 hover:underline disabled:opacity-50"
                 disabled={terminateAllSessionsMutation.isPending}
               >
-                Terminate All
+                {t('profile.terminate_all')}
               </button>
             </div>
           </div>
@@ -497,10 +500,8 @@ const Profile = () => {
                   <Shield size={24} />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">Setup 2-FA</h3>
-                  <p className="text-sm text-gray-500">
-                    Scan this QR code with your authenticator app
-                  </p>
+                  <h3 className="text-xl font-bold text-white">{t('profile.2fa.setup_title')}</h3>
+                  <p className="text-sm text-gray-500">{t('profile.2fa.scan_qr')}</p>
                 </div>
               </div>
 
@@ -511,7 +512,7 @@ const Profile = () => {
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
-                    Or enter code manually
+                    {t('profile.2fa.manual_entry')}
                   </label>
                   <div className="flex gap-2">
                     <code className="flex-1 bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm text-primary font-mono select-all">
@@ -520,7 +521,7 @@ const Profile = () => {
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(setupData.secret);
-                        toast.success('Secret copied to clipboard');
+                        toast.success(t('profile.2fa.secret_copied', 'Secret copied to clipboard'));
                       }}
                       className="p-2 bg-gray-800 text-gray-400 hover:text-white rounded-lg"
                     >
@@ -531,7 +532,7 @@ const Profile = () => {
 
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
-                    Verification Code
+                    {t('profile.2fa.verify_code')}
                   </label>
                   <input
                     type="text"
@@ -548,7 +549,7 @@ const Profile = () => {
                     onClick={() => setShow2FAModal(false)}
                     className="flex-1 py-3 border border-gray-800 text-gray-400 rounded-xl font-bold text-sm hover:bg-gray-800 transition-all"
                   >
-                    Cancel
+                    {t('profile.2fa.cancel')}
                   </button>
                   <button
                     onClick={() => verify2FAMutation.mutate(twoFactorCode)}
@@ -556,7 +557,7 @@ const Profile = () => {
                     className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-sm hover:bg-blue-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <Check size={18} />
-                    Verify & Enable
+                    {t('profile.2fa.verify_enable')}
                   </button>
                 </div>
               </div>
@@ -575,16 +576,14 @@ const Profile = () => {
           <div className="relative bg-[#111827] border border-gray-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="p-8">
               <h3 className="text-xl font-bold text-white mb-2">
-                Disable 2-Factor Authentication?
+                {t('profile.2fa.disable_title')}
               </h3>
-              <p className="text-sm text-gray-500 mb-6">
-                Enter your password to confirm this action.
-              </p>
+              <p className="text-sm text-gray-500 mb-6">{t('profile.2fa.confirm_password')}</p>
 
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
-                    Current Password
+                    {t('profile.current_password')}
                   </label>
                   <input
                     type="password"
@@ -600,7 +599,7 @@ const Profile = () => {
                     onClick={() => setShowDisable2FA(false)}
                     className="flex-1 py-3 border border-gray-800 text-gray-400 rounded-xl font-bold text-sm hover:bg-gray-800 transition-all"
                   >
-                    Cancel
+                    {t('profile.2fa.cancel')}
                   </button>
                   <button
                     onClick={() => disable2FAMutation.mutate(disablePassword)}
@@ -608,7 +607,7 @@ const Profile = () => {
                     className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold text-sm hover:bg-red-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <ShieldOff size={18} />
-                    Disable 2FA
+                    {t('profile.2fa.disable')}
                   </button>
                 </div>
               </div>

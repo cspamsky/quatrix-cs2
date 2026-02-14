@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { apiFetch } from '../utils/api';
 import socket from '../utils/socket';
@@ -47,10 +47,9 @@ const Settings = () => {
   // --- Local States for Forms (Controlled Inputs) ---
   const [panelName, setPanelName] = useState('Quatrix Panel');
   const [defaultPort, setDefaultPort] = useState('27015');
-  const [autoBackup, setAutoBackup] = useState(true);
-  const [autoPluginUpdates, setAutoPluginUpdates] = useState(false);
   const [steamCmdPath, setSteamCmdPath] = useState('');
   const [installDir, setInstallDir] = useState('');
+  const [timezone, setTimezone] = useState('UTC');
   const [engineMessage, setEngineMessage] = useState({ type: '', text: '' });
 
   // --- Queries ---
@@ -64,7 +63,6 @@ const Settings = () => {
       // Sync local state when data arrives
       setSteamCmdPath(data.steamcmd_path || '');
       setInstallDir(data.install_dir || '');
-      // You could sync other fields here if they were in API
       return data;
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -79,6 +77,18 @@ const Settings = () => {
     queryKey: ['system-health'],
     queryFn: () => apiFetch('/api/system/health').then((res) => res.json()),
     enabled: activeTab === 'system_health' || activeTab === 'general',
+  });
+
+  // 3. Fetch Timezones
+  const { data: timezoneData } = useQuery({
+    queryKey: ['system-timezones'],
+    queryFn: async () => {
+      const res = await apiFetch('/api/system/timezones');
+      const data = await res.json();
+      if (data.current) setTimezone(data.current);
+      return data;
+    },
+    enabled: activeTab === 'general',
   });
 
   // --- Mutations ---
@@ -117,19 +127,22 @@ const Settings = () => {
         return res.json();
       }),
     onMutate: () => {
-      setEngineMessage({ type: 'info', text: 'Downloading SteamCMD... Please wait.' });
+      setEngineMessage({ type: 'info', text: t('settingsEngine.downloading') });
     },
     onSuccess: () => {
       setEngineMessage({
         type: 'success',
-        text: 'SteamCMD downloaded and extracted successfully!',
+        text: t('settingsEngine.extracted'),
       });
-      toast.success('SteamCMD installed successfully!');
+      toast.success(t('settingsEngine.installed'));
       queryClient.invalidateQueries({ queryKey: ['settings'] });
     },
     onError: (error: Error) => {
-      setEngineMessage({ type: 'error', text: error.message || 'Failed to download SteamCMD.' });
-      toast.error(error.message || 'Download failed');
+      setEngineMessage({
+        type: 'error',
+        text: error.message || t('settingsEngine.failed_download'),
+      });
+      toast.error(error.message || t('settingsEngine.failed'));
     },
   });
 
@@ -139,13 +152,32 @@ const Settings = () => {
       apiFetch('/api/system/health/repair', { method: 'POST' }).then((res) => res.json()),
     onSuccess: (result: { success: boolean; message?: string }) => {
       if (result.success) {
-        toast.success(result.message || 'System repaired successfully');
+        toast.success(result.message || t('settingsRepair.success'));
         queryClient.invalidateQueries({ queryKey: ['system-health'] });
       } else {
-        toast.error(result.message || t('settings.repair_fail'));
+        toast.error(result.message || t('settingsRepair.fail_generic'));
       }
     },
-    onError: () => toast.error(t('settings.repair_fail_generic')),
+    onError: () => toast.error(t('settingsRepair.fail_generic')),
+  });
+
+  // 4. Update Timezone
+  const updateTimezoneMutation = useMutation({
+    mutationFn: (newTz: string) =>
+      apiFetch('/api/system/timezone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timezone: newTz }),
+      }).then((res) => res.json()),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message);
+        queryClient.invalidateQueries({ queryKey: ['system-timezones'] });
+      } else {
+        toast.error(data.message);
+      }
+    },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const tabs: { key: TabType; label: string }[] = [
@@ -188,13 +220,15 @@ const Settings = () => {
       </header>
 
       <div className="bg-[#111827] rounded-2xl border border-gray-800 overflow-hidden shadow-2xl">
-        <div className="px-6 border-b border-gray-800 flex space-x-8 bg-[#111827] overflow-x-auto scrollbar-hide">
+        <div className="flex border-b border-gray-800 bg-[#111827] overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`py-4 text-sm font-semibold transition-all relative whitespace-nowrap ${
-                activeTab === tab.key ? 'text-primary' : 'text-gray-500 hover:text-gray-300'
+              className={`flex-1 py-4 text-xs sm:text-sm font-semibold transition-all relative whitespace-nowrap text-center ${
+                activeTab === tab.key
+                  ? 'text-primary bg-primary/5'
+                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
               }`}
             >
               {tab.label}
@@ -205,55 +239,84 @@ const Settings = () => {
           ))}
         </div>
 
-        <div className="p-8">
-          {activeTab === 'general' && (
-            <GeneralTab
-              panelName={panelName}
-              setPanelName={setPanelName}
-              defaultPort={defaultPort}
-              setDefaultPort={setDefaultPort}
-              autoBackup={autoBackup}
-              setAutoBackup={setAutoBackup}
-              autoPluginUpdates={autoPluginUpdates}
-              setAutoPluginUpdates={setAutoPluginUpdates}
-              onSave={() => toast.success(t('settings.local_save_success'))}
-              systemInfo={healthData}
-              isLoading={healthLoading}
-              canEdit={canManage}
-            />
-          )}
+        <div className="flex-1 p-6 sm:p-8 min-h-[750px] flex flex-col">
+          <div className="flex-1">
+            {activeTab === 'general' && (
+              <GeneralTab
+                panelName={panelName}
+                setPanelName={setPanelName}
+                defaultPort={defaultPort}
+                setDefaultPort={setDefaultPort}
+                timezone={timezone}
+                setTimezone={setTimezone}
+                timezones={timezoneData?.timezones || ['UTC']}
+                systemInfo={healthData}
+                isLoading={healthLoading}
+                canEdit={canManage}
+              />
+            )}
 
-          {activeTab === 'server_engine' && (
-            <ServerEngineTab
-              steamCmdPath={steamCmdPath}
-              setSteamCmdPath={setSteamCmdPath}
-              installDir={installDir}
-              setInstallDir={setInstallDir}
-              engineLoading={updateSettingsMutation.isPending || downloadSteamCmdMutation.isPending}
-              engineMessage={engineMessage}
-              onDownloadSteamCmd={handleDownloadSteamCmd}
-              onSave={handleSaveEngineSettings}
-              canEdit={canManage}
-            />
-          )}
+            {activeTab === 'server_engine' && (
+              <ServerEngineTab
+                steamCmdPath={steamCmdPath}
+                setSteamCmdPath={setSteamCmdPath}
+                installDir={installDir}
+                setInstallDir={setInstallDir}
+                engineLoading={
+                  updateSettingsMutation.isPending || downloadSteamCmdMutation.isPending
+                }
+                engineMessage={engineMessage}
+                onDownloadSteamCmd={handleDownloadSteamCmd}
+                canEdit={canManage}
+              />
+            )}
 
-          {activeTab === 'system_health' && (
-            <SystemHealthTab
-              healthData={healthData}
-              healthLoading={healthLoading || repairHealthMutation.isPending}
-              onRefresh={() => refetchHealth()}
-              onRepair={() => repairHealthMutation.mutate()}
-              canEdit={canManage}
-            />
-          )}
+            {activeTab === 'system_health' && (
+              <SystemHealthTab
+                healthData={healthData}
+                healthLoading={healthLoading || repairHealthMutation.isPending}
+                onRefresh={() => refetchHealth()}
+                onRepair={() => repairHealthMutation.mutate()}
+                canEdit={canManage}
+              />
+            )}
 
-          {!['general', 'server_engine', 'system_health'].includes(activeTab) && (
-            <div className="py-20 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300">
-              <RefreshCw className="text-primary w-12 h-12 animate-spin-slow opacity-20 mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">
-                {tabs.find((t) => t.key === activeTab)?.label} {t('settings.section_title')}
-              </h3>
-              <p className="text-gray-500 max-w-sm">{t('settings.coming_soon')}</p>
+            {!['general', 'server_engine', 'system_health'].includes(activeTab) && (
+              <div className="py-20 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-300">
+                <RefreshCw className="text-primary w-12 h-12 animate-spin-slow opacity-20 mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">
+                  {tabs.find((t) => t.key === activeTab)?.label} {t('settings.section_title')}
+                </h3>
+                <p className="text-gray-500 max-w-sm">{t('settings.coming_soon')}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Persistent Action Footer */}
+          {canManage && ['general', 'server_engine'].includes(activeTab) && (
+            <div className="mt-8 flex justify-end border-t border-gray-800/50 pt-6">
+              <button
+                onClick={
+                  activeTab === 'general'
+                    ? () => {
+                        updateSettingsMutation.mutate({});
+                        if (timezoneData?.current !== timezone) {
+                          updateTimezoneMutation.mutate(timezone);
+                        }
+                      }
+                    : handleSaveEngineSettings
+                }
+                disabled={updateSettingsMutation.isPending || updateTimezoneMutation.isPending}
+                className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-10 py-3.5 rounded-xl font-bold text-sm transition-all shadow-xl shadow-primary/20 active:scale-95 disabled:opacity-50"
+                type="button"
+              >
+                {updateSettingsMutation.isPending || updateTimezoneMutation.isPending ? (
+                  <RefreshCw size={18} className="animate-spin" />
+                ) : (
+                  <Save size={18} />
+                )}
+                {t('settingsGeneral.save_changes')}
+              </button>
             </div>
           )}
         </div>

@@ -7,13 +7,13 @@ interface SteamPlayerSummary {
 }
 
 /**
- * Steam Web API kullanarak oyuncu avatar'ını çeker
- * @param steamId64 - Steam64 ID (17 haneli)
- * @returns Avatar URL veya null
+ * Fetches player avatar using Steam Web API
+ * @param steamId64 - Steam64 ID (17 digits)
+ * @returns Avatar URL or null
  */
 export async function getPlayerAvatar(steamId64: string): Promise<string | null> {
   try {
-    // .env dosyasından Steam API key'i al
+    // Get Steam API key from .env file
     const apiKey = process.env.STEAM_API_KEY;
 
     if (!apiKey) {
@@ -44,9 +44,9 @@ export async function getPlayerAvatar(steamId64: string): Promise<string | null>
 }
 
 /**
- * Birden fazla Steam ID için avatar'ları toplu olarak çeker
- * @param steamIds - Steam64 ID'leri dizisi
- * @returns SteamID -> Avatar URL map'i
+ * Fetches avatars in bulk for multiple Steam IDs
+ * @param steamIds - Array of Steam64 IDs
+ * @returns Map of SteamID -> Avatar URL
  */
 export function steam3To64(steam3: string): string {
   if (!steam3 || !steam3.startsWith('[U:1:')) return steam3;
@@ -82,7 +82,7 @@ export async function getPlayerAvatars(steamIds: string[]): Promise<Map<string, 
   if (uniqueIds.length === 0) return avatarMap;
 
   try {
-    // .env dosyasından Steam API key'i al
+    // Get Steam API key from .env file
     const apiKey = process.env.STEAM_API_KEY;
 
     if (!apiKey) {

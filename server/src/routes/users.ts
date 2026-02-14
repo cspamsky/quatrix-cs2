@@ -15,7 +15,7 @@ router.use(authenticateToken);
  * GET /api/users
  * List all users (excluding passwords)
  */
-router.get('/', (req: Request, res: Response) => {
+router.get('/', authorize('users.manage'), (req: Request, res: Response) => {
   try {
     const rows = db
       .prepare(
@@ -25,7 +25,14 @@ router.get('/', (req: Request, res: Response) => {
       ORDER BY created_at DESC
     `
       )
-      .all() as any[];
+      .all() as Array<{
+      id: number;
+      username: string;
+      avatar_url: string | null;
+      two_factor_enabled: number;
+      permissions: string;
+      created_at: string;
+    }>;
 
     // Parse permissions from JSON string
     const users = rows.map((u) => ({
@@ -81,7 +88,7 @@ router.delete('/:id', authorize('users.manage'), (req: Request, res: Response) =
   try {
     const authReq = req as AuthenticatedRequest;
     // Prevent self-deletion
-    if (authReq.user.id === parseInt(id as string)) {
+    if (authReq.user.id === Number(id)) {
       return res.status(400).json({ message: 'You cannot delete yourself' });
     }
 

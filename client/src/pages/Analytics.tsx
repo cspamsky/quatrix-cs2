@@ -14,6 +14,14 @@ import {
 import { useTranslation } from 'react-i18next';
 import { RefreshCcw, Info } from 'lucide-react';
 
+interface AnalyticsData {
+  timestamp: string;
+  cpu: number;
+  ram: number;
+  net_in: number;
+  disk_read: number;
+}
+
 const Analytics = () => {
   const { t } = useTranslation();
   const [range, setRange] = useState('24h');
@@ -26,8 +34,9 @@ const Analytics = () => {
   const {
     data: stats,
     isLoading,
+    isFetching,
     refetch,
-  } = useQuery({
+  } = useQuery<AnalyticsData[]>({
     queryKey: ['analytics', range],
     queryFn: async () => {
       const response = await apiFetch(`/api/analytics?range=${range}`);
@@ -35,7 +44,7 @@ const Analytics = () => {
     },
   });
 
-  const chartData = (stats || []).map((item: any) => ({
+  const chartData = (stats || []).map((item) => ({
     ...item,
     time: new Date(item.timestamp).toLocaleString([], {
       month: 'short',
@@ -45,14 +54,30 @@ const Analytics = () => {
     }),
   }));
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  interface ChartPayloadEntry {
+    name: string;
+    value: number;
+    color: string;
+    dataKey: string;
+    payload: AnalyticsData;
+  }
+
+  const CustomTooltip = ({
+    active,
+    payload,
+    label,
+  }: {
+    active?: boolean;
+    payload?: ChartPayloadEntry[];
+    label?: string;
+  }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-[#1e293b] border border-gray-700 p-4 rounded-xl shadow-2xl backdrop-blur-md">
           <p className="text-xs font-bold text-gray-400 mb-3 border-b border-gray-700 pb-2">
             {label}
           </p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry, index: number) => (
             <div key={index} className="flex items-center justify-between gap-6 mb-1.5">
               <div className="flex items-center gap-2">
                 <div
@@ -62,7 +87,8 @@ const Analytics = () => {
                 <span className="text-[11px] font-bold text-gray-300 uppercase">{entry.name}</span>
               </div>
               <span className="text-xs font-black text-white">
-                {entry.value.toFixed(2)} {['CPU', 'RAM'].includes(entry.name) ? '%' : 'MB/s'}
+                {typeof entry.value === 'number' ? entry.value.toFixed(2) : entry.value}{' '}
+                {['CPU', 'RAM'].includes(entry.name) ? '%' : 'MB/s'}
               </span>
             </div>
           ))}
@@ -73,7 +99,7 @@ const Analytics = () => {
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto space-y-6">
+    <div className="w-full p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
@@ -102,10 +128,10 @@ const Analytics = () => {
           <div className="w-px h-4 bg-gray-800 mx-1"></div>
           <button
             onClick={() => refetch()}
-            className="p-1.5 text-gray-500 hover:text-white transition-colors"
+            className={`p-1.5 text-gray-500 hover:text-white transition-all ${isFetching ? 'text-primary' : ''}`}
             title={t('common.refresh')}
           >
-            <RefreshCcw size={14} />
+            <RefreshCcw size={14} className={isFetching ? 'animate-spin' : ''} />
           </button>
         </div>
       </header>

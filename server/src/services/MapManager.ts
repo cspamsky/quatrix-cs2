@@ -3,7 +3,6 @@ import { fileSystemService } from './FileSystemService.js';
 import path from 'path';
 import fs from 'fs/promises';
 import { registerWorkshopMap } from '../utils/workshop.js';
-import { taskService } from './TaskService.js';
 
 /**
  * MapManager Service
@@ -29,8 +28,8 @@ export class MapManager {
 
     try {
       return await fs.readFile(fullPath, 'utf-8');
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
         return '';
       }
       throw error;

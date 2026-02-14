@@ -26,6 +26,7 @@ import { tr, enUS } from 'date-fns/locale';
 import socket from '../utils/socket';
 import MonitoringSection from '../components/MonitoringSection';
 import { apiFetch } from '../utils/api';
+import type { User } from '../types';
 
 interface ActivityLog {
   id: number;
@@ -67,6 +68,16 @@ const Dashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isConnected, setIsConnected] = useState(socket.connected);
+  const [user] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? (JSON.parse(stored) as User) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const isAdmin = user?.permissions?.includes('*') || user?.permissions?.includes('users.manage');
 
   // State for real-time stats and history
   const [stats, setStats] = useState<TelemetryStats>({
@@ -82,10 +93,52 @@ const Dashboard = () => {
   });
   const [statsHistory, setStatsHistory] = useState<TelemetryStats[]>([]);
 
-  const { data: systemInfo } = useQuery({
+  const { data: systemInfo } = useQuery<{
+    cpuModel?: string;
+    totalMemory?: number;
+    os?: string;
+    platform?: string;
+    arch?: string;
+    cpus?: number;
+    totalMem?: string;
+    freeMem?: string;
+    timezone?: string;
+    serverTime?: string;
+  }>({
     queryKey: ['system-info'],
     queryFn: () => apiFetch('/api/system-info').then((res) => res.json()),
   });
+
+  const [serverClock, setServerClock] = useState<string | null>(null);
+
+  // Sync and tick server clock
+  useEffect(() => {
+    if (!systemInfo?.serverTime || !systemInfo?.timezone) return;
+
+    const serverDate = new Date(systemInfo.serverTime);
+    const clientDate = new Date();
+    const offset = serverDate.getTime() - clientDate.getTime();
+
+    const updateClock = () => {
+      const now = new Date(new Date().getTime() + offset);
+      try {
+        const formatted = new Intl.DateTimeFormat(i18n.language, {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+          timeZone: systemInfo.timezone,
+        }).format(now);
+        setServerClock(formatted);
+      } catch {
+        setServerClock(now.toLocaleTimeString());
+      }
+    };
+
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, [systemInfo?.serverTime, systemInfo?.timezone, i18n.language]);
 
   const { data: serverStats, refetch: refetchServerStats } = useQuery<ServerDashboardStats>({
     queryKey: ['dashboard-stats'],
@@ -180,6 +233,22 @@ const Dashboard = () => {
     return Bell;
   };
 
+  const getActivityTypeLabel = (type: string) => {
+    return t(`activityLog.types.${type}`, type.replace('_', ' '));
+  };
+
+  const getActivityMessage = (activity: ActivityLog) => {
+    if (activity.type === 'CRITICAL_CPU') {
+      const match = activity.message.match(/%(\d+(\.\d+)?)/);
+      const value = match ? match[1] : '';
+      return t('activityLog.critical_cpu', { value, defaultValue: activity.message });
+    }
+    if (activity.type === 'CRITICAL_RAM') {
+      return t('activityLog.critical_ram', { defaultValue: activity.message });
+    }
+    return activity.message;
+  };
+
   const stats_items = [
     {
       label: t('dashboard.servers'),
@@ -237,24 +306,41 @@ const Dashboard = () => {
         <div>
           <h1 className="text-2xl font-bold text-white tracking-tight">
             {t('dashboard.welcome', {
-              name: JSON.parse(localStorage.getItem('user') || '{}').username || 'User',
+              name: JSON.parse(localStorage.getItem('user') || '{}').username || t('common.user'),
             })}
           </h1>
           <p className="text-gray-400 mt-1 font-medium">{t('dashboard.subtitle')}</p>
         </div>
-        <div
-          className={`flex items-center gap-2.5 px-4 py-2 rounded-xl border transition-all duration-300 ${
-            isConnected
-              ? 'bg-green-500/10 border-green-500/20 text-green-500'
-              : 'bg-red-500/10 border-red-500/20 text-red-500'
-          }`}
-        >
-          <span
-            className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}
-          ></span>
-          <span className="text-[10px] font-black uppercase tracking-widest leading-none">
-            {isConnected ? t('dashboard.ws_connected') : t('dashboard.ws_disconnected')}
-          </span>
+        <div className="flex items-center gap-3">
+          {/* Server Time Display */}
+          {serverClock && (
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-800 bg-[#001529]/50 text-gray-400">
+              <Clock size={14} className="text-primary" />
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black leading-none uppercase tracking-widest text-white">
+                  {serverClock}
+                </span>
+                <span className="text-[8px] font-medium leading-none text-gray-500 mt-1 uppercase">
+                  {systemInfo?.timezone || 'UTC'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-300 ${
+              isConnected
+                ? 'bg-green-500/10 border-green-500/20 text-green-500'
+                : 'bg-red-500/10 border-red-500/20 text-red-500'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}
+            ></span>
+            <span className="text-[10px] font-black uppercase tracking-widest leading-none">
+              {isConnected ? t('dashboard.ws_connected') : t('dashboard.ws_disconnected')}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -284,7 +370,7 @@ const Dashboard = () => {
       </div>
 
       {/* Real-time Monitoring Section (Integrated Mega Cards) */}
-      <MonitoringSection data={statsHistory} systemInfo={systemInfo} currentStats={stats} />
+      <MonitoringSection data={statsHistory} systemInfo={systemInfo || {}} currentStats={stats} />
 
       {/* Quick Actions Bar */}
       <div>
@@ -293,83 +379,112 @@ const Dashboard = () => {
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { icon: Terminal, label: t('dashboard.action_console'), path: '/console' },
-            { icon: Plus, label: t('dashboard.action_new_server'), path: '/instances/create' },
-            { icon: Users, label: t('dashboard.action_manage_players'), path: '/players' },
-            { icon: MapIcon, label: t('dashboard.action_map_rotation'), path: '/maps' },
-          ].map((action, i) => (
-            <button
-              key={i}
-              onClick={() => navigate(action.path)}
-              className="flex items-center gap-4 p-4 bg-[#111827] rounded-2xl border border-gray-800/60 hover:border-primary/50 hover:bg-primary/5 transition-all group shadow-lg shadow-black/10"
-            >
-              <div className="p-2.5 rounded-xl bg-gray-800/50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                <action.icon size={18} />
-              </div>
-              <span className="text-[10px] font-black text-gray-400 group-hover:text-white uppercase tracking-wider">
-                {action.label}
-              </span>
-            </button>
-          ))}
+            {
+              icon: Terminal,
+              label: t('dashboard.action_console'),
+              path: '/console',
+              permission: 'servers.console',
+            },
+            {
+              icon: Plus,
+              label: t('dashboard.action_new_server'),
+              path: '/instances/create',
+              permission: 'servers.create',
+            },
+            {
+              icon: Users,
+              label: t('dashboard.action_manage_players'),
+              path: '/players',
+              permission: 'servers.update',
+            },
+            {
+              icon: MapIcon,
+              label: t('dashboard.action_map_rotation'),
+              path: '/maps',
+              permission: 'servers.update',
+            },
+          ]
+            .filter((action: { permission?: string }) => {
+              if (user?.permissions?.includes('*')) return true;
+              return action.permission && user?.permissions?.includes(action.permission);
+            })
+            .map((action, i) => (
+              <button
+                key={i}
+                onClick={() => navigate(action.path)}
+                className="flex items-center gap-4 p-4 bg-[#111827] rounded-2xl border border-gray-800/60 hover:border-primary/50 hover:bg-primary/5 transition-all group shadow-lg shadow-black/10"
+              >
+                <div className="p-2.5 rounded-xl bg-gray-800/50 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                  <action.icon size={18} />
+                </div>
+                <span className="text-[10px] font-black text-gray-400 group-hover:text-white uppercase tracking-wider">
+                  {action.label}
+                </span>
+              </button>
+            ))}
         </div>
       </div>
 
-      {/* Activity Feed Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Activity Feed */}
-        <div className="xl:col-span-3 bg-[#111827] rounded-2xl border border-gray-800/60 overflow-hidden flex flex-col shadow-lg shadow-black/20 h-full min-h-[220px]">
-          <div className="flex-1 divide-y divide-gray-800/40 overflow-y-auto max-h-[220px] custom-scrollbar">
-            {activities.length > 0 ? (
-              activities.map((activity, idx) => (
-                <div
-                  key={activity.id || idx}
-                  className="px-6 py-3 flex items-center justify-between hover:bg-white/[0.01] transition-all group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className={`p-1.5 rounded-lg ${getSeverityColor(activity.severity)}`}>
-                      {(() => {
-                        const Icon = getActivityIcon(activity.type);
-                        return <Icon size={14} />;
-                      })()}
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-gray-200">{activity.message}</div>
-                      <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">
-                        {activity.type.replace('_', ' ')}
+      {/* Activity Feed Grid - ADMIN ONLY */}
+      {isAdmin && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          {/* Activity Feed */}
+          <div className="xl:col-span-3 bg-[#111827] rounded-2xl border border-gray-800/60 overflow-hidden flex flex-col shadow-lg shadow-black/20 h-full min-h-[220px]">
+            <div className="flex-1 divide-y divide-gray-800/40 overflow-y-auto max-h-[220px] custom-scrollbar">
+              {activities.length > 0 ? (
+                activities.map((activity, idx) => (
+                  <div
+                    key={activity.id || idx}
+                    className="px-6 py-3 flex items-center justify-between hover:bg-white/[0.01] transition-all group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`p-1.5 rounded-lg ${getSeverityColor(activity.severity)}`}>
+                        {(() => {
+                          const Icon = getActivityIcon(activity.type);
+                          return <Icon size={14} />;
+                        })()}
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-gray-200">
+                          {getActivityMessage(activity)}
+                        </div>
+                        <div className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">
+                          {getActivityTypeLabel(activity.type)}
+                        </div>
                       </div>
                     </div>
+                    <div className="text-[10px] text-gray-400 font-medium flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      <Clock size={10} />
+                      {formatDistanceToNow(new Date(activity.created_at), {
+                        addSuffix: true,
+                        locale: dateLocale,
+                      })}
+                    </div>
                   </div>
-                  <div className="text-[10px] text-gray-400 font-medium flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    <Clock size={10} />
-                    {formatDistanceToNow(new Date(activity.created_at), {
-                      addSuffix: true,
-                      locale: dateLocale,
-                    })}
+                ))
+              ) : (
+                <div className="px-6 py-12 text-center opacity-30 flex flex-col items-center justify-center h-full">
+                  <div className="p-4 rounded-full bg-gray-800/50 mb-4">
+                    <ClipboardList size={32} className="text-gray-600" />
                   </div>
+                  <p className="text-sm font-medium">{t('dashboard.no_activity')}</p>
                 </div>
-              ))
-            ) : (
-              <div className="px-6 py-12 text-center opacity-30 flex flex-col items-center justify-center h-full">
-                <div className="p-4 rounded-full bg-gray-800/50 mb-4">
-                  <ClipboardList size={32} className="text-gray-600" />
-                </div>
-                <p className="text-sm font-medium">{t('dashboard.no_activity')}</p>
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={handleOpenModal}
-            className="w-full py-2.5 px-6 text-[10px] font-bold text-gray-400 hover:text-white border-t border-gray-800/40 hover:bg-white/[0.02] transition-all flex items-center justify-between group"
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
-              {t('dashboard.view_all_logs')}
+              )}
             </div>
-            <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
-          </button>
+
+            <button
+              onClick={handleOpenModal}
+              className="w-full py-2.5 px-6 text-[10px] font-bold text-gray-400 hover:text-white border-t border-gray-800/40 hover:bg-white/[0.02] transition-all flex items-center justify-between group"
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                {t('dashboard.view_all_logs')}
+              </div>
+              <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Activity Logs Modal */}
       {isModalOpen && (
@@ -410,7 +525,7 @@ const Dashboard = () => {
                 />
                 <input
                   type="text"
-                  placeholder="Günlüklerde ara..."
+                  placeholder={t('dashboard.search_logs_placeholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-gray-800/40 border border-gray-800 rounded-xl pl-11 pr-4 py-2 text-sm text-white placeholder:text-gray-600 focus:ring-2 focus:ring-primary/50 outline-none transition-all"
@@ -419,7 +534,7 @@ const Dashboard = () => {
               <div className="flex items-center gap-2 bg-gray-800/40 border border-gray-800 rounded-xl px-4 py-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  {modalActivities.length} Kayıt
+                  {t('dashboard.record_count', { count: modalActivities.length })}
                 </span>
               </div>
             </div>
@@ -444,11 +559,11 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <div className="text-sm font-bold text-gray-100 leading-tight mb-1">
-                            {activity.message}
+                            {getActivityMessage(activity)}
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest bg-gray-800/50 px-2 py-0.5 rounded-md">
-                              {activity.type.replace('_', ' ')}
+                              {getActivityTypeLabel(activity.type)}
                             </span>
                             <span className="text-[10px] text-primary/70 font-bold uppercase tracking-widest">
                               ID: #{activity.id || idx}
@@ -465,7 +580,7 @@ const Dashboard = () => {
                           })}
                         </div>
                         <span className="text-[9px] font-mono opacity-40">
-                          {new Date(activity.created_at).toLocaleString('tr-TR')}
+                          {new Date(activity.created_at).toLocaleString(i18n.language)}
                         </span>
                       </div>
                     </div>
@@ -475,8 +590,8 @@ const Dashboard = () => {
                     <div className="p-6 rounded-full bg-gray-800/50 mb-4">
                       <ClipboardList size={48} className="text-gray-600" />
                     </div>
-                    <p className="text-lg font-bold">Kayıt bulunamadı</p>
-                    <p className="text-sm mt-1">Arama kriterlerinizi değiştirmeyi deneyin.</p>
+                    <p className="text-lg font-bold">{t('dashboard.no_logs_found')}</p>
+                    <p className="text-sm mt-1">{t('dashboard.try_changing_search')}</p>
                   </div>
                 )}
               </div>
@@ -488,7 +603,7 @@ const Dashboard = () => {
                 onClick={() => setIsModalOpen(false)}
                 className="px-6 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95"
               >
-                Kapat
+                {t('dashboard.close')}
               </button>
             </div>
           </div>

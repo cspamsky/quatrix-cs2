@@ -3,6 +3,7 @@ import { apiFetch } from '../utils/api';
 import { Search, RefreshCw, Trash2, Key, Calendar, Lock, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 
 interface User {
   id: number;
@@ -13,19 +14,8 @@ interface User {
   created_at: string;
 }
 
-const AVAILABLE_PERMISSIONS = [
-  { id: 'servers.create', label: 'Create Servers' },
-  { id: 'servers.delete', label: 'Delete Servers' },
-  { id: 'servers.update', label: 'Update Server Settings' },
-  { id: 'servers.console', label: 'Access Console' },
-  { id: 'servers.files', label: 'Manage Files' },
-  { id: 'servers.database', label: 'Manage Databases' },
-  { id: 'plugins.manage', label: 'Manage Plugins' },
-  { id: 'analytics.view', label: 'View Analytics' },
-  { id: 'users.manage', label: 'Manage Users' },
-];
-
 const Users = () => {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
@@ -39,6 +29,21 @@ const Users = () => {
       return { permissions: [] };
     }
   });
+
+  const availablePermissions = useMemo(
+    () => [
+      { id: 'servers.create', label: t('permissions.create_servers', 'Create Servers') },
+      { id: 'servers.delete', label: t('permissions.delete_servers', 'Delete Servers') },
+      { id: 'servers.update', label: t('permissions.update_servers', 'Update Server Settings') },
+      { id: 'servers.console', label: t('permissions.access_console', 'Access Console') },
+      { id: 'servers.files', label: t('permissions.manage_files', 'Manage Files') },
+      { id: 'servers.database', label: t('permissions.manage_databases', 'Manage Databases') },
+      { id: 'plugins.manage', label: t('permissions.manage_plugins', 'Manage Plugins') },
+      { id: 'analytics.view', label: t('permissions.view_analytics', 'View Analytics') },
+      { id: 'users.manage', label: t('permissions.manage_users', 'Manage Users') },
+    ],
+    [t]
+  );
 
   const canManage = user?.permissions?.includes('*') || user?.permissions?.includes('users.manage');
 
@@ -58,7 +63,7 @@ const Users = () => {
   }, [users, searchQuery]);
 
   const handleDeleteUser = async (userId: number, username: string) => {
-    if (!confirm(`Are you sure you want to delete user "${username}"?`)) return;
+    if (!confirm(t('users.delete_confirm', { username }))) return;
 
     try {
       const response = await apiFetch(`/api/users/${userId}`, {
@@ -66,14 +71,14 @@ const Users = () => {
       });
 
       if (response.ok) {
-        toast.success('User deleted');
+        toast.success(t('users.delete_success', 'User deleted'));
         queryClient.invalidateQueries({ queryKey: ['users'] });
       } else {
         const data = await response.json();
-        toast.error(data.message || 'Delete failed');
+        toast.error(data.message || t('users.delete_failed', 'Delete failed'));
       }
     } catch {
-      toast.error('Connection error');
+      toast.error(t('users.connection_error', 'Connection error'));
     }
   };
 
@@ -86,15 +91,15 @@ const Users = () => {
       });
 
       if (response.ok) {
-        toast.success('Permissions updated');
+        toast.success(t('users.update_success', 'Permissions updated'));
         setIsPermissionModalOpen(false);
         queryClient.invalidateQueries({ queryKey: ['users'] });
       } else {
         const data = await response.json();
-        toast.error(data.message || 'Update failed');
+        toast.error(data.message || t('users.update_failed', 'Update failed'));
       }
     } catch {
-      toast.error('Connection error');
+      toast.error(t('users.connection_error', 'Connection error'));
     }
   };
 
@@ -108,9 +113,11 @@ const Users = () => {
     <div className="p-6 font-display">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">User Management</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">
+            {t('users.title', 'User Management')}
+          </h2>
           <p className="text-sm text-gray-400 mt-1">
-            List and manage system users and their permissions.
+            {t('users.subtitle', 'List and manage system users and their permissions.')}
           </p>
         </div>
         <div className="flex items-center gap-4">
@@ -118,7 +125,7 @@ const Users = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
             <input
               className="w-64 pl-10 pr-4 py-2 bg-[#111827] border border-gray-800 focus:border-primary focus:ring-1 focus:ring-primary/20 rounded-xl transition-all outline-none text-sm text-gray-200"
-              placeholder="Search users..."
+              placeholder={t('users.search_placeholder', 'Search users...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -128,6 +135,7 @@ const Users = () => {
             onClick={() => refetch()}
             disabled={isLoading || isRefetching}
             className="bg-[#111827] border border-gray-800 text-gray-400 hover:text-white px-4 py-2 rounded-xl transition-all active:scale-95"
+            title={t('common.refresh', 'Refresh')}
           >
             <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin' : ''}`} />
           </button>
@@ -139,23 +147,29 @@ const Users = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#1d1d1d]/30 text-gray-400 text-[10px] uppercase font-black tracking-widest">
-                <th className="px-6 py-4 border-b border-gray-800/50">User</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">
+                  {t('common.user', 'User')}
+                </th>
                 <th className="px-6 py-4 border-b border-gray-800/50 text-center">2FA</th>
-                <th className="px-6 py-4 border-b border-gray-800/50">Joined At</th>
-                <th className="px-6 py-4 border-b border-gray-800/50 text-right">Actions</th>
+                <th className="px-6 py-4 border-b border-gray-800/50">
+                  {t('users.joined_at', 'Joined At')}
+                </th>
+                <th className="px-6 py-4 border-b border-gray-800/50 text-right">
+                  {t('common.actions', 'Actions')}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/30">
               {isLoading ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">
-                    Loading...
+                    {t('users.loading', 'Loading...')}
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center text-gray-500 text-sm">
-                    No users found.
+                    {t('users.no_users', 'No users found.')}
                   </td>
                 </tr>
               ) : (
@@ -187,14 +201,14 @@ const Users = () => {
                         {user.two_factor_enabled ? (
                           <div
                             className="p-1.5 bg-green-500/10 text-green-500 rounded-md border border-green-500/20"
-                            title="2FA Aktif"
+                            title={t('users.two_fa_active', '2FA Active')}
                           >
                             <Key size={14} />
                           </div>
                         ) : (
                           <div
                             className="p-1.5 bg-gray-500/10 text-gray-500 rounded-md border border-gray-500/20"
-                            title="2FA Devre Dışı"
+                            title={t('users.two_fa_disabled', '2FA Disabled')}
                           >
                             <Key size={14} />
                           </div>
@@ -217,14 +231,14 @@ const Users = () => {
                               setIsPermissionModalOpen(true);
                             }}
                             className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white rounded-lg transition-all"
-                            title="Edit Permissions"
+                            title={t('users.edit_permissions', 'Edit Permissions')}
                           >
                             <Lock size={14} />
                           </button>
                           <button
                             onClick={() => handleDeleteUser(user.id, user.username)}
                             className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all"
-                            title="Delete User"
+                            title={t('users.delete_user', 'Delete User')}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -249,10 +263,14 @@ const Users = () => {
                   <Lock size={20} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">Permissions</h3>
-                  <p className="text-sm text-gray-500 font-medium">Managed User Profile</p>
+                  <h3 className="text-lg font-bold text-white">
+                    {t('users.permissions.title', 'Permissions')}
+                  </h3>
+                  <p className="text-sm text-gray-500 font-medium">
+                    {t('users.permissions.subtitle', 'Managed User Profile')}
+                  </p>
                   <p className="text-xs text-gray-500 font-medium mt-0.5">
-                    Managing {selectedUser.username}
+                    {t('users.permissions.managing', { username: selectedUser.username })}
                   </p>
                 </div>
               </div>
@@ -267,7 +285,7 @@ const Users = () => {
 
             <div className="p-6 space-y-3 overflow-y-auto max-h-[60vh] custom-scrollbar">
               <div className="space-y-2">
-                {AVAILABLE_PERMISSIONS.map((perm) => (
+                {availablePermissions.map((perm) => (
                   <label
                     key={perm.id}
                     className="flex items-center justify-between p-3 bg-white/5 border border-white/5 rounded-xl cursor-pointer hover:bg-white/[0.08] transition-all group"
@@ -291,13 +309,13 @@ const Users = () => {
                 onClick={() => setIsPermissionModalOpen(false)}
                 className="flex-1 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
               >
-                Cancel
+                {t('users.permissions.cancel', 'Cancel')}
               </button>
               <button
                 onClick={handleUpdatePermissions}
                 className="flex-1 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-lg shadow-primary/20"
               >
-                Save
+                {t('users.permissions.save', 'Save')}
               </button>
             </div>
           </div>

@@ -1,9 +1,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import db from '../db.js';
 import { serverManager } from '../serverManager.js';
 import { authenticateToken } from '../middleware/auth.js';
-import type { AuthenticatedRequest } from '../types/index.js';
 
 const router = Router();
 
@@ -39,14 +37,12 @@ router.post('/:id/players/:userId/kick', async (req: Request, res: Response) => 
 router.post('/:id/players/:userId/ban', async (req: Request, res: Response) => {
   try {
     const { id, userId } = req.params;
-    const { duration, reason, playerName, steamId, ipAddress } = req.body as {
+    const { duration, reason, playerName, steamId } = req.body as {
       duration: string | number;
       reason?: string;
       playerName?: string;
       steamId: string;
-      ipAddress?: string;
     };
-    const authReq = req as AuthenticatedRequest;
 
     // 1. Send Triple-Layer Ban Protection
     const durationMinutes = parseInt(duration.toString()) || 0;

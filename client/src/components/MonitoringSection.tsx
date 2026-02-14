@@ -98,223 +98,226 @@ const MonitoringSection: React.FC<MonitoringSectionProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-      {/* CPU Mega Card */}
-      <div className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 shadow-lg shadow-black/20 overflow-hidden relative group transition-all hover:border-blue-500/30">
-        <div className="relative z-10">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20 transition-colors">
-                <Cpu size={20} />
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-wider">
-                  {t('dashboard.cpu_usage')}
-                </h3>
-                <p className="text-[9px] text-gray-500 font-bold truncate max-w-[120px]">
-                  {systemInfo?.cpuModel || 'Processor'}
-                </p>
-              </div>
-            </div>
-            <div className="text-2xl font-black text-blue-500">{currentStats.cpu}%</div>
-          </div>
-
-          <div className="relative h-32 w-full mt-2">
-            <div className="absolute inset-0">
-              {isMounted && (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                  <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Tooltip content={<CustomTooltip unit="%" />} />
-                    <Area
-                      name="CPU"
-                      type="monotone"
-                      dataKey="cpu"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorCpu)"
-                      animationDuration={800}
-                      isAnimationActive={true}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-blue-500/5 blur-2xl rounded-full group-hover:bg-blue-500/10 transition-all"></div>
-      </div>
-
-      {/* RAM Mega Card */}
-      <div className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 shadow-lg shadow-black/20 overflow-hidden relative group transition-all hover:border-purple-500/30">
-        <div className="relative z-10">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-500 group-hover:bg-purple-500/20 transition-colors">
-                <Database size={20} />
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-wider">
-                  {t('dashboard.ram_usage')}
-                </h3>
-                <p className="text-[9px] text-gray-500 font-bold">
-                  {parseFloat(currentStats.memUsed || '0').toFixed(1)} /{' '}
-                  {((systemInfo?.totalMemory || 0) / 1024).toFixed(1)} GB
-                </p>
-              </div>
-            </div>
-            <div className="text-2xl font-black text-purple-500">{currentStats.ram}%</div>
-          </div>
-
-          <div className="relative h-32 w-full mt-2">
-            <div className="absolute inset-0">
-              {isMounted && (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                  <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Tooltip content={<CustomTooltip unit="%" />} />
-                    <Area
-                      name="RAM"
-                      type="monotone"
-                      dataKey="ram"
-                      stroke="#a855f7"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorRam)"
-                      animationDuration={800}
-                      isAnimationActive={true}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-purple-500/5 blur-2xl rounded-full group-hover:bg-purple-500/10 transition-all"></div>
-      </div>
-
-      {/* Network Mega Card */}
-      <div className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 shadow-lg shadow-black/20 overflow-hidden relative group transition-all hover:border-emerald-500/30">
-        <div className="relative z-10">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 group-hover:bg-emerald-500/20 transition-colors">
-                <Globe size={20} />
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-wider">
-                  {t('dashboard.net_traffic')}
-                </h3>
-                <div className="flex items-center gap-2 text-[9px] font-bold text-gray-500">
-                  <span className="flex items-center gap-0.5">
-                    <ArrowDownLeft size={10} className="text-emerald-500" /> {currentStats.netIn}
-                  </span>
-                  <span className="flex items-center gap-0.5">
-                    <ArrowUpRight size={10} className="text-blue-500" /> {currentStats.netOut}
-                  </span>
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {/* CPU Mega Card */}
+        <div className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 shadow-lg shadow-black/20 overflow-hidden relative group transition-all hover:border-blue-500/30">
+          <div className="relative z-10">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20 transition-colors">
+                  <Cpu size={20} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                    {t('dashboard.cpu_usage')}
+                  </h3>
+                  <p className="text-[9px] text-gray-500 font-bold truncate max-w-[120px]">
+                    {systemInfo?.cpuModel || t('dashboard.processor_default')}
+                  </p>
                 </div>
               </div>
+              <div className="text-2xl font-black text-blue-500">{currentStats.cpu}%</div>
             </div>
-            <div className="text-sm font-black text-emerald-500 mt-1 uppercase tracking-tighter">
-              MB/s
-            </div>
-          </div>
 
-          <div className="relative h-32 w-full mt-2">
-            <div className="absolute inset-0">
-              {isMounted && (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                  <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Tooltip content={<CustomTooltip unit="MB/s" />} />
-                    <Area
-                      name="Network"
-                      type="monotone"
-                      dataKey="netIn"
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorNet)"
-                      animationDuration={800}
-                      isAnimationActive={true}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-emerald-500/5 blur-2xl rounded-full group-hover:bg-emerald-500/10 transition-all"></div>
-      </div>
-
-      {/* Disk Mega Card */}
-      <div className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 shadow-lg shadow-black/20 overflow-hidden relative group transition-all hover:border-orange-500/30">
-        <div className="relative z-10">
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500 group-hover:bg-orange-500/20 transition-colors">
-                <HardDrive size={20} />
-              </div>
-              <div>
-                <h3 className="text-xs font-black text-white uppercase tracking-wider">
-                  {t('dashboard.disk_io')}
-                </h3>
-                <p className="text-[9px] text-gray-500 font-bold uppercase">
-                  {currentStats.diskRead} READ / {currentStats.diskWrite} WRITE
-                </p>
+            <div className="relative h-32 w-full mt-2">
+              <div className="absolute inset-0">
+                {isMounted && (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip content={<CustomTooltip unit="%" />} />
+                      <Area
+                        name={t('dashboard.graph_cpu')}
+                        type="monotone"
+                        dataKey="cpu"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorCpu)"
+                        animationDuration={800}
+                        isAnimationActive={true}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             </div>
-            <div className="text-sm font-black text-orange-500 mt-1 uppercase tracking-tighter">
-              MB/s
-            </div>
           </div>
-
-          <div className="relative h-32 w-full mt-2">
-            <div className="absolute inset-0">
-              {isMounted && (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                  <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="colorDisk" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Tooltip content={<CustomTooltip unit="MB/s" />} />
-                    <Area
-                      name="Disk"
-                      type="monotone"
-                      dataKey="diskRead"
-                      stroke="#f97316"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorDisk)"
-                      animationDuration={800}
-                      isAnimationActive={true}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </div>
+          <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-blue-500/5 blur-2xl rounded-full group-hover:bg-blue-500/10 transition-all"></div>
         </div>
-        <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-orange-500/5 blur-2xl rounded-full group-hover:bg-orange-500/10 transition-all"></div>
+
+        {/* RAM Mega Card */}
+        <div className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 shadow-lg shadow-black/20 overflow-hidden relative group transition-all hover:border-purple-500/30">
+          <div className="relative z-10">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-500 group-hover:bg-purple-500/20 transition-colors">
+                  <Database size={20} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                    {t('dashboard.ram_usage')}
+                  </h3>
+                  <p className="text-[9px] text-gray-500 font-bold">
+                    {parseFloat(currentStats.memUsed || '0').toFixed(1)} /{' '}
+                    {((systemInfo?.totalMemory || 0) / 1024).toFixed(1)} GB
+                  </p>
+                </div>
+              </div>
+              <div className="text-2xl font-black text-purple-500">{currentStats.ram}%</div>
+            </div>
+
+            <div className="relative h-32 w-full mt-2">
+              <div className="absolute inset-0">
+                {isMounted && (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorRam" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip content={<CustomTooltip unit="%" />} />
+                      <Area
+                        name={t('dashboard.graph_ram')}
+                        type="monotone"
+                        dataKey="ram"
+                        stroke="#a855f7"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorRam)"
+                        animationDuration={800}
+                        isAnimationActive={true}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-purple-500/5 blur-2xl rounded-full group-hover:bg-purple-500/10 transition-all"></div>
+        </div>
+
+        {/* Network Mega Card */}
+        <div className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 shadow-lg shadow-black/20 overflow-hidden relative group transition-all hover:border-emerald-500/30">
+          <div className="relative z-10">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 group-hover:bg-emerald-500/20 transition-colors">
+                  <Globe size={20} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                    {t('dashboard.net_traffic')}
+                  </h3>
+                  <div className="flex items-center gap-2 text-[9px] font-bold text-gray-500">
+                    <span className="flex items-center gap-0.5">
+                      <ArrowDownLeft size={10} className="text-emerald-500" /> {currentStats.netIn}
+                    </span>
+                    <span className="flex items-center gap-0.5">
+                      <ArrowUpRight size={10} className="text-blue-500" /> {currentStats.netOut}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="text-sm font-black text-emerald-500 mt-1 uppercase tracking-tighter">
+                MB/s
+              </div>
+            </div>
+
+            <div className="relative h-32 w-full mt-2">
+              <div className="absolute inset-0">
+                {isMounted && (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip content={<CustomTooltip unit="MB/s" />} />
+                      <Area
+                        name={t('dashboard.graph_network')}
+                        type="monotone"
+                        dataKey="netIn"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorNet)"
+                        animationDuration={800}
+                        isAnimationActive={true}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-emerald-500/5 blur-2xl rounded-full group-hover:bg-emerald-500/10 transition-all"></div>
+        </div>
+
+        {/* Disk Mega Card */}
+        <div className="p-6 bg-[#111827] rounded-2xl border border-gray-800/60 shadow-lg shadow-black/20 overflow-hidden relative group transition-all hover:border-orange-500/30">
+          <div className="relative z-10">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-orange-500/10 text-orange-500 group-hover:bg-orange-500/20 transition-colors">
+                  <HardDrive size={20} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black text-white uppercase tracking-wider">
+                    {t('dashboard.disk_io')}
+                  </h3>
+                  <p className="text-[9px] text-gray-500 font-bold uppercase">
+                    {currentStats.diskRead} {t('dashboard.read')} / {currentStats.diskWrite}{' '}
+                    {t('dashboard.write')}
+                  </p>
+                </div>
+              </div>
+              <div className="text-sm font-black text-orange-500 mt-1 uppercase tracking-tighter">
+                MB/s
+              </div>
+            </div>
+
+            <div className="relative h-32 w-full mt-2">
+              <div className="absolute inset-0">
+                {isMounted && (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <AreaChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorDisk" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <Tooltip content={<CustomTooltip unit="MB/s" />} />
+                      <Area
+                        name={t('dashboard.graph_disk')}
+                        type="monotone"
+                        dataKey="diskRead"
+                        stroke="#f97316"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#colorDisk)"
+                        animationDuration={800}
+                        isAnimationActive={true}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-orange-500/5 blur-2xl rounded-full group-hover:bg-orange-500/10 transition-all"></div>
+        </div>
       </div>
     </div>
   );

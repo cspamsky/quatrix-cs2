@@ -1,17 +1,16 @@
 import React from 'react';
-import { Settings as SettingsIcon, Save } from 'lucide-react';
+import { Settings as SettingsIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import SearchableSelect from '../ui/SearchableSelect';
 
 interface GeneralTabProps {
   panelName: string;
   setPanelName: (val: string) => void;
   defaultPort: string;
   setDefaultPort: (val: string) => void;
-  autoBackup: boolean;
-  setAutoBackup: (val: boolean) => void;
-  autoPluginUpdates: boolean;
-  setAutoPluginUpdates: (val: boolean) => void;
-  onSave: () => void;
+  timezone: string;
+  setTimezone: (val: string) => void;
+  timezones: string[];
   systemInfo?: {
     runtime?: {
       node?: string;
@@ -28,27 +27,25 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
   setPanelName,
   defaultPort,
   setDefaultPort,
-  autoBackup,
-  setAutoBackup,
-  autoPluginUpdates,
-  setAutoPluginUpdates,
-  onSave,
+  timezone,
+  setTimezone,
+  timezones,
   systemInfo,
   isLoading,
   canEdit = true,
 }) => {
   const { t } = useTranslation();
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      <div className="space-y-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="space-y-6">
         <div>
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-4">
             <SettingsIcon className="text-primary w-5 h-5" />
             <h3 className="text-lg font-bold text-white tracking-tight">
               {t('settingsGeneral.title')}
             </h3>
           </div>
-          <form className="space-y-6">
+          <form className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-2">
                 {t('settingsGeneral.panel_name')}
@@ -73,65 +70,32 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
                 disabled={!canEdit}
               />
             </div>
-            <div className="flex items-center justify-between p-5 bg-[#0d1624] rounded-2xl border border-gray-800/50">
-              <div>
-                <p className="text-sm font-bold text-white">{t('settingsGeneral.auto_backup')}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {t('settingsGeneral.auto_backup_desc')}
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={autoBackup}
-                  onChange={(e) => setAutoBackup(e.target.checked)}
-                  disabled={!canEdit}
-                />
-                <div
-                  className={`w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
-                ></div>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2">
+                {t('settingsGeneral.timezone', 'System Time Zone')}
               </label>
+              <SearchableSelect
+                options={timezones}
+                value={timezone}
+                onChange={setTimezone}
+                disabled={!canEdit}
+                placeholder={t('settingsGeneral.select_timezone', 'Select a timezone...')}
+              />
+              <p className="text-[10px] text-gray-500 mt-2 px-1">
+                {t(
+                  'settingsGeneral.timezone_desc',
+                  'The region used for server time and backup scheduling.'
+                )}
+              </p>
             </div>
-            <div className="flex items-center justify-between p-5 bg-[#0d1624] rounded-2xl border border-gray-800/50">
-              <div>
-                <p className="text-sm font-bold text-white">
-                  {t('settingsGeneral.auto_plugin_updates')}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {t('settingsGeneral.auto_plugin_desc')}
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={autoPluginUpdates}
-                  onChange={(e) => setAutoPluginUpdates(e.target.checked)}
-                  disabled={!canEdit}
-                />
-                <div
-                  className={`w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}
-                ></div>
-              </label>
-            </div>
-            {canEdit && (
-              <button
-                onClick={onSave}
-                className="flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-lg shadow-primary/20 active:scale-95"
-                type="button"
-              >
-                <Save size={18} />
-                {t('settingsGeneral.save_changes')}
-              </button>
-            )}
+            {/* Save Button Removed - Moved to Settings.tsx Footer */}
           </form>
         </div>
       </div>
 
-      <div className="space-y-10">
+      <div className="space-y-6">
         <div>
-          <div className="flex items-center gap-2 mb-6">
+          <div className="flex items-center gap-2 mb-4">
             <SettingsIcon className="text-primary w-5 h-5" aria-hidden="true" />
             <h3 className="text-lg font-bold text-white tracking-tight">
               {t('settingsGeneral.system_info')}
@@ -159,7 +123,7 @@ const GeneralTab: React.FC<GeneralTabProps> = ({
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">OS</span>
+              <span className="text-gray-500">{t('settingsGeneral.os')}</span>
               <span className="text-gray-300">
                 {isLoading ? (
                   <span className="inline-block w-32 h-4 bg-gray-800 rounded animate-pulse"></span>

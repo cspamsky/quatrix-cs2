@@ -1,6 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
-import fs from 'fs';
 import { fileSystemService } from '../FileSystemService.js';
 import type { InstanceOptions } from '../RuntimeService.js';
 

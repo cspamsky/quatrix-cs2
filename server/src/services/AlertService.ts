@@ -15,27 +15,27 @@ class AlertService {
   };
 
   private lastAlerts: Record<string, number> = {};
-  private readonly ALERT_COOLDOWN = 10 * 60 * 1000; // 10 dakika (ms)
+  private readonly ALERT_COOLDOWN = 10 * 60 * 1000; // 10 minutes (ms)
 
   public check(stats: SystemStats) {
     const cpuValue = parseFloat(stats.cpu);
     const ramValue = parseFloat(stats.ram);
 
-    // CPU Kontrolü
+    // CPU Check
     if (cpuValue > this.thresholds.cpu) {
-      this.triggerAlert('CRITICAL_CPU', `Kritik CPU Kullanımı: %${cpuValue}`, 'WARNING');
+      this.triggerAlert('CRITICAL_CPU', `Critical CPU Usage: %${cpuValue}`, 'WARNING');
     }
 
-    // RAM Kontrolü
+    // RAM Check
     if (ramValue > this.thresholds.ram) {
       this.triggerAlert(
         'CRITICAL_RAM',
-        `Kritik Bellek Kullanımı: %${ramValue} (${stats.memUsed} GB / ${stats.memTotal} GB)`,
+        `Critical Memory Usage: %${ramValue} (${stats.memUsed} GB / ${stats.memTotal} GB)`,
         'WARNING'
       );
     }
 
-    // Disk Kontrolü (Gelecekte si.fsSize() eklendiğinde genişletilebilir)
+    // Disk Check (Can be extended when si.fsSize() is added)
   }
 
   private triggerAlert(
@@ -46,7 +46,7 @@ class AlertService {
     const now = Date.now();
     const lastTime = this.lastAlerts[type] || 0;
 
-    // Cooldown kontrolü (Sürekli aynı uyarıyı basmamak için)
+    // Cooldown check (To prevent spamming the same alert)
     if (now - lastTime < this.ALERT_COOLDOWN) return;
 
     try {
@@ -55,7 +55,7 @@ class AlertService {
         INSERT INTO activity_logs (user_id, type, message, severity)
         VALUES (?, ?, ?, ?)
       `
-      ).run(1, type, message, severity); // Varsayılan admin user_id: 1
+      ).run(1, type, message, severity); // Default admin user_id: 1
 
       this.lastAlerts[type] = now;
       console.log(`[AlertService] Alert Triggered: ${type} - ${message}`);

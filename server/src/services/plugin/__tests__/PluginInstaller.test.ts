@@ -1,4 +1,4 @@
-import { describe, it, expect, jest, beforeEach, beforeAll } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import path from 'path';
 
 // Define Mocks Scope
@@ -16,13 +16,13 @@ const mockConfigManager = {
 };
 
 const mockFs = {
-  readdir: jest.fn() as jest.Mock<any>,
-  access: jest.fn() as jest.Mock<any>,
-  mkdir: jest.fn() as jest.Mock<any>,
-  cp: jest.fn() as jest.Mock<any>,
-  rm: jest.fn() as jest.Mock<any>,
-  writeFile: jest.fn() as jest.Mock<any>,
-  readFile: jest.fn() as jest.Mock<any>,
+  readdir: jest.fn<(...args: any[]) => Promise<any>>(),
+  access: jest.fn<(...args: any[]) => Promise<any>>(),
+  mkdir: jest.fn<(...args: any[]) => Promise<any>>(),
+  cp: jest.fn<(...args: any[]) => Promise<any>>(),
+  rm: jest.fn<(...args: any[]) => Promise<any>>(),
+  writeFile: jest.fn<(...args: any[]) => Promise<any>>(),
+  readFile: jest.fn<(...args: any[]) => Promise<any>>(),
 };
 
 // ESM Mocking
@@ -35,12 +35,11 @@ jest.unstable_mockModule('fs/promises', () => ({
 }));
 
 // Dynamic Import (Must be after mocks)
+// Dynamic Import (Must be after mocks)
 const { PluginInstaller } = await import('../PluginInstaller.js');
-// Import fs (mocked) to use in tests
-const fs = (await import('fs/promises')).default as unknown as typeof mockFs;
 
 describe('PluginInstaller', () => {
-  let installer: any; // Type as any to access private fields
+  let installer: any; // Type as any to access private fields for test
   let mockDb: any;
 
   beforeEach(() => {

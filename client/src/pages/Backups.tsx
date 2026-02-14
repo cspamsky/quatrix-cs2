@@ -10,6 +10,7 @@ import {
   Layers,
   Search,
   AlertCircle,
+  Clock,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr, enUS } from 'date-fns/locale';
@@ -18,6 +19,7 @@ import { clsx } from 'clsx';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 import { apiFetch } from '../utils/api';
 import type { Backup, Instance } from '../types';
+import BackupScheduleModal from '../components/backups/BackupScheduleModal';
 
 const Backups: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -27,6 +29,7 @@ const Backups: React.FC = () => {
   const [selectedServerId, setSelectedServerId] = useState<string | number>('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   const dateLocale = i18n.language.startsWith('tr') ? tr : enUS;
 
@@ -49,7 +52,7 @@ const Backups: React.FC = () => {
       if (!response.ok) throw new Error('API Error');
       const data = await response.json();
 
-      const serverArray = Array.isArray(data) ? data : [];
+      const serverArray = (Array.isArray(data) ? data : []) as Instance[];
       setServers(serverArray);
 
       if (serverArray && serverArray.length > 0) {
@@ -69,7 +72,7 @@ const Backups: React.FC = () => {
       const response = await apiFetch(`/api/backups/${serverId}`);
       if (!response.ok) throw new Error('API Error');
       const data = await response.json();
-      setBackups(Array.isArray(data) ? data : []);
+      setBackups((Array.isArray(data) ? data : []) as Backup[]);
     } catch {
       toast.error(t('backups.error_fetch_backups'));
       setBackups([]);
@@ -91,8 +94,8 @@ const Backups: React.FC = () => {
         throw new Error(data.error || 'Failed to start backup');
       }
       // Success is handled by GlobalTaskOverlay
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -115,8 +118,8 @@ const Backups: React.FC = () => {
           throw new Error(data.error || 'Failed to start restore');
         }
         // Success is handled by GlobalTaskOverlay
-      } catch (err: any) {
-        toast.error(err.message);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : String(err));
       }
     }
   };
@@ -146,7 +149,7 @@ const Backups: React.FC = () => {
   };
 
   const filteredBackups = backups.filter(
-    (b) =>
+    (b: Backup) =>
       (b.filename?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
       (b.comment?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
@@ -168,14 +171,23 @@ const Backups: React.FC = () => {
           <p className="text-gray-400 max-w-2xl">{t('backups.subtitle')}</p>
         </div>
 
-        <button
-          onClick={handleCreateBackup}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
-          disabled={!selectedServerId}
-        >
-          <Plus className="w-5 h-5" />
-          {t('backups.create_new')}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsScheduleModalOpen(true)}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl border border-white/10 font-bold transition-all active:scale-95 shadow-lg"
+          >
+            <Clock className="w-5 h-5 text-primary" />
+            {t('backups.schedule_settings_title')}
+          </button>
+          <button
+            onClick={handleCreateBackup}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50"
+            disabled={!selectedServerId}
+          >
+            <Plus className="w-5 h-5" />
+            {t('backups.create_new')}
+          </button>
+        </div>
       </div>
 
       {/* Control Bar */}
@@ -352,6 +364,12 @@ const Backups: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Modal */}
+      <BackupScheduleModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+      />
     </div>
   );
 };

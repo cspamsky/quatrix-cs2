@@ -343,6 +343,11 @@ db.prepare("UPDATE settings SET value = ? WHERE key = 'install_dir'").run(defaul
 initializeSetting('steamcmd_path', steamCmdPath);
 initializeSetting('install_dir', defaultInstallDir);
 initializeSetting('auto_plugin_updates', 'false');
+initializeSetting('backup_schedule_time', '03:00');
+initializeSetting('backup_retention_limit', '7');
+initializeSetting('backup_auto_enabled', 'false');
+initializeSetting('backup_frequency', 'daily'); // daily, weekly, monthly
+initializeSetting('backup_specific_date', ''); // E.g. 2026-01-01
 
 // Create server_plugins table to track installed versions
 db.exec(`

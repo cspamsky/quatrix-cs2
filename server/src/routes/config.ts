@@ -4,6 +4,7 @@ import db from '../db.js';
 import { serverManager } from '../serverManager.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { authorize } from '../middleware/authorize.js';
+import { systemService } from '../services/SystemService.js';
 import si from 'systeminformation';
 import type { AuthenticatedRequest, Settings } from '../types/index.js';
 
@@ -121,7 +122,12 @@ router.post(
 // GET /api/system-info
 router.get('/system-info', async (req: Request, res: Response) => {
   try {
-    const [os, mem, cpu] = await Promise.all([si.osInfo(), si.mem(), si.cpu()]);
+    const [os, mem, cpu, systemStatus] = await Promise.all([
+      si.osInfo(),
+      si.mem(),
+      si.cpu(),
+      systemService.getSystemStatus(),
+    ]);
 
     res.json({
       os: `${os.distro} ${os.release}`,
@@ -130,6 +136,8 @@ router.get('/system-info', async (req: Request, res: Response) => {
       publicIp: cachedPublicIp,
       cpuModel: `${cpu.manufacturer} ${cpu.brand}`,
       totalMemory: Math.round(mem.total / 1024 / 1024), // MB
+      timezone: systemStatus.timezone,
+      serverTime: systemStatus.time,
     });
   } catch {
     res.status(500).json({ message: 'Failed to fetch system info' });
@@ -166,5 +174,33 @@ router.post(
     }
   }
 );
+
+// GET /api/system/timezones
+router.get('/system/timezones', authorize('users.manage'), async (req: Request, res: Response) => {
+  try {
+    const timezones = await systemService.getTimezones();
+    const current = await systemService.getCurrentTimezone();
+    res.json({ timezones, current });
+  } catch {
+    res.status(500).json({ message: 'Failed to fetch timezones' });
+  }
+});
+
+// POST /api/system/timezone
+router.post('/system/timezone', authorize('users.manage'), async (req: Request, res: Response) => {
+  try {
+    const { timezone } = req.body;
+    if (!timezone) return res.status(400).json({ message: 'Timezone is required' });
+
+    const result = await systemService.setTimezone(timezone);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  } catch {
+    res.status(500).json({ message: 'Failed to set timezone' });
+  }
+});
 
 export default router;

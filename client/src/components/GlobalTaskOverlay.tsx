@@ -63,7 +63,7 @@ const GlobalTaskOverlay: React.FC = () => {
             {String(
               t(task.message, {
                 defaultValue: task.message,
-                plugin: (task.metadata as any)?.pluginName || 'Plugin',
+                plugin: (task.metadata as { pluginName?: string })?.pluginName || 'Plugin',
               })
             )}
           </p>

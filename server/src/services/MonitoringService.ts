@@ -18,16 +18,15 @@ export interface SystemStats {
 class MonitoringService {
   private io: Server | null = null;
   private statsHistory: SystemStats[] = [];
-  private readonly MAX_HISTORY = 30;
+  private readonly MAX_HISTORY = 120; // 2 minutes of history
   private interval: NodeJS.Timeout | null = null;
   private saveInterval: NodeJS.Timeout | null = null;
   private readonly SAVE_PERIOD = 5 * 60 * 1000; // 5 minutes
 
   private lastNetworkStats: si.Systeminformation.NetworkStatsData[] | null = null;
   private lastDiskStats: {
-    rIO?: number;
-    wIO?: number;
-    fs?: { rx?: number; wx?: number };
+    disks: si.Systeminformation.DisksIoData | si.Systeminformation.DisksIoData[];
+    fs: si.Systeminformation.FsStatsData;
   } | null = null;
 
   public setSocketIO(io: Server) {
@@ -112,8 +111,19 @@ class MonitoringService {
       si.currentLoad().catch(() => ({ currentLoad: 0 })),
       si.mem().catch(() => ({ active: 0, total: 1 })),
       si.networkStats().catch(() => []),
-      si.disksIO().catch(() => ({ rIO: 0, wIO: 0 })),
-      si.fsStats().catch(() => ({ rx: 0, wx: 0 })),
+      si.disksIO().catch(() => ({ rIO: 0, wIO: 0 }) as unknown as si.Systeminformation.DisksIoData),
+      si.fsStats().catch(
+        () =>
+          ({
+            rx: 0,
+            wx: 0,
+            tx: 0,
+            rx_sec: 0,
+            wx_sec: 0,
+            tx_sec: 0,
+            ms: 0,
+          }) as si.Systeminformation.FsStatsData
+      ),
     ]);
 
     const time = si.time(); // Synchronous call
@@ -161,13 +171,15 @@ class MonitoringService {
       diskWrite = 0;
 
     const getDiskSum = (
-      d: { rIO?: number; wIO?: number; fs?: { rx?: number; wx?: number } } | null
+      d: si.Systeminformation.DisksIoData | si.Systeminformation.DisksIoData[],
+      f: si.Systeminformation.FsStatsData
     ) => {
-      if (!d) return { rIO: 0, wIO: 0, f_rx: 0, f_wx: 0 };
       let rIO = 0,
         wIO = 0,
         f_rx = 0,
         f_wx = 0;
+
+      if (!d) return { rIO, wIO, f_rx, f_wx };
 
       // Sum disksIO
       if (Array.isArray(d)) {
@@ -176,23 +188,25 @@ class MonitoringService {
           wIO += item.wIO || 0;
         });
       } else {
-        rIO = d.rIO || 0;
-        wIO = d.wIO || 0;
+        rIO = (d as si.Systeminformation.DisksIoData).rIO || 0;
+        wIO = (d as si.Systeminformation.DisksIoData).wIO || 0;
       }
 
-      // Sum fsStats (stored inside disk object in lastDiskStats)
-      const fsData = d.fs || fs;
-      if (fsData) {
-        f_rx = fsData.rx || 0;
-        f_wx = fsData.wx || 0;
+      // Sum fsStats
+      if (f) {
+        f_rx = f.rx || 0;
+        f_wx = f.wx || 0;
       }
 
       return { rIO, wIO, f_rx, f_wx };
     };
 
     if (this.lastDiskStats) {
-      const current = getDiskSum(disk);
-      const last = getDiskSum(this.lastDiskStats);
+      const current = getDiskSum(
+        disk as si.Systeminformation.DisksIoData,
+        fs as si.Systeminformation.FsStatsData
+      );
+      const last = getDiskSum(this.lastDiskStats.disks, this.lastDiskStats.fs);
 
       const d_r = current.rIO - last.rIO;
       const d_w = current.wIO - last.wIO;
@@ -203,7 +217,10 @@ class MonitoringService {
       diskRead = Math.max(0, Math.max(d_r, f_r) / 1024 / 1024);
       diskWrite = Math.max(0, Math.max(d_w, f_w) / 1024 / 1024);
     }
-    this.lastDiskStats = { ...disk, fs };
+    this.lastDiskStats = {
+      disks: disk as si.Systeminformation.DisksIoData,
+      fs: fs as si.Systeminformation.FsStatsData,
+    };
 
     // Final result with safety
     const totalMem = mem.total || 1; // Avoid div by zero

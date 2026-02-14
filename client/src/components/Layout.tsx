@@ -17,6 +17,7 @@ import {
   Archive,
   Activity,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom';
 import { useState, useEffect, Suspense } from 'react';
 import { Oval } from 'react-loading-icons';
@@ -40,47 +41,60 @@ const Layout = () => {
 
   const displayName = user?.username || 'User';
 
-  const navItems = [
+  interface NavItem {
+    path: string;
+    icon: LucideIcon;
+    label: string | undefined;
+    permission?: string;
+  }
+
+  const navItems: NavItem[] = [
     { path: '/dashboard', icon: LayoutDashboard, label: t('nav.dashboard') },
-    { path: '/instances', icon: Layers, label: t('nav.instances') },
-    { path: '/chat', icon: MessageSquare, label: t('nav.chat') },
-    { path: '/console', icon: Terminal, label: t('nav.console') },
+    { path: '/instances', icon: Layers, label: t('nav.instances'), permission: 'servers.view' },
+    { path: '/chat', icon: MessageSquare, label: t('nav.chat'), permission: 'servers.console' },
+    { path: '/console', icon: Terminal, label: t('nav.console'), permission: 'servers.console' },
     {
       path: '/maps',
       icon: MapIcon,
       label: t('nav.maps'),
+      permission: 'servers.update',
     },
     {
       path: '/players',
       icon: Users,
       label: t('nav.players'),
+      permission: 'servers.update',
     },
     {
       path: '/plugins',
       icon: Puzzle,
       label: t('nav.plugins'),
+      permission: 'plugins.manage',
     },
-    { path: '/admins', icon: ShieldCheck, label: t('nav.admins') },
+    { path: '/admins', icon: ShieldCheck, label: t('nav.admins'), permission: 'servers.update' },
     {
       path: '/database',
       icon: Database,
       label: t('nav.database'),
+      permission: 'servers.database',
     },
     {
       path: '/analytics',
       icon: Activity,
       label: t('nav.analytics'),
+      permission: 'analytics.view',
     },
     {
       path: '/users',
       icon: UserCog,
       label: t('nav.users'),
+      permission: 'users.manage',
     },
-    { path: '/backups', icon: Archive, label: t('nav.backups') },
-    { path: '/settings', icon: Settings, label: t('nav.settings') },
+    { path: '/backups', icon: Archive, label: t('nav.backups'), permission: 'servers.update' },
+    { path: '/settings', icon: Settings, label: t('nav.settings'), permission: '*' },
   ];
 
-  const filteredNavItems = navItems.filter((item: any) => {
+  const filteredNavItems = navItems.filter((item) => {
     // Users with '*' (root) see everything
     if (user?.permissions?.includes('*')) return true;
 
@@ -220,7 +234,7 @@ const Layout = () => {
           <div className="flex items-center justify-between px-2 py-1 bg-white/5 rounded-lg border border-white/5 mb-2">
             <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
               <Globe size={12} />
-              <span>Language</span>
+              <span>{t('common.language')}</span>
             </div>
             <div className="flex gap-1">
               <button
@@ -269,8 +283,8 @@ const Layout = () => {
             <button
               onClick={handleLogout}
               className="text-gray-500 hover:text-red-400 transition-colors p-1.5 hover:bg-red-400/10 rounded-lg"
-              title="Logout"
-              aria-label="Logout"
+              title={t('common.logout')}
+              aria-label={t('common.logout')}
             >
               <LogOut size={18} aria-hidden="true" />
             </button>

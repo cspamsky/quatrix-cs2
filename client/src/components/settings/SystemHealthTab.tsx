@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   Wrench,
 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 
 interface SystemHealthTabProps {
   healthData: {
@@ -90,7 +90,7 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
       {healthLoading && !healthData ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <RefreshCw className="text-primary w-10 h-10 animate-spin mb-4" />
-          <p className="text-gray-500 animate-pulse">Scanning system environment...</p>
+          <p className="text-gray-500 animate-pulse">{t('system_health.scanning')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -98,22 +98,22 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
           <div className="p-6 bg-[#0d1624] rounded-2xl border border-gray-800/50 space-y-6">
             <h4 className="text-sm font-bold text-white flex items-center gap-2">
               <Database size={16} className="text-primary" />
-              Hardware & CPU
+              {t('system_health.hardware_cpu')}
             </h4>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-[#0F172A]/50 rounded-xl border border-gray-800/30">
                 <div>
                   <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">
-                    CPU Model
+                    {t('system_health.cpu_model')}
                   </p>
                   <p className="text-sm text-gray-200 font-medium truncate max-w-[200px]">
-                    {healthData?.cpu?.model || 'Detecting...'}
+                    {healthData?.cpu?.model || t('serverCard.detecting')}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">
-                    Cores
+                    {t('system_health.cores')}
                   </p>
                   <p className="text-sm text-white font-bold">{healthData?.cpu?.cores || '--'}</p>
                 </div>
@@ -129,14 +129,14 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
                     <Shield size={16} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">AVX Instruction Set</p>
-                    <p className="text-[10px] text-gray-500">Required for CS2 Dedicated Server</p>
+                    <p className="text-sm font-bold text-white">{t('system_health.avx')}</p>
+                    <p className="text-[10px] text-gray-500">{t('system_health.avx_req')}</p>
                   </div>
                 </div>
                 <span
                   className={`text-[10px] font-black uppercase tracking-widest ${healthData?.cpu?.avx ? 'text-green-500' : 'text-red-500'}`}
                 >
-                  {healthData?.cpu?.avx ? 'Supported' : 'Missing'}
+                  {healthData?.cpu?.avx ? t('system_health.supported') : t('system_health.missing')}
                 </span>
               </div>
 
@@ -150,16 +150,19 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
                     <Activity size={16} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">System RAM</p>
+                    <p className="text-sm font-bold text-white">{t('system_health.ram')}</p>
                     <p className="text-[10px] text-gray-500">
-                      {((healthData?.ram?.total || 0) / 1024 / 1024 / 1024).toFixed(1)} GB Total
+                      {((healthData?.ram?.total || 0) / 1024 / 1024 / 1024).toFixed(1)} GB{' '}
+                      {t('system_health.total')}
                     </p>
                   </div>
                 </div>
                 <span
                   className={`text-[10px] font-black uppercase tracking-widest ${healthData?.ram?.status === 'good' ? 'text-green-500' : 'text-orange-500'}`}
                 >
-                  {healthData?.ram?.status === 'good' ? 'Pass' : 'Low (<8GB)'}
+                  {healthData?.ram?.status === 'good'
+                    ? t('system_health.pass')
+                    : t('system_health.low_ram')}
                 </span>
               </div>
 
@@ -173,16 +176,19 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
                     <FolderOpen size={16} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">Available Disk Space</p>
+                    <p className="text-sm font-bold text-white">{t('system_health.disk')}</p>
                     <p className="text-[10px] text-gray-500">
-                      {((healthData?.disk?.free || 0) / 1024 / 1024 / 1024).toFixed(1)} GB Free
+                      {((healthData?.disk?.free || 0) / 1024 / 1024 / 1024).toFixed(1)} GB{' '}
+                      {t('system_health.free')}
                     </p>
                   </div>
                 </div>
                 <span
                   className={`text-[10px] font-black uppercase tracking-widest ${healthData?.disk?.status === 'good' ? 'text-green-500' : 'text-orange-500'}`}
                 >
-                  {healthData?.disk?.status === 'good' ? 'Pass' : 'Low (<40GB)'}
+                  {healthData?.disk?.status === 'good'
+                    ? t('system_health.pass')
+                    : t('system_health.low_disk')}
                 </span>
               </div>
             </div>
@@ -192,7 +198,7 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
           <div className="p-6 bg-[#0d1624] rounded-2xl border border-gray-800/50 space-y-6">
             <h4 className="text-sm font-bold text-white flex items-center gap-2">
               <Terminal size={16} className="text-primary" />
-              Software Runtimes
+              {t('system_health.runtimes')}
             </h4>
 
             <div className="space-y-4">
@@ -208,8 +214,8 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
                       <Smartphone size={16} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white">.NET 8.0 Runtime</p>
-                      <p className="text-[10px] text-gray-500">Required for CounterStrikeSharp</p>
+                      <p className="text-sm font-bold text-white">{t('system_health.dotnet')}</p>
+                      <p className="text-[10px] text-gray-500">{t('system_health.dotnet_req')}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -220,13 +226,15 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
                         rel="noopener noreferrer"
                         className="text-[10px] font-black text-primary hover:underline uppercase tracking-widest"
                       >
-                        Download
+                        {t('system_health.download')}
                       </a>
                     )}
                     <span
                       className={`text-[10px] font-black uppercase tracking-widest ${healthData?.runtimes?.dotnet?.status === 'good' ? 'text-green-500' : 'text-red-500'}`}
                     >
-                      {healthData?.runtimes?.dotnet?.status === 'good' ? 'Installed' : 'Missing'}
+                      {healthData?.runtimes?.dotnet?.status === 'good'
+                        ? t('system_health.installed')
+                        : t('system_health.missing')}
                     </span>
                   </div>
                 </div>
@@ -251,16 +259,18 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
                       <Activity size={16} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white">{t('settingsHealth.so_files')}</p>
+                      <p className="text-sm font-bold text-white">{t('system_health.steam_sdk')}</p>
                       <p className="text-[10px] text-gray-500">
-                        Required for server initialization
+                        {t('system_health.steam_sdk_req')}
                       </p>
                     </div>
                   </div>
                   <span
                     className={`text-[10px] font-black uppercase tracking-widest ${healthData?.runtimes?.steam_sdk?.status === 'good' ? 'text-green-500' : 'text-red-500'}`}
                   >
-                    {healthData?.runtimes?.steam_sdk?.status === 'good' ? 'Ready' : 'Missing'}
+                    {healthData?.runtimes?.steam_sdk?.status === 'good'
+                      ? t('system_health.ready')
+                      : t('system_health.missing')}
                   </span>
                 </div>
               </div>
@@ -277,9 +287,9 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
                       <AlertTriangle size={16} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-white">Disk Garbage (Core Dumps)</p>
+                      <p className="text-sm font-bold text-white">{t('system_health.garbage')}</p>
                       <p className="text-[10px] text-gray-500">
-                        {healthData?.disk?.garbage?.count || 0} files found (
+                        {healthData?.disk?.garbage?.count || 0} {t('system_health.detected')} (
                         {((healthData?.disk?.garbage?.size || 0) / 1024 / 1024).toFixed(2)} MB)
                       </p>
                     </div>
@@ -287,7 +297,9 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
                   <span
                     className={`text-[10px] font-black uppercase tracking-widest ${healthData?.disk?.garbage?.count === 0 ? 'text-green-500' : 'text-orange-500'}`}
                   >
-                    {healthData?.disk?.garbage?.count === 0 ? 'Clean' : 'Needs Cleanup'}
+                    {healthData?.disk?.garbage?.count === 0
+                      ? t('system_health.clean')
+                      : t('system_health.needs_cleanup')}
                   </span>
                 </div>
               </div>
@@ -296,9 +308,11 @@ const SystemHealthTab: React.FC<SystemHealthTabProps> = ({
                 <div className="flex gap-3">
                   <AlertTriangle className="text-primary shrink-0" size={16} />
                   <p className="text-[10px] text-gray-400 leading-relaxed">
-                    If any items are <span className="text-red-500">Missing</span> or{' '}
-                    <span className="text-orange-500">Needs Cleanup</span>, the panle performance
-                    may degrade. Use the <b>Repair System</b> button to automate the resolution.
+                    <Trans i18nKey="system_health.warning">
+                      If any items are <span className="text-red-500">Missing</span> or{' '}
+                      <span className="text-orange-500">Needs Cleanup</span>, the panel performance
+                      may degrade. Use the <b>Repair System</b> button to automate the resolution.
+                    </Trans>
                   </p>
                 </div>
               </div>

@@ -19,6 +19,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { useConfirmDialog } from '../hooks/useConfirmDialog.js';
 
 interface FileStat {
@@ -33,6 +34,7 @@ interface FileContentResponse {
 }
 
 const FileManager = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { showConfirm } = useConfirmDialog();
@@ -76,11 +78,11 @@ const FileManager = () => {
         const data = (await response.json()) as FileStat[];
         setFiles(data);
       } else {
-        toast.error('Failed to load files');
+        toast.error(t('file_manager.toast_load_error', 'Failed to load files'));
       }
     } catch (error) {
       console.error('Failed to fetch files:', error);
-      toast.error('Connection error');
+      toast.error(t('file_manager.toast_connection_error', 'Connection error'));
     } finally {
       setLoading(false);
     }
@@ -99,12 +101,14 @@ const FileManager = () => {
       if (response.ok) {
         const data = (await response.json()) as FileContentResponse;
         setEditingFile({ name: file.name, content: data.content, originalContent: data.content });
-        toast.success(`Editing ${file.name}`);
+        toast.success(
+          t('file_manager.toast_editing', { name: file.name, defaultValue: `Editing ${file.name}` })
+        );
       } else {
-        toast.error('Failed to read file');
+        toast.error(t('file_manager.toast_read_error', 'Failed to read file'));
       }
     } catch {
-      toast.error('Connection error');
+      toast.error(t('file_manager.toast_connection_error', 'Connection error'));
     }
   };
 
@@ -120,13 +124,13 @@ const FileManager = () => {
       });
       if (response.ok) {
         setEditingFile(null);
-        toast.success('File saved successfully');
+        toast.success(t('file_manager.toast_save_success', 'File saved successfully'));
         fetchFiles(currentPath);
       } else {
-        toast.error('Failed to save file');
+        toast.error(t('file_manager.toast_save_error', 'Failed to save file'));
       }
     } catch {
-      toast.error('Connection error');
+      toast.error(t('file_manager.toast_connection_error', 'Connection error'));
     } finally {
       setSaving(false);
     }
@@ -134,9 +138,12 @@ const FileManager = () => {
 
   const handleDelete = async (file: FileStat) => {
     const confirmed = await showConfirm({
-      title: 'Delete Item',
-      message: `Are you sure you want to delete ${file.name}? This action cannot be undone.`,
-      confirmText: 'Delete',
+      title: t('file_manager.delete_confirm_title', 'Delete Item'),
+      message: t('file_manager.delete_confirm_msg', {
+        name: file.name,
+        defaultValue: `Are you sure you want to delete ${file.name}? This action cannot be undone.`,
+      }),
+      confirmText: t('file_manager.delete_btn', 'Delete'),
       type: 'danger',
     });
 
@@ -150,13 +157,18 @@ const FileManager = () => {
           }
         );
         if (response.ok) {
-          toast.success(`${file.name} deleted`);
+          toast.success(
+            t('file_manager.toast_delete_success', {
+              name: file.name,
+              defaultValue: `${file.name} deleted`,
+            })
+          );
           fetchFiles(currentPath);
         } else {
-          toast.error('Failed to delete item');
+          toast.error(t('file_manager.toast_delete_error', 'Failed to delete item'));
         }
       } catch {
-        toast.error('Connection error');
+        toast.error(t('file_manager.toast_connection_error', 'Connection error'));
       }
     }
   };
@@ -182,11 +194,11 @@ const FileManager = () => {
         body: JSON.stringify({ oldPath, newPath }),
       });
       if (response.ok) {
-        toast.success('Renamed successfully');
+        toast.success(t('file_manager.toast_rename_success', 'Renamed successfully'));
         setIsRenameModalOpen(false);
         fetchFiles(currentPath);
       } else {
-        toast.error('Failed to rename');
+        toast.error(t('file_manager.toast_rename_error', 'Failed to rename'));
       }
     } catch {
       toast.error('Connection error');
@@ -207,11 +219,17 @@ const FileManager = () => {
         a.href = url;
         a.download = file.name;
         a.click();
+        a.click();
         window.URL.revokeObjectURL(url);
-        toast.success(`Downloading ${file.name}`);
+        toast.success(
+          t('file_manager.toast_downloading', {
+            name: file.name,
+            defaultValue: `Downloading ${file.name}`,
+          })
+        );
       }
     } catch {
-      toast.error('Download failed');
+      toast.error(t('file_manager.toast_download_error', 'Download failed'));
     }
   };
 
@@ -225,15 +243,15 @@ const FileManager = () => {
         body: JSON.stringify({ path: dirPath }),
       });
       if (response.ok) {
-        toast.success('Folder created');
+        toast.success(t('file_manager.toast_folder_created', 'Folder created'));
         setIsNewFolderModalOpen(false);
         setNewFolderName('');
         fetchFiles(currentPath);
       } else {
-        toast.error('Failed to create folder');
+        toast.error(t('file_manager.toast_folder_error', 'Failed to create folder'));
       }
     } catch {
-      toast.error('Connection error');
+      toast.error(t('file_manager.toast_connection_error', 'Connection error'));
     }
   };
 
@@ -257,13 +275,18 @@ const FileManager = () => {
       );
 
       if (response.ok) {
-        toast.success(`${file.name} uploaded successfully`);
+        toast.success(
+          t('file_manager.toast_upload_success', {
+            name: file.name,
+            defaultValue: `${file.name} uploaded successfully`,
+          })
+        );
         fetchFiles(currentPath);
       } else {
-        toast.error('Upload failed');
+        toast.error(t('file_manager.toast_upload_error', 'Upload failed'));
       }
     } catch {
-      toast.error('Network error during upload');
+      toast.error(t('file_manager.toast_upload_net_error', 'Network error during upload'));
     }
 
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -280,7 +303,7 @@ const FileManager = () => {
   const copyPathToClipboard = (file: FileStat) => {
     const fullPath = currentPath ? `${currentPath}/${file.name}` : file.name;
     navigator.clipboard.writeText(fullPath);
-    toast.success('Path copied to clipboard');
+    toast.success(t('file_manager.toast_path_copied', 'Path copied to clipboard'));
   };
 
   const formatSize = (bytes: number) => {
@@ -307,9 +330,11 @@ const FileManager = () => {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-3">
-              FILE MANAGER
+              {t('file_manager.title', 'FILE MANAGER')}
               <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-full font-bold tracking-widest uppercase">
-                {currentPath ? 'Directory' : 'Root'}
+                {currentPath
+                  ? t('file_manager.directory', 'Directory')
+                  : t('file_manager.root', 'Root')}
               </span>
             </h2>
           </div>
@@ -320,13 +345,13 @@ const FileManager = () => {
             onClick={() => setIsNewFolderModalOpen(true)}
             className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-gray-700/50"
           >
-            <FolderPlus size={16} /> NEW FOLDER
+            <FolderPlus size={16} /> {t('file_manager.new_folder', 'NEW FOLDER')}
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-primary/20"
           >
-            <Upload size={16} /> UPLOAD
+            <Upload size={16} /> {t('file_manager.upload', 'UPLOAD')}
           </button>
           <input type="file" ref={fileInputRef} className="hidden" onChange={handleUpload} />
         </div>
@@ -362,7 +387,7 @@ const FileManager = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
           <input
             type="text"
-            placeholder="Search files..."
+            placeholder={t('file_manager.search_placeholder', 'Search files...')}
             className="w-full bg-black/20 border border-gray-700/50 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-gray-600 focus:border-primary outline-none transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -372,7 +397,7 @@ const FileManager = () => {
         <button
           onClick={() => fetchFiles(currentPath)}
           className="p-2.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-all"
-          title="Refresh"
+          title={t('file_manager.refresh', 'Refresh')}
         >
           <RefreshCw size={18} className={loading && !editingFile ? 'animate-spin' : ''} />
         </button>
@@ -397,20 +422,31 @@ const FileManager = () => {
                 <button
                   onClick={() => {
                     if (editingFile.content !== editingFile.originalContent) {
-                      if (!confirm('You have unsaved changes. Discard?')) return;
+                      if (
+                        !confirm(
+                          t(
+                            'file_manager.edit.unsaved_confirm',
+                            'You have unsaved changes. Discard?'
+                          )
+                        )
+                      )
+                        return;
                     }
                     setEditingFile(null);
                   }}
                   className="text-xs font-bold text-gray-400 hover:text-white px-4 py-2 rounded-xl transition-all"
                 >
-                  DISCARD
+                  {t('file_manager.edit.discard', 'DISCARD')}
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
                   className="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-black tracking-widest transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
                 >
-                  <Save size={16} /> {saving ? 'SAVING...' : 'SAVE CHANGES'}
+                  <Save size={16} />{' '}
+                  {saving
+                    ? t('file_manager.edit.saving', 'SAVING...')
+                    : t('file_manager.edit.save', 'SAVE CHANGES')}
                 </button>
               </div>
             </div>
@@ -427,10 +463,10 @@ const FileManager = () => {
             <table className="w-full text-left border-collapse">
               <thead className="bg-black/40 text-gray-500 text-[10px] uppercase font-black tracking-[0.2em] sticky top-0 z-10">
                 <tr>
-                  <th className="px-8 py-5">Name</th>
-                  <th className="px-8 py-5">Size</th>
-                  <th className="px-8 py-5">Modified</th>
-                  <th className="px-8 py-5 text-right">Actions</th>
+                  <th className="px-8 py-5">{t('file_manager.name', 'Name')}</th>
+                  <th className="px-8 py-5">{t('file_manager.size', 'Size')}</th>
+                  <th className="px-8 py-5">{t('file_manager.modified', 'Modified')}</th>
+                  <th className="px-8 py-5 text-right">{t('file_manager.actions', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800/30">
@@ -447,7 +483,7 @@ const FileManager = () => {
                       colSpan={4}
                       className="px-8 py-4 flex items-center gap-3 text-gray-500 font-bold text-xs italic"
                     >
-                      <ArrowLeft size={14} /> .. (Go Up)
+                      <ArrowLeft size={14} /> {t('file_manager.go_up', '.. (Go Up)')}
                     </td>
                   </tr>
                 )}
@@ -457,7 +493,7 @@ const FileManager = () => {
                       <div className="flex flex-col items-center gap-4 text-gray-600">
                         <RefreshCw className="w-10 h-10 animate-spin opacity-20" />
                         <span className="text-xs font-black tracking-widest">
-                          LOADING FILESYSTEM
+                          {t('file_manager.loading', 'LOADING FILESYSTEM')}
                         </span>
                       </div>
                     </td>
@@ -468,7 +504,9 @@ const FileManager = () => {
                       <div className="flex flex-col items-center gap-2 text-gray-600">
                         <Search className="w-10 h-10 opacity-20" />
                         <span className="text-xs font-black tracking-widest">
-                          {searchTerm ? 'NO FILES MATCH SEARCH' : 'DIRECTORY IS EMPTY'}
+                          {searchTerm
+                            ? t('file_manager.no_results', 'NO FILES MATCH SEARCH')
+                            : t('file_manager.empty', 'DIRECTORY IS EMPTY')}
                         </span>
                       </div>
                     </td>
@@ -555,13 +593,13 @@ const FileManager = () => {
             ></div>
             <div className="relative bg-[#111827] border border-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
               <h3 className="text-xl font-black text-white mb-6 tracking-tighter uppercase">
-                NEW DIRECTORY
+                {t('file_manager.modals.new_dir_title', 'NEW DIRECTORY')}
               </h3>
               <div className="space-y-4">
                 <input
                   type="text"
                   autoFocus
-                  placeholder="Folder Name"
+                  placeholder={t('file_manager.modals.folder_name', 'Folder Name')}
                   className="w-full bg-black/40 border border-gray-700 rounded-2xl px-6 py-4 text-white focus:border-primary outline-none transition-all font-bold"
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
@@ -571,13 +609,13 @@ const FileManager = () => {
                   onClick={handleCreateFolder}
                   className="w-full py-4 bg-primary hover:bg-blue-600 text-white rounded-2xl font-black tracking-widest text-xs transition-all shadow-lg shadow-primary/20"
                 >
-                  CREATE FOLDER
+                  {t('file_manager.modals.create', 'CREATE FOLDER')}
                 </button>
                 <button
                   onClick={() => setIsNewFolderModalOpen(false)}
                   className="w-full py-4 bg-transparent text-gray-500 hover:text-white font-bold text-xs"
                 >
-                  CANCEL
+                  {t('file_manager.modals.cancel', 'CANCEL')}
                 </button>
               </div>
             </div>
@@ -593,19 +631,19 @@ const FileManager = () => {
             ></div>
             <div className="relative bg-[#111827] border border-gray-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
               <h3 className="text-xl font-black text-white mb-6 tracking-tighter uppercase text-center">
-                RENAME ITEM
+                {t('file_manager.modals.rename_title', 'RENAME ITEM')}
               </h3>
               <div className="space-y-4">
                 <div className="p-4 bg-gray-900/50 rounded-2xl border border-gray-800 mb-2">
                   <p className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-1">
-                    Old Name
+                    {t('file_manager.modals.old_name', 'Old Name')}
                   </p>
                   <p className="text-sm text-gray-400 font-mono truncate">{renamingFile?.name}</p>
                 </div>
                 <input
                   type="text"
                   autoFocus
-                  placeholder="New Name"
+                  placeholder={t('file_manager.modals.new_name', 'New Name')}
                   className="w-full bg-black/40 border border-gray-700 rounded-2xl px-6 py-4 text-white focus:border-primary outline-none transition-all font-bold"
                   value={newFileName}
                   onChange={(e) => setNewFileName(e.target.value)}
@@ -615,13 +653,13 @@ const FileManager = () => {
                   onClick={handleRenameSubmit}
                   className="w-full py-4 bg-primary hover:bg-blue-600 text-white rounded-2xl font-black tracking-widest text-xs transition-all shadow-lg shadow-primary/20"
                 >
-                  RENAME ITEM
+                  {t('file_manager.modals.rename_btn', 'RENAME ITEM')}
                 </button>
                 <button
                   onClick={() => setIsRenameModalOpen(false)}
                   className="w-full py-4 bg-transparent text-gray-500 hover:text-white font-bold text-xs"
                 >
-                  CANCEL
+                  {t('file_manager.modals.cancel', 'CANCEL')}
                 </button>
               </div>
             </div>
@@ -658,7 +696,9 @@ const FileManager = () => {
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-primary transition-all text-left"
           >
             {contextMenu.file.isDirectory ? <ExternalLink size={14} /> : <Edit2 size={14} />}
-            {contextMenu.file.isDirectory ? 'OPEN FOLDER' : 'EDIT FILE'}
+            {contextMenu.file.isDirectory
+              ? t('file_manager.ctx.open_folder', 'OPEN FOLDER')
+              : t('file_manager.ctx.edit_file', 'EDIT FILE')}
           </button>
 
           <button
@@ -668,7 +708,7 @@ const FileManager = () => {
             }}
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
           >
-            <RefreshCw size={14} /> RENAME
+            <RefreshCw size={14} /> {t('file_manager.ctx.rename', 'RENAME')}
           </button>
 
           {!contextMenu.file.isDirectory && (
@@ -679,7 +719,7 @@ const FileManager = () => {
               }}
               className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
             >
-              <Download size={14} /> DOWNLOAD
+              <Download size={14} /> {t('file_manager.ctx.download', 'DOWNLOAD')}
             </button>
           )}
 
@@ -690,7 +730,7 @@ const FileManager = () => {
             }}
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-gray-300 hover:text-white hover:bg-gray-800 transition-all text-left"
           >
-            <Copy size={14} /> COPY PATH
+            <Copy size={14} /> {t('file_manager.ctx.copy_path', 'COPY PATH')}
           </button>
 
           <div className="h-px bg-gray-800/50 my-1 mx-2" />
@@ -702,7 +742,7 @@ const FileManager = () => {
             }}
             className="w-full flex items-center gap-3 px-4 py-2 text-xs font-bold text-red-500 hover:text-white hover:bg-red-500 transition-all text-left"
           >
-            <Trash2 size={14} /> DELETE
+            <Trash2 size={14} /> {t('file_manager.ctx.delete', 'DELETE')}
           </button>
         </div>
       )}

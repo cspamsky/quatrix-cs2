@@ -697,7 +697,9 @@ const Plugins = () => {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           activeCategory={activeCategory}
-          onCategoryChange={(cat) => setActiveCategory(cat as any)}
+          onCategoryChange={(cat) =>
+            setActiveCategory(cat as 'all' | 'core' | 'metamod' | 'cssharp')
+          }
           onDelete={handleDeletePool}
           onUpload={(id, name) => setUploadModalPlugin({ id, name })}
           tabSwitcher={<TabSwitcher />}

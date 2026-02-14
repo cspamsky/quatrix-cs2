@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { AdminData } from '../types';
+import CustomSelect from '../components/ui/CustomSelect';
 
 interface Admin extends AdminData {
   Name: string;
@@ -159,23 +160,17 @@ const Admins = () => {
           <p className="text-sm text-gray-400 mt-1">{t('admins.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <div className="relative group">
-            <Server className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
-            <select
-              className="bg-[#111827] border border-gray-800 text-white pl-10 pr-4 py-2 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all outline-none text-sm"
-              value={selectedServerId || ''}
-              onChange={(e) => setSelectedServerId(Number(e.target.value))}
-            >
-              <option value="" disabled>
-                {t('admins.select_server')}
-              </option>
-              {servers.map((s: ServerInfo) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <CustomSelect
+            options={servers.map((s: ServerInfo) => ({
+              value: s.id,
+              label: s.name,
+            }))}
+            value={selectedServerId || ''}
+            onChange={(val) => setSelectedServerId(val)}
+            placeholder={t('admins.select_server')}
+            icon={<Server className="w-4 h-4" />}
+            className="w-64"
+          />
 
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
@@ -338,16 +333,16 @@ const Admins = () => {
                   <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 ml-1">
                     {t('admins.flags_label')}
                   </label>
-                  <select
+                  <CustomSelect
+                    options={[
+                      { value: '@css/admin', label: t('admins.flag_admin') },
+                      { value: '@css/root', label: t('admins.flag_root') },
+                      { value: '@css/generic', label: t('admins.flag_generic') },
+                      { value: '@css/chat', label: t('admins.flag_chat') },
+                    ]}
                     value={newAdmin.flags}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, flags: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-[#0d1421] border border-gray-800 rounded-xl text-white outline-none focus:border-primary transition-all text-sm"
-                  >
-                    <option value="@css/admin">{t('admins.flag_admin')}</option>
-                    <option value="@css/root">{t('admins.flag_root')}</option>
-                    <option value="@css/generic">{t('admins.flag_generic')}</option>
-                    <option value="@css/chat">{t('admins.flag_chat')}</option>
-                  </select>
+                    onChange={(val) => setNewAdmin({ ...newAdmin, flags: val })}
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1.5 ml-1">

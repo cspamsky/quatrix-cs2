@@ -1,7 +1,5 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import fs from 'fs';
-import path from 'path';
 import { z } from 'zod';
 import db from '../db.js';
 import { serverManager } from '../serverManager.js';
@@ -561,7 +559,7 @@ router.post(
               'like',
             ];
 
-            if (!allowedOps.includes(op as any)) {
+            if (!allowedOps.includes(op as (typeof allowedOps)[number])) {
               return res.status(400).json({ message: `Invalid operator for column ${rawColumn}` });
             }
 

@@ -95,7 +95,10 @@ app.use(
       },
       proxyReq: (proxyReq: ClientRequest, req: IncomingMessage) => {
         const protocol =
-          req.headers['x-forwarded-proto'] || ((req.socket as any).encrypted ? 'https' : 'http');
+          req.headers['x-forwarded-proto'] ||
+          ('encrypted' in req.socket && (req.socket as { encrypted?: boolean }).encrypted
+            ? 'https'
+            : 'http');
         proxyReq.setHeader('X-Forwarded-Proto', protocol);
       },
       error: (err: Error, _req: IncomingMessage, res: ServerResponse | unknown) => {
@@ -152,7 +155,7 @@ if (isProduction) {
 
   app.use(express.static(clientBuildPath));
 
-  // SPA fallback - tüm non-API route'ları index.html'e yönlendir
+  // SPA fallback - redirect all non-API routes to index.html
   app.use((req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
       return next();

@@ -8,7 +8,7 @@ const router = Router();
 
 router.use(authenticateToken);
 
-// Yedekleri listele
+// List backups
 router.get('/:serverId', (req: Request, res: Response) => {
   try {
     const backups = backupService.getBackups(req.params.serverId as string);
@@ -19,17 +19,17 @@ router.get('/:serverId', (req: Request, res: Response) => {
   }
 });
 
-// Yeni yedek oluştur
+// Create new backup
 router.post('/:serverId/create', async (req: Request, res: Response) => {
   try {
     const { serverId } = req.params;
     const { comment, type } = req.body as { comment?: string; type?: string };
 
-    // Task oluştur
+    // Create task
     const taskId = `backup_${Date.now()}`;
     taskService.createTask(taskId, 'backup_create', { serverId: serverId as string });
 
-    // Arka planda yedeklemeyi başlat
+    // Start backup in background
     const backupType = (type === 'auto' ? 'auto' : 'manual') as 'manual' | 'auto';
     backupService
       .createBackup(serverId as string, backupType, comment || '', taskId)
@@ -37,39 +37,39 @@ router.post('/:serverId/create', async (req: Request, res: Response) => {
         console.error('[API] Backup failed:', err);
       });
 
-    res.json({ taskId, message: 'Yedekleme işlemi başlatıldı.' });
+    res.json({ taskId, message: 'Backup process started.' });
   } catch (error: unknown) {
     const err = error as Error;
     res.status(500).json({ error: err.message });
   }
 });
 
-// Yedekten geri yükle
+// Restore from backup
 router.post('/:id/restore', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    // Task oluştur
+    // Create task
     const taskId = `restore_${Date.now()}`;
     taskService.createTask(taskId, 'backup_restore', { backupId: id as string });
 
-    // Arka planda geri yüklemeyi başlat
+    // Start restore in background
     backupService.restoreBackup(id as string, taskId).catch((err) => {
       console.error('[API] Restore failed:', err);
     });
 
-    res.json({ taskId, message: 'Geri yükleme işlemi başlatıldı.' });
+    res.json({ taskId, message: 'Restore process started.' });
   } catch (error: unknown) {
     const err = error as Error;
     res.status(500).json({ error: err.message });
   }
 });
 
-// Yedek sil
+// Delete backup
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
     await backupService.deleteBackup(req.params.id as string);
-    res.json({ message: 'Yedek silindi.' });
+    res.json({ message: 'Backup deleted.' });
   } catch (error: unknown) {
     const err = error as Error;
     res.status(500).json({ error: err.message });

@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, User, Lock, Eye, EyeOff } from 'lucide-react';
 import { apiFetch } from '../utils/api';
+import { useTranslation } from 'react-i18next';
 
 const Register = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
@@ -54,14 +56,20 @@ const Register = () => {
           <div className="flex justify-center mb-6">
             <img src="/logo.png" alt="Quatrix Logo" className="w-24 h-24" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Quatrix Manager</h1>
-          <p className="text-gray-400 mt-1">Create your account</p>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            {t('auth.register.title', 'Quatrix Manager')}
+          </h1>
+          <p className="text-gray-400 mt-1">{t('auth.register.subtitle', 'Create your account')}</p>
         </div>
 
         <div className="bg-[#111827] border border-gray-800/50 rounded-2xl p-8 shadow-xl">
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-white">Create Account</h2>
-            <p className="text-sm text-gray-400">Join the community and manage your servers.</p>
+            <h2 className="text-xl font-semibold text-white">
+              {t('auth.register.create_account', 'Create Account')}
+            </h2>
+            <p className="text-sm text-gray-400">
+              {t('auth.register.desc', 'Join the community and manage your servers.')}
+            </p>
           </div>
 
           {error && (
@@ -73,7 +81,7 @@ const Register = () => {
           <form onSubmit={handleRegister} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="username">
-                Username
+                {t('auth.register.username', 'Username')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -82,7 +90,7 @@ const Register = () => {
                 <input
                   className="w-full bg-[#0F172A]/50 border border-gray-700 text-white rounded-xl pl-11 pr-4 py-2.5 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-gray-500 text-sm"
                   id="username"
-                  placeholder="johndoe"
+                  placeholder={t('auth.register.username', 'Username')}
                   type="text"
                   required
                   value={username}
@@ -93,7 +101,7 @@ const Register = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1.5" htmlFor="password">
-                Password
+                {t('auth.register.password', 'Password')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -129,9 +137,9 @@ const Register = () => {
                 />
               </div>
               <label className="ml-2 text-sm text-gray-400" htmlFor="terms">
-                I agree to the{' '}
+                {t('auth.register.agree', 'I agree to the')}{' '}
                 <a className="text-primary hover:text-primary/80 transition-colors" href="#">
-                  Terms and Conditions
+                  {t('auth.register.terms', 'Terms and Conditions')}
                 </a>
               </label>
             </div>
@@ -146,7 +154,7 @@ const Register = () => {
               ) : (
                 <>
                   <UserPlus size={18} />
-                  Sign Up
+                  {t('auth.register.sign_up', 'Sign Up')}
                 </>
               )}
             </button>
@@ -154,13 +162,13 @@ const Register = () => {
 
           <div className="mt-8 pt-6 border-t border-gray-800 text-center">
             <p className="text-sm text-gray-400">
-              Already have an account?{' '}
+              {t('auth.register.have_account', 'Already have an account?')}{' '}
               <button
                 onClick={() => navigate('/login')}
                 className="text-primary font-medium hover:text-primary/80 transition-colors"
                 type="button"
               >
-                Sign In
+                {t('auth.register.sign_in', 'Sign In')}
               </button>
             </p>
           </div>

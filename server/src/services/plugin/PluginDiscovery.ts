@@ -9,6 +9,16 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.join(__dirname, '../../../../');
 const POOL_DIR = path.join(PROJECT_ROOT, 'data', 'plugin_pool');
 
+interface PluginCacheRow {
+  plugin_id: string;
+  name: string;
+  category: string;
+  folder_name: string;
+  is_custom: number;
+  version: string;
+  description?: string;
+}
+
 /**
  * PluginDiscovery Service
  * Responsible for:
@@ -30,8 +40,10 @@ export class PluginDiscovery {
     const poolItemsLower = poolItems.map((i) => i.toLowerCase());
 
     // Load cache
-    const cacheRows = db.prepare('SELECT * FROM plugin_metadata_cache').all() as any[];
-    const cache = new Map<string, any>(cacheRows.map((r) => [r.plugin_id.toLowerCase(), r]));
+    const cacheRows = db.prepare('SELECT * FROM plugin_metadata_cache').all() as PluginCacheRow[];
+    const cache = new Map<string, PluginCacheRow>(
+      cacheRows.map((r) => [r.plugin_id.toLowerCase(), r])
+    );
 
     // 1. Process static registry
     for (const [id, info] of Object.entries(registry)) {
@@ -73,7 +85,7 @@ export class PluginDiscovery {
           manifest[item] = {
             name: cached.name,
             version: cached.version || 'latest',
-            category: cached.category as any,
+            category: cached.category as 'cssharp' | 'metamod' | 'core',
             description: cached.description || 'Custom plugin',
             folderName: cached.folder_name,
             inPool: true,

@@ -5,6 +5,7 @@ import { ArrowLeft, Save, Server, MapPin, Users, Lock, Key, Shield, Globe } from
 import { SERVER_REGIONS } from '../config/regions';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import CustomSelect from '../components/ui/CustomSelect';
 
 interface ServerData {
   id: number;
@@ -168,24 +169,22 @@ const ServerSettings = () => {
                   <label className="text-sm font-semibold text-gray-400">
                     {t('serverSettings.primary_map')}
                   </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
-                    <select
-                      value={server.map}
-                      onChange={(e) => setServer({ ...server, map: e.target.value })}
-                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer disabled:opacity-50"
-                      disabled={!canEdit}
-                    >
-                      <option value="de_dust2">de_dust2</option>
-                      <option value="de_mirage">de_mirage</option>
-                      <option value="de_inferno">de_inferno</option>
-                      <option value="de_nuke">de_nuke</option>
-                      <option value="de_overpass">de_overpass</option>
-                      <option value="de_vertigo">de_vertigo</option>
-                      <option value="de_ancient">de_ancient</option>
-                      <option value="de_anubis">de_anubis</option>
-                    </select>
-                  </div>
+                  <CustomSelect
+                    options={[
+                      { value: 'de_dust2', label: 'de_dust2' },
+                      { value: 'de_mirage', label: 'de_mirage' },
+                      { value: 'de_inferno', label: 'de_inferno' },
+                      { value: 'de_nuke', label: 'de_nuke' },
+                      { value: 'de_overpass', label: 'de_overpass' },
+                      { value: 'de_vertigo', label: 'de_vertigo' },
+                      { value: 'de_ancient', label: 'de_ancient' },
+                      { value: 'de_anubis', label: 'de_anubis' },
+                    ]}
+                    value={server.map}
+                    onChange={(val) => setServer({ ...server, map: val })}
+                    disabled={!canEdit}
+                    icon={<MapPin className="w-4 h-4" />}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -229,24 +228,22 @@ const ServerSettings = () => {
                   <label className="text-sm font-semibold text-gray-400">
                     {t('serverSettings.game_alias')}
                   </label>
-                  <select
+                  <CustomSelect
+                    options={[
+                      { value: '', label: t('createInstance.game_alias_default') },
+                      { value: 'competitive', label: t('createInstance.game_alias_competitive') },
+                      { value: 'casual', label: t('createInstance.game_alias_casual') },
+                      { value: 'deathmatch', label: t('createInstance.game_alias_deathmatch') },
+                      { value: 'wingman', label: t('createInstance.game_alias_wingman') },
+                      { value: 'armsrace', label: t('createInstance.game_alias_armsrace') },
+                      { value: 'demolition', label: t('createInstance.game_alias_demolition') },
+                      { value: 'training', label: t('createInstance.game_alias_training') },
+                      { value: 'custom', label: t('createInstance.game_alias_custom') },
+                    ]}
                     value={server.game_alias || ''}
-                    onChange={(e) => setServer({ ...server, game_alias: e.target.value })}
-                    className="w-full px-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer disabled:opacity-50"
+                    onChange={(val) => setServer({ ...server, game_alias: val })}
                     disabled={!canEdit}
-                  >
-                    <option value="">{t('createInstance.game_alias_default')}</option>
-                    <option value="competitive">
-                      {t('createInstance.game_alias_competitive')}
-                    </option>
-                    <option value="casual">{t('createInstance.game_alias_casual')}</option>
-                    <option value="deathmatch">{t('createInstance.game_alias_deathmatch')}</option>
-                    <option value="wingman">{t('createInstance.game_alias_wingman')}</option>
-                    <option value="armsrace">{t('createInstance.game_alias_armsrace')}</option>
-                    <option value="demolition">{t('createInstance.game_alias_demolition')}</option>
-                    <option value="training">{t('createInstance.game_alias_training')}</option>
-                    <option value="custom">{t('createInstance.game_alias_custom')}</option>
-                  </select>
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -268,21 +265,16 @@ const ServerSettings = () => {
                   <label className="text-sm font-semibold text-gray-400">
                     {t('serverSettings.server_region')}
                   </label>
-                  <div className="relative">
-                    <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
-                    <select
-                      value={server.region || 3}
-                      onChange={(e) => setServer({ ...server, region: parseInt(e.target.value) })}
-                      className="w-full pl-12 pr-5 py-3 bg-black/20 border border-gray-800 rounded-xl text-white focus:border-primary outline-none transition-all cursor-pointer disabled:opacity-50"
-                      disabled={!canEdit}
-                    >
-                      {SERVER_REGIONS.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {t(`regions.${r.code}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <CustomSelect
+                    options={SERVER_REGIONS.map((r) => ({
+                      value: r.id,
+                      label: t(`regions.${r.code}`),
+                    }))}
+                    value={server.region || 3}
+                    onChange={(val) => setServer({ ...server, region: val })}
+                    disabled={!canEdit}
+                    icon={<Globe className="w-4 h-4" />}
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -309,37 +301,35 @@ const ServerSettings = () => {
                       <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">
                         {t('serverSettings.cpu_priority')}
                       </label>
-                      <select
+                      <CustomSelect
+                        options={[
+                          { value: -10, label: t('serverSettings.cpu_high') },
+                          { value: 0, label: t('serverSettings.cpu_normal') },
+                          { value: 10, label: t('serverSettings.cpu_low') },
+                          { value: 19, label: t('serverSettings.cpu_idle') },
+                        ]}
                         value={server.cpu_priority || 0}
-                        onChange={(e) =>
-                          setServer({ ...server, cpu_priority: parseInt(e.target.value) })
-                        }
+                        onChange={(val) => setServer({ ...server, cpu_priority: val })}
                         disabled={!canEdit}
-                        className="w-full px-4 py-2 bg-black/20 border border-gray-800 rounded-xl text-white text-xs outline-none focus:border-primary transition-all disabled:opacity-50"
-                      >
-                        <option value="-10">{t('serverSettings.cpu_high')}</option>
-                        <option value="0">{t('serverSettings.cpu_normal')}</option>
-                        <option value="10">{t('serverSettings.cpu_low')}</option>
-                        <option value="19">{t('serverSettings.cpu_idle')}</option>
-                      </select>
+                        className="text-xs"
+                      />
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">
                         {t('serverSettings.ram_limit')}
                       </label>
-                      <select
+                      <CustomSelect
+                        options={[
+                          { value: 0, label: t('serverSettings.ram_unlimited') },
+                          { value: 4096, label: '4 GB' },
+                          { value: 8192, label: '8 GB' },
+                          { value: 16384, label: '16 GB' },
+                        ]}
                         value={server.ram_limit || 0}
-                        onChange={(e) =>
-                          setServer({ ...server, ram_limit: parseInt(e.target.value) })
-                        }
+                        onChange={(val) => setServer({ ...server, ram_limit: val })}
                         disabled={!canEdit}
-                        className="w-full px-4 py-2 bg-black/20 border border-gray-800 rounded-xl text-white text-xs outline-none focus:border-primary transition-all disabled:opacity-50"
-                      >
-                        <option value="0">{t('serverSettings.ram_unlimited')}</option>
-                        <option value="4096">4 GB</option>
-                        <option value="8192">8 GB</option>
-                        <option value="16384">16 GB</option>
-                      </select>
+                        className="text-xs"
+                      />
                     </div>
                   </div>
                 </div>

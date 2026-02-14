@@ -83,7 +83,7 @@ export class PluginInstaller {
               installDir,
               instanceId,
               'metamod',
-              pluginRegistry.metamod as any,
+              pluginRegistry.metamod as unknown as PluginMetadata,
               taskId
             );
           }
@@ -95,7 +95,7 @@ export class PluginInstaller {
               installDir,
               instanceId,
               'cssharp',
-              pluginRegistry.cssharp as any,
+              pluginRegistry.cssharp as unknown as PluginMetadata,
               taskId
             );
           }
