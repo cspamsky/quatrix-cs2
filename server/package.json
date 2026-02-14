@@ -34,7 +34,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "mysql2": "^3.16.3",
-    "otplib": "^13.2.1",
+    "otplib": "^13.3.0",
     "qrcode": "^1.5.4",
     "quatrix-root": "file:..",
     "rcon-client": "^4.2.5",
