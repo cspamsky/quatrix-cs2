@@ -33,7 +33,7 @@
     "http-proxy-middleware": "^3.0.3",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
-    "mysql2": "^3.16.3",
+    "mysql2": "^3.17.1",
     "otplib": "^13.2.1",
     "qrcode": "^1.5.4",
     "quatrix-root": "file:..",
